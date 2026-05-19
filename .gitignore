@@ -1,0 +1,5 @@
+.pio/
+.vscode/
+src/config.h
+web/.env
+web/node_modules/

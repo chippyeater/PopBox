@@ -1,0 +1,200 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background: #0d0d1a;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 40px 20px;
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+/* ── 外框：模拟设备 ── */
+.simulator-frame {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.simulator-label {
+    color: #555;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+
+/* ── 屏幕：320×240，精确还原硬件尺寸 ── */
+.screen {
+    width: 320px;
+    height: 240px;
+    background: #1A1A2E;
+    border: 2px solid #333;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 30px rgba(83, 52, 131, 0.4);
+    position: relative;
+}
+
+/* ── 头部（108px） ── */
+.header {
+    height: 108px;
+    background: #16213E;
+    display: flex;
+    align-items: center;
+    padding: 10px 8px;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.avatar-wrap {
+    width: 90px;
+    height: 90px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.avatar-wrap img {
+    width: 90px;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.avatar-fallback {
+    width: 90px;
+    height: 90px;
+    border-radius: 6px;
+    background: #44475A;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: #aaa;
+}
+
+.header-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.char-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #FFD700;
+}
+
+.status-text {
+    font-size: 12px;
+}
+.status-text.idle       { color: #00C9A7; }
+.status-text.recording  { color: #E94560; }
+.status-text.processing { color: #FFA500; }
+.status-text.reply      { color: #00C9A7; }
+
+/* ── 分隔线 ── */
+.divider {
+    height: 1px;
+    background: #334466;
+    flex-shrink: 0;
+}
+
+/* ── 聊天区（弹性高度） ── */
+.chat-area {
+    flex: 1;
+    background: #0F3460;
+    padding: 8px 10px;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-start;
+}
+
+.chat-text {
+    font-size: 13px;
+    color: #F5F5F5;
+    line-height: 1.6;
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+
+.chat-text.placeholder { color: #667799; }
+
+/* ── 底部按钮（30px） ── */
+.footer {
+    height: 30px;
+    background: #1A1A2E;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.mic-btn {
+    width: 140px;
+    height: 24px;
+    background: #533483;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: inherit;
+}
+.mic-btn:hover   { background: #6b45a8; }
+.mic-btn.recording { background: #E94560; }
+.mic-btn.processing { background: #7a5a00; cursor: not-allowed; }
+
+/* ── 屏幕外：文字输入备选 ── */
+.text-input-area {
+    display: flex;
+    gap: 8px;
+    width: 320px;
+}
+
+.text-input-area input {
+    flex: 1;
+    padding: 8px 12px;
+    background: #1e1e30;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #eee;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+}
+.text-input-area input:focus { border-color: #533483; }
+
+.text-input-area button {
+    padding: 8px 16px;
+    background: #533483;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+}
+.text-input-area button:hover { background: #6b45a8; }
+
+/* ── 错误提示 ── */
+.error-banner {
+    width: 320px;
+    background: #3d1515;
+    border: 1px solid #7a2020;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #ff8080;
+    line-height: 1.5;
+}
+
+/* ── 录音动画（红点闪烁） ── */
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.2; }
+}
+.recording-blink { animation: blink 0.8s infinite; }

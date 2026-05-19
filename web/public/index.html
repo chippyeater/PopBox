@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PopBox 模拟器</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="simulator-frame">
+        <div class="simulator-label">M5Stack CoreS3 · 320×240</div>
+
+        <!-- 模拟 CoreS3 屏幕 -->
+        <div class="screen">
+
+            <!-- 头部：头像 + 名字 + 状态 -->
+            <div class="header">
+                <div class="avatar-wrap">
+                    <img id="avatar" src="/avatar.jpg" alt="角色头像"
+                         onerror="this.style.display='none';document.getElementById('avatar-fallback').style.display='flex'">
+                    <div id="avatar-fallback" class="avatar-fallback">?</div>
+                </div>
+                <div class="header-info">
+                    <div id="char-name" class="char-name">加载中...</div>
+                    <div id="status-text" class="status-text idle">● 待机</div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- 聊天区域 -->
+            <div class="chat-area">
+                <div id="chat-text" class="chat-text placeholder">点击下方按钮开始说话～</div>
+            </div>
+
+            <!-- 底部麦克风按钮 -->
+            <div class="footer">
+                <button id="mic-btn" class="mic-btn" onclick="app.onMicTap()">
+                    <span id="mic-label">● 点击说话</span>
+                </button>
+            </div>
+
+        </div><!-- /screen -->
+
+        <!-- 屏幕外：语音输入备选（文字输入） -->
+        <div class="text-input-area">
+            <input id="text-input" type="text" placeholder="或直接输入文字（无需麦克风）"
+                   onkeydown="if(event.key==='Enter') app.sendText()">
+            <button onclick="app.sendText()">发送</button>
+        </div>
+
+        <!-- 提示信息 -->
+        <div id="error-banner" class="error-banner" style="display:none"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "popbox-web",
+  "version": "1.0.0",
+  "description": "PopBox 网页模拟器（开发调试用）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.4.5"
+  }
+}
