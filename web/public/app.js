@@ -27,8 +27,10 @@ const app = (() => {
     let speechSupported = false;
     let characterId     = 'xiao_ling';
     let charName        = '';
+    let charGender      = 'woman';
     let spriteColors    = null;
-    let thinkingEl      = null;   // 思考中气泡元素
+    let thinkingEl      = null;
+    let currentAudio    = null;   // 当前播放的 Audio 实例
     const elAvatar = document.getElementById('avatar-canvas');
 
     // ── 初始化 ───────────────────────────────────────────────
@@ -53,6 +55,7 @@ const app = (() => {
                 elCharName.textContent = cur.name;
                 charName     = cur.name;
                 characterId  = cur.id;
+                charGender   = cur.gender || 'woman';
                 spriteColors = cur.spriteColors || null;
                 refreshSprite('idle');
             }
@@ -140,23 +143,23 @@ const app = (() => {
         if (ph) ph.remove();
     }
 
-    function addUserMsg(text) {
+    function addUserMsg(text, ts) {
         clearPlaceholder();
         const el = document.createElement('div');
         el.className = 'msg-user';
-        el.textContent = text;
+        el.appendChild(makeHeader('YOU', ts));
+        const body = document.createElement('div');
+        body.textContent = text;
+        el.appendChild(body);
         elChatHistory.appendChild(el);
         scrollToBottom();
     }
 
-    function addCharMsg(text) {
+    function addCharMsg(text, ts) {
         removeThinker();
         const wrap = document.createElement('div');
         wrap.className = 'msg-char';
-        const label = document.createElement('div');
-        label.className = 'msg-char-name';
-        label.textContent = charName || '角色';
-        wrap.appendChild(label);
+        wrap.appendChild(makeHeader(charName || '角色', ts));
         const body = document.createElement('div');
         body.textContent = text;
         wrap.appendChild(body);
@@ -179,6 +182,61 @@ const app = (() => {
 
     function scrollToBottom() {
         elChatHistory.scrollTop = elChatHistory.scrollHeight;
+    }
+
+    function fmtTime(ts) {
+        const d = new Date(ts || Date.now());
+        return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    }
+
+    function makeHeader(label, ts) {
+        const h = document.createElement('div');
+        h.className = 'msg-header';
+        const l = document.createElement('span');
+        l.className = 'msg-label';
+        l.textContent = label;
+        const t = document.createElement('span');
+        t.className = 'msg-time';
+        t.textContent = fmtTime(ts);
+        h.appendChild(l);
+        h.appendChild(t);
+        return h;
+    }
+
+    // 清空聊天区并渲染历史记录
+    async function loadAndRenderHistory(charId, name) {
+        elChatHistory.innerHTML = '';
+        try {
+            const res  = await fetch(`/api/history/${charId}`);
+            const hist = await res.json();
+            if (!hist.length) {
+                elChatHistory.innerHTML = '<div class="msg-system">还没有聊天记录，打个招呼吧～</div>';
+                return;
+            }
+            // 按对话对渲染（user 在前，assistant 紧跟）
+            for (const msg of hist) {
+                if (msg.role === 'user') {
+                    const el = document.createElement('div');
+                    el.className = 'msg-user';
+                    el.appendChild(makeHeader('YOU', msg.ts));
+                    const body = document.createElement('div');
+                    body.textContent = msg.content;
+                    el.appendChild(body);
+                    elChatHistory.appendChild(el);
+                } else {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'msg-char';
+                    wrap.appendChild(makeHeader(name || charName, msg.ts));
+                    const body = document.createElement('div');
+                    body.textContent = msg.content;
+                    wrap.appendChild(body);
+                    elChatHistory.appendChild(wrap);
+                }
+            }
+            scrollToBottom();
+        } catch (e) {
+            elChatHistory.innerHTML = '<div class="msg-system">历史记录加载失败</div>';
+        }
     }
 
     // ── 麦克风按钮点击 ───────────────────────────────────────
@@ -233,15 +291,39 @@ const app = (() => {
                 return;
             }
 
+            // 等 TTS 音频准备好后再揭示消息、恢复状态、播放
+            let audio = null;
+            try {
+                audio = await fetchAudio(data.reply);
+            } catch (e) {
+                console.warn('[TTS] 加载失败，直接显示:', e.message);
+            }
             addCharMsg(data.reply);
             setState('idle');
             if (data.expression) refreshSprite(data.expression);
+            if (audio) audio.play();
 
         } catch (err) {
             showError('网络请求失败：' + err.message);
             removeThinker();
             setState('idle');
         }
+    }
+
+    // ── TTS：fetch 音频，返回准备好的 Audio 对象（不自动播放）──
+    async function fetchAudio(text) {
+        if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+        const res = await fetch('/api/tts', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ text, gender: charGender })
+        });
+        if (!res.ok) throw new Error(`TTS ${res.status}`);
+        const blob  = await res.blob();
+        const audio = new Audio(URL.createObjectURL(blob));
+        currentAudio = audio;
+        audio.onended = () => { currentAudio = null; };
+        return audio;
     }
 
     // ── 错误提示 ─────────────────────────────────────────────
@@ -275,12 +357,12 @@ const app = (() => {
             if (!res.ok) return showError(data.error || '切换失败');
             characterId  = id;
             charName     = data.current?.name || '';
+            charGender   = data.current?.gender || 'woman';
             spriteColors = data.current?.spriteColors || null;
             elCharName.textContent = charName;
+            refreshSprite('idle');
             setState('idle');
-            if (data.current?.catchphrases?.[0]) {
-                addCharMsg(data.current.catchphrases[0] + '我来了！');
-            }
+            await loadAndRenderHistory(id, charName);
             await loadCharacters();
         } catch (e) { showError('切换失败: ' + e.message); }
     }
@@ -333,6 +415,7 @@ const app = (() => {
 
             characterId  = data.id || characterId;
             charName     = data.name || '未知角色';
+            charGender   = data.gender || 'woman';
             spriteColors = data.spriteColors || null;
             elCharName.textContent = charName;
             setState('idle');

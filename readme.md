@@ -247,6 +247,7 @@ PopBox/
 | 富文本/气泡显示 | `DisplayManager.cpp` → `_drawChatArea()` | — |
 | 对话历史摘要压缩 | `web/server.js` → `appendTurn()` | — |
 | 长期记忆 RAG | `web/server.js` → `/api/chat` 上下文构建 | — |
+| IMU 体感互动 | `src/main.cpp` → `update()` 或独立 `ImuManager` | `FEATURE_IMU` |
 
 ### 长期记忆 RAG（待实现）
 
@@ -276,6 +277,37 @@ PopBox/
 如后期性能要求提升，可替换为轻量本地向量模型（如 `@xenova/transformers` 的 `bge-small-zh`）生成 embedding，改用余弦相似度排序；接口不变，仅替换检索模块。
 
 **接入位置**：`web/server.js` → `/api/chat` handler，在调用 LLM 前构建 `memoryContext` 并注入 system prompt。
+
+---
+
+### IMU 体感互动（待实现）
+
+CoreS3 内置 BMI270 六轴 IMU（加速度计 + 陀螺仪），可以感知设备的姿态、运动和冲击，为角色互动增加物理维度。
+
+**核心手势与对应交互**
+
+| 手势 / 姿态 | 检测方式 | 角色反应 |
+|---|---|---|
+| **摇一摇** | 加速度突变超过阈值 | 角色被"晃醒"，说一句随机口头禅或抱怨 |
+| **轻拍顶部** | 短促的 Z 轴冲击（tap detection） | 触发"摸头"反应，切换 happy 表情 |
+| **翻转朝下** | pitch ≈ 180°，屏幕向下 | 角色进入"睡觉"状态，切换 idle 并静音 |
+| **倾斜左/右** | roll 超过 ±45° 持续 1s | 切换到上一个/下一个收藏角色 |
+| **长时间静置** | 加速度方差极小，持续 5min+ | 角色主动发起对话（"你还在吗？"） |
+| **自由落体** | 加速度接近 0g，持续 > 80ms | 角色惊叫，落地后表情切换为 thinking |
+
+**情绪状态机扩展思路**
+
+IMU 数据可以作为角色"情绪"的持续输入，而不仅仅是触发单次反应。比如：
+- 设备一天内被拿起放下的次数 → 影响角色的"被需要感"，反映在对话语气上
+- 持续轻微晃动（如走路）→ 角色知道用户"带着我出门了"，可以有不同的问候语
+- 睡前检测到长时间静置后第二天首次拿起 → 角色说"早上好"
+
+**实现建议**
+
+- 在 `src/main.cpp` 的 `loop()` 中以固定间隔（如 50ms）读取 `M5.Imu`，将加速度数据传入 `ImuManager::update()`
+- `ImuManager` 内部维护滑动窗口，输出枚举事件（`IMU_SHAKE`、`IMU_TAP`、`IMU_FLIP` 等）
+- `ChatUI::update()` 监听 `ImuManager` 事件，与触摸事件同级处理，互不干扰
+- 宏 `FEATURE_IMU` 控制编译，关闭时零开销
 
 ---
 

@@ -108,7 +108,8 @@ function buildSystemPrompt(ch) {
     }
     p += `回复风格：${ch.reply_style}\n`;
     p += '重要规则：必须严格按照以下JSON格式输出，不要加任何其他内容：\n';
-    p += '{"reply":"角色说的话（不超过50字，不加旁白）","expression":"idle"}\n';
+    p += '{"reply":"角色说的话","expression":"idle"}\n';
+    p += 'reply 要求：只根据对方说的内容和角色特色自然回应，说该说的，不要为了凑字数而添加多余内容，简短时就简短。不加旁白。\n';
     p += 'expression 只能是以下三个值之一：happy（开心/兴奋/被夸/撒娇）、thinking（困惑/认真/沉思）、idle（其他普通情况）。';
     return p;
 }
@@ -357,11 +358,18 @@ const VL_PROMPT = `请识别图中的角色，用 JSON 格式返回所有你知�
 {
   "name": "角色本人的名字（精确到个体，如'派蒙'，而不是系列名'原神'）",
   "series": "所属作品/IP/系列名称",
+  "gender": "角色性别，只能填以下四个值之一：girl（少女/萝莉）、boy（少年/正太）、woman（成年女性）、man（成年男性）",
   "personality": "性格特点，2-3句话",
   "worldview": "所在世界观和作品背景，1-2句话",
   "background": "角色背景故事，2-3句话",
   "catchphrases": ["角色的代表性台词或口头禅，列2-4条"],
-  "reply_style": "说话风格，1句话"
+  "reply_style": "说话风格，1句话",
+  "spriteColors": {
+    "hair": "角色经典发色，十六进制如 #FF5566",
+    "clothes": "主服装色，十六进制",
+    "skin": "肤色，十六进制（若无特殊肤色填 #FFDDB5）",
+    "blush": "腮红色，十六进制（若无特殊腮红填 #FF8FA0）"
+  }
 }
 要求：
 - 只输出 JSON，不要 markdown 代码块标记，不要任何其他文字
@@ -515,16 +523,33 @@ function buildCharacterObject(vlInfo, supplementInfo = {}) {
     const merged = mergeInfo(vlInfo, supplementInfo);
     const name   = vlInfo.name || '未知角色';
     const id     = name.replace(/[^\w]/g, '_').toLowerCase().slice(0, 24) || `char_${Date.now()}`;
+    const validGenders = ['girl', 'boy', 'woman', 'man'];
+    const gender = validGenders.includes(vlInfo.gender) ? vlInfo.gender : 'woman';
+
+    // 提取配色，字段不合法时用 null（前端/硬件降级为默认色）
+    let spriteColors = null;
+    const sc = vlInfo.spriteColors;
+    if (sc && sc.hair && sc.clothes) {
+        spriteColors = {
+            hair:    sc.hair,
+            clothes: sc.clothes,
+            skin:    sc.skin    || '#FFDDB5',
+            blush:   sc.blush   || '#FF8FA0',
+        };
+    }
+
     return {
         id,
         name,
         series:      vlInfo.series || '',
+        gender,
         avatar:      '/avatar.jpg',
         catchphrases: merged.catchphrases,
         personality:  merged.personality,
         worldview:    merged.worldview,
         background:   merged.background,
-        reply_style:  merged.reply_style
+        reply_style:  merged.reply_style,
+        spriteColors,
     };
 }
 
@@ -586,14 +611,8 @@ async function runRecognition(imageBuffer, mimeType, res) {
         }
 
         const charObj = buildCharacterObject(vlInfo, supplementInfo);
-        console.log(`[识别] 完成 → ${charObj.name}，口头禅: ${charObj.catchphrases.join(' / ')}`);
-
-        // Step3: 生成专属像素配色（快速，无需搜索）
-        const spriteColors = await generateSpriteColors(charObj);
-        if (spriteColors) {
-            charObj.spriteColors = spriteColors;
-            console.log(`[配色] ${charObj.name}: 发色=${spriteColors.hair} 服装=${spriteColors.clothes}`);
-        }
+        const sc = charObj.spriteColors;
+        console.log(`[识别] 完成 → ${charObj.name}，口头禅: ${charObj.catchphrases.join(' / ')}${sc ? `，配色: 发=${sc.hair} 衣=${sc.clothes}` : ''}`);
 
         // 保存到角色收藏夹并设为当前
         saveCharacterToLibrary(charObj);
@@ -622,6 +641,68 @@ app.post('/api/recognize/upload', rawImage, async (req, res) => {
     }
     const mimeType = req.headers['content-type'] || 'image/jpeg';
     await runRecognition(req.body, mimeType, res);
+});
+
+// ── POST /api/tts ─────────────────────────────────────────────
+// Body: { text: string, gender?: 'girl'|'boy'|'woman'|'man' }
+// 返回: audio/mpeg 二进制流
+const VOICE_MAP = {
+    girl:  'longhuhu',
+    boy:   'longshanshan',
+    woman: 'longdaiyu',
+    man:   'longhouge',
+};
+
+app.post('/api/tts', async (req, res) => {
+    const { text, gender = 'woman' } = req.body;
+    if (!text?.trim()) return res.status(400).json({ error: 'text 不能为空' });
+
+    const apiKey = process.env.DASHSCOPE_API_KEY;
+    if (!apiKey || apiKey === 'your_dashscope_api_key_here') {
+        return res.status(500).json({ error: 'DashScope API Key 未配置' });
+    }
+
+    const voice = VOICE_MAP[gender] || VOICE_MAP.woman;
+    const url   = 'https://dashscope.aliyuncs.com/api/v1/services/audio/tts/SpeechSynthesizer';
+
+    try {
+        const response = await fetchWithTimeout(url, {
+            method:  'POST',
+            headers: {
+                'Content-Type':  'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: 'cosyvoice-v2',
+                input:      { text: text.trim() },
+                parameters: { voice },
+            })
+        }, 20000);
+
+        const data = await response.json();
+        if (!response.ok || data.code) {
+            console.error('[TTS] 错误:', JSON.stringify(data));
+            return res.status(502).json({ error: data.message || `TTS 错误: ${response.status}` });
+        }
+
+        // 响应中包含音频 URL，代理下载后返回给前端
+        const audioUrl = data?.output?.audio?.url;
+        if (!audioUrl) {
+            console.error('[TTS] 响应中无音频 URL:', JSON.stringify(data));
+            return res.status(502).json({ error: 'TTS 未返回音频地址' });
+        }
+
+        const audioResp   = await fetchWithTimeout(audioUrl, {}, 15000);
+        const audioBuffer = Buffer.from(await audioResp.arrayBuffer());
+        console.log(`[TTS] voice=${voice} text="${text.slice(0, 20)}…" size=${audioBuffer.length}B`);
+        res.set('Content-Type', 'audio/mpeg');
+        res.send(audioBuffer);
+
+    } catch (err) {
+        if (err.name === 'AbortError') return res.status(504).json({ error: 'TTS 超时' });
+        console.error('[TTS] 请求失败:', err.message);
+        res.status(500).json({ error: '网络请求失败' });
+    }
 });
 
 // ── 启动 ──────────────────────────────────────────────────────

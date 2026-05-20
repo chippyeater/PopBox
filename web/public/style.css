@@ -240,15 +240,6 @@ body {
   word-break: break-all;
   white-space: pre-wrap;
 }
-.msg-user::before {
-  content: 'YOU';
-  display: block;
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 2px;
-  color: rgba(255,255,255,0.55);
-  margin-bottom: 3px;
-}
 
 /* 角色回复 */
 .msg-char {
@@ -265,13 +256,26 @@ body {
   word-break: break-all;
   white-space: pre-wrap;
 }
-.msg-char-name {
+
+/* 消息头部行（标签 + 时间） */
+.msg-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+.msg-label {
   font-size: 9px;
   font-weight: 900;
   letter-spacing: 2px;
-  color: var(--neon);
-  margin-bottom: 3px;
-  text-transform: uppercase;
+}
+.msg-user .msg-label { color: rgba(255,255,255,0.55); }
+.msg-char .msg-label { color: var(--neon); }
+.msg-time {
+  font-size: 9px;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
 }
 
 /* 思考中气泡 */
