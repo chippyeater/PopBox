@@ -246,6 +246,36 @@ PopBox/
 | 多角色切换 | `CharacterManager.h` → `switchCharacter()` | — |
 | 富文本/气泡显示 | `DisplayManager.cpp` → `_drawChatArea()` | — |
 | 对话历史摘要压缩 | `web/server.js` → `appendTurn()` | — |
+| 长期记忆 RAG | `web/server.js` → `/api/chat` 上下文构建 | — |
+
+### 长期记忆 RAG（待实现）
+
+**目标**：让角色在长期使用中对用户形成持续记忆，而不仅限于当天的对话窗口。
+
+**存储方式**
+
+- 当天对话实时写入 `history_<charId>_<YYYY-MM-DD>.json`（以天归档，替代当前的单文件滚动）
+- 每条记录保留 `{ role, content, timestamp }` 三元组
+
+**上下文构建策略**
+
+每次用户发送消息时，上下文由两部分拼接而成：
+
+1. **今日完整聊天记录**（当天 `history_<id>_<date>.json` 全文）
+2. **历史 Top-K 相关片段**：从所有历史日期文件中检索与当前消息最相关的 K 条对话，作为长期记忆补充注入
+
+**检索方式（性价比优先）**
+
+推荐两阶段轻量实现，无需向量数据库：
+
+| 阶段 | 方法 | 说明 |
+|------|------|------|
+| 粗筛 | 关键词 TF-IDF 或 jieba 分词后倒排索引 | 秒级，纯本地，过滤掉大量无关记录 |
+| 精排 | 字符串级相似度（如 BM25 或简单 Jaccard） | 对粗筛结果打分，取 Top-K |
+
+如后期性能要求提升，可替换为轻量本地向量模型（如 `@xenova/transformers` 的 `bge-small-zh`）生成 embedding，改用余弦相似度排序；接口不变，仅替换检索模块。
+
+**接入位置**：`web/server.js` → `/api/chat` handler，在调用 LLM 前构建 `memoryContext` 并注入 system prompt。
 
 ---
 

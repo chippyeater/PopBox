@@ -15,29 +15,87 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── 目录 ─────────────────────────────────────────────────────
-const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+const DATA_DIR  = path.join(__dirname, 'data');
+const CHARS_DIR = path.join(DATA_DIR, 'characters');
+[DATA_DIR, CHARS_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
 
 // ── 对话历史配置 ──────────────────────────────────────────────
-const MAX_TURNS = parseInt(process.env.MAX_HISTORY_TURNS || '10');  // 最多保留 N 轮
+const MAX_TURNS = parseInt(process.env.MAX_HISTORY_TURNS || '10');
 
-// ── 加载角色 JSON ─────────────────────────────────────────────
+// ── 角色库 ────────────────────────────────────────────────────
 const CHARACTER_PATH = path.join(__dirname, '../data/character.json');
-let character = null;
-try {
-    character = JSON.parse(fs.readFileSync(CHARACTER_PATH, 'utf-8'));
-    console.log(`[PopBox] 已加载角色: ${character.name}`);
-} catch {
-    console.warn('[PopBox] 未找到 data/character.json，使用内置默认角色');
-    character = {
-        id: 'xiao_ling', name: '小铃',
-        catchphrases: ['哎呀～', '真的假的！', '这个嘛……'],
-        personality: '活泼好奇，有点迷糊但内心温暖',
-        worldview:   '来自「星盒世界」，相信每件物品都有自己的灵魂',
-        background:  '某个下雨天被装进盲盒，睡了很久直到被你打开',
-        reply_style: '简短口语化，50字以内，偶尔用口头禅'
-    };
+
+const characterLibrary = new Map();  // id → character object
+let   currentCharacterId = null;
+
+function getCurrentCharacter() {
+    if (currentCharacterId && characterLibrary.has(currentCharacterId))
+        return characterLibrary.get(currentCharacterId);
+    if (characterLibrary.size > 0)
+        return characterLibrary.values().next().value;
+    return null;
 }
+
+function saveCharacterToLibrary(charObj) {
+    if (!charObj?.id) return;
+    characterLibrary.set(charObj.id, charObj);
+    try {
+        fs.writeFileSync(
+            path.join(CHARS_DIR, `${charObj.id}.json`),
+            JSON.stringify(charObj, null, 2), 'utf-8'
+        );
+    } catch (e) { console.warn('[Characters] 保存失败:', e.message); }
+}
+
+function setCurrentCharacter(id) {
+    if (!characterLibrary.has(id)) return false;
+    currentCharacterId = id;
+    // 同步 hardware 兼容的 character.json
+    try { fs.writeFileSync(CHARACTER_PATH, JSON.stringify(characterLibrary.get(id), null, 2), 'utf-8'); } catch {}
+    try { fs.writeFileSync(path.join(DATA_DIR, 'current.json'), JSON.stringify({ id }, null, 2), 'utf-8'); } catch {}
+    console.log(`[Characters] 当前角色 → ${characterLibrary.get(id).name}`);
+    return true;
+}
+
+function loadCharacterLibrary() {
+    // 加载所有已保存角色
+    const files = fs.readdirSync(CHARS_DIR).filter(f => f.endsWith('.json'));
+    for (const f of files) {
+        try {
+            const obj = JSON.parse(fs.readFileSync(path.join(CHARS_DIR, f), 'utf-8'));
+            if (obj.id) characterLibrary.set(obj.id, obj);
+        } catch {}
+    }
+
+    // 如果角色库为空，从 character.json 迁移默认角色
+    if (characterLibrary.size === 0) {
+        let defaultChar = null;
+        try { defaultChar = JSON.parse(fs.readFileSync(CHARACTER_PATH, 'utf-8')); } catch {}
+        if (!defaultChar) {
+            defaultChar = {
+                id: 'xiao_ling', name: '小铃',
+                catchphrases: ['哎呀～', '真的假的！', '这个嘛……'],
+                personality:  '活泼好奇，有点迷糊但内心温暖',
+                worldview:    '来自「星盒世界」，相信每件物品都有自己的灵魂',
+                background:   '某个下雨天被装进盲盒，睡了很久直到被你打开',
+                reply_style:  '简短口语化，50字以内，偶尔用口头禅'
+            };
+        }
+        saveCharacterToLibrary(defaultChar);
+    }
+
+    // 恢复上次的当前角色
+    try {
+        const cur = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'current.json'), 'utf-8'));
+        if (cur.id && characterLibrary.has(cur.id)) currentCharacterId = cur.id;
+    } catch {}
+    if (!currentCharacterId) currentCharacterId = characterLibrary.keys().next().value;
+
+    console.log(`[Characters] 已加载 ${characterLibrary.size} 个角色，当前: ${getCurrentCharacter()?.name}`);
+}
+
+// 兼容旧变量名
+let character = null; // 在 loadCharacterLibrary 后通过 getCurrentCharacter() 使用
 
 // ── 系统提示词 ────────────────────────────────────────────────
 function buildSystemPrompt(ch) {
@@ -49,7 +107,9 @@ function buildSystemPrompt(ch) {
         p += `口头禅（偶尔自然使用）：${ch.catchphrases.join('、')}\n`;
     }
     p += `回复风格：${ch.reply_style}\n`;
-    p += '重要规则：只输出角色说的话，不加旁白，不超过50个字。';
+    p += '重要规则：必须严格按照以下JSON格式输出，不要加任何其他内容：\n';
+    p += '{"reply":"角色说的话（不超过50字，不加旁白）","expression":"idle"}\n';
+    p += 'expression 只能是以下三个值之一：happy（开心/兴奋/被夸/撒娇）、thinking（困惑/认真/沉思）、idle（其他普通情况）。';
     return p;
 }
 
@@ -108,14 +168,52 @@ function appendTurn(characterId, userMsg, assistantMsg) {
 }
 
 loadAllHistory();
+loadCharacterLibrary();
 
 // ══════════════════════════════════════════════════════════════
 // API 路由
 // ══════════════════════════════════════════════════════════════
 
-// ── GET /api/character ────────────────────────────────────────
+// ── GET /api/character（当前角色，向下兼容）───────────────────
 app.get('/api/character', (req, res) => {
-    res.json({ id: character.id, name: character.name, avatarUrl: '/avatar.jpg' });
+    const ch = getCurrentCharacter();
+    res.json({ id: ch?.id, name: ch?.name, avatarUrl: '/avatar.jpg' });
+});
+
+// ── GET /api/characters（角色收藏夹列表）─────────────────────
+app.get('/api/characters', (req, res) => {
+    const list = Array.from(characterLibrary.values()).map(ch => ({
+        ...ch,
+        isCurrent: ch.id === currentCharacterId
+    }));
+    res.json(list);
+});
+
+// ── PUT /api/characters/current/:id（切换当前角色）───────────
+app.put('/api/characters/current/:id', (req, res) => {
+    const { id } = req.params;
+    if (!setCurrentCharacter(id)) {
+        return res.status(404).json({ error: `角色 ${id} 不存在` });
+    }
+    res.json({ ok: true, current: getCurrentCharacter() });
+});
+
+// ── DELETE /api/characters/:id（删除角色）────────────────────
+app.delete('/api/characters/:id', (req, res) => {
+    const { id } = req.params;
+    if (!characterLibrary.has(id)) return res.status(404).json({ error: '角色不存在' });
+    if (characterLibrary.size <= 1) return res.status(400).json({ error: '至少保留一个角色' });
+
+    characterLibrary.delete(id);
+    try { fs.unlinkSync(path.join(CHARS_DIR, `${id}.json`)); } catch {}
+
+    // 如果删的是当前角色，切换到第一个
+    if (id === currentCharacterId) {
+        currentCharacterId = characterLibrary.keys().next().value;
+        setCurrentCharacter(currentCharacterId);
+    }
+    console.log(`[Characters] 已删除: ${id}`);
+    res.json({ ok: true });
 });
 
 // ── POST /api/stt — 硬件专用，接收原始 PCM 音频 ──────────────
@@ -164,7 +262,7 @@ app.post('/api/stt', async (req, res) => {
 // ── POST /api/chat ─────────────────────────────────────────────
 // Body: { message: string, characterId?: string }
 app.post('/api/chat', async (req, res) => {
-    const { message, characterId = character.id } = req.body;
+    const { message, characterId = currentCharacterId } = req.body;
     if (!message?.trim()) {
         return res.status(400).json({ error: '消息不能为空' });
     }
@@ -175,9 +273,10 @@ app.post('/api/chat', async (req, res) => {
     }
 
     // 组装带历史的消息列表
+    const ch       = characterLibrary.get(characterId) || getCurrentCharacter();
     const history  = getHistory(characterId);
     const messages = [
-        { role: 'system', content: buildSystemPrompt(character) },
+        { role: 'system', content: buildSystemPrompt(ch) },
         // 历史对话（只取 content，去掉 ts 字段）
         ...history.map(({ role, content }) => ({ role, content })),
         { role: 'user', content: message }
@@ -193,7 +292,7 @@ app.post('/api/chat', async (req, res) => {
                 'Content-Type':  'application/json',
                 'Authorization': `Bearer ${apiKey}`
             },
-            body: JSON.stringify({ model, messages, max_tokens: 80, temperature: 0.85 })
+            body: JSON.stringify({ model, messages, max_tokens: 120, temperature: 0.85 })
         });
 
         if (!response.ok) {
@@ -202,14 +301,26 @@ app.post('/api/chat', async (req, res) => {
             return res.status(502).json({ error: `Qwen 返回错误: ${response.status}` });
         }
 
-        const data  = await response.json();
-        const reply = data?.choices?.[0]?.message?.content?.trim() || '';
+        const data = await response.json();
+        const raw  = data?.choices?.[0]?.message?.content?.trim() || '';
 
-        // 持久化这一轮对话
+        // 解析 JSON，容错处理
+        let reply = raw, expression = 'idle';
+        try {
+            const jsonStr = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+            const parsed  = JSON.parse(jsonStr);
+            reply      = parsed.reply      || raw;
+            expression = ['idle','happy','thinking'].includes(parsed.expression)
+                         ? parsed.expression : 'idle';
+        } catch {
+            // 模型没按格式输出时直接用原始文本
+        }
+
+        // 持久化这一轮对话（存纯文本）
         appendTurn(characterId, message, reply);
 
-        console.log(`[Chat] (${characterId}) 用户: ${message} | 角色: ${reply}`);
-        res.json({ reply });
+        console.log(`[Chat] (${characterId}) 用户: ${message} | 角色: ${reply} | 表情: ${expression}`);
+        res.json({ reply, expression });
 
     } catch (err) {
         console.error('[LLM] 请求失败:', err.message);
@@ -417,6 +528,38 @@ function buildCharacterObject(vlInfo, supplementInfo = {}) {
     };
 }
 
+// ── 像素精灵配色生成（识别完成后调用，速度快无需搜索）────────
+async function generateSpriteColors(charObj) {
+    const apiKey = process.env.DASHSCOPE_API_KEY;
+    const model  = process.env.QWEN_CHAT_MODEL || 'qwen-turbo';
+    const url    = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+
+    const prompt = `角色「${charObj.name}」（${charObj.series || ''}）的外观形象。
+请根据该角色的经典配色方案，返回以下颜色（十六进制格式，如 #FF5566）：
+{"hair":"发色","clothes":"主服装色","skin":"肤色（默认#FFDDB5）","blush":"腮红色（默认#FF8FA0）"}
+只返回JSON，不加其他文字。`;
+
+    try {
+        const resp = await fetchWithTimeout(url, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+            body: JSON.stringify({
+                model,
+                messages: [{ role: 'user', content: prompt }],
+                max_tokens: 80
+            })
+        }, 15000);
+
+        const data    = await resp.json();
+        const content = data?.choices?.[0]?.message?.content?.trim() || '';
+        const match   = content.match(/\{[\s\S]*\}/);
+        if (match) return JSON.parse(match[0]);
+    } catch (e) {
+        console.warn('[配色] 生成失败:', e.message);
+    }
+    return null; // 失败时由前端/硬件使用默认配色
+}
+
 // ── 识别流程核心（硬件和网页共用）───────────────────────────
 async function runRecognition(imageBuffer, mimeType, res) {
     const apiKey = process.env.DASHSCOPE_API_KEY;
@@ -445,14 +588,18 @@ async function runRecognition(imageBuffer, mimeType, res) {
         const charObj = buildCharacterObject(vlInfo, supplementInfo);
         console.log(`[识别] 完成 → ${charObj.name}，口头禅: ${charObj.catchphrases.join(' / ')}`);
 
-        character = charObj;
-        try {
-            fs.writeFileSync(CHARACTER_PATH, JSON.stringify(charObj, null, 2), 'utf-8');
-        } catch (e) {
-            console.warn('[识别] 保存 character.json 失败:', e.message);
+        // Step3: 生成专属像素配色（快速，无需搜索）
+        const spriteColors = await generateSpriteColors(charObj);
+        if (spriteColors) {
+            charObj.spriteColors = spriteColors;
+            console.log(`[配色] ${charObj.name}: 发色=${spriteColors.hair} 服装=${spriteColors.clothes}`);
         }
 
-        res.json(charObj);
+        // 保存到角色收藏夹并设为当前
+        saveCharacterToLibrary(charObj);
+        setCurrentCharacter(charObj.id);
+
+        res.json({ ...charObj, isCurrent: true });
     } catch (err) {
         console.error('[识别] 流程失败:', err.message);
         res.status(500).json({ error: `识别失败: ${err.message}` });

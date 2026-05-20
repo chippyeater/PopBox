@@ -70,9 +70,12 @@ void setup() {
 
     connectWiFi();
 
-    if (!charMgr.loadFromSPIFFS(CHARACTER_JSON_PATH)) {
-        showBootError("角色数据加载失败\n请检查 data/character.json");
-        return;
+    // 从后端拉取角色收藏夹（失败时降级到 SPIFFS 离线缓存）
+    if (!charMgr.fetchAll()) {
+        if (!charMgr.loadFromSPIFFS(CHARACTER_JSON_PATH)) {
+            showBootError("角色数据加载失败\n请确认后端服务已启动");
+            return;
+        }
     }
 
     if (!recorder.begin()) {

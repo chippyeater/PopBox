@@ -3,69 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PopBox 模拟器</title>
+    <title>PopBox</title>
     <link rel="stylesheet" href="style.css">
+    <script src="sprites.js"></script>
 </head>
 <body>
-    <div class="simulator-frame">
-        <div class="simulator-label">M5Stack CoreS3 · 320×240</div>
+<div class="ui-root">
 
-        <!-- 模拟 CoreS3 屏幕 -->
-        <div class="screen">
+    <!-- ── 主界面 ── -->
+    <div class="screen">
 
-            <!-- 头部：头像 + 名字 + 状态 -->
-            <div class="header">
-                <div class="avatar-wrap">
-                    <img id="avatar" src="/avatar.jpg" alt="角色头像"
-                         onerror="this.style.display='none';document.getElementById('avatar-fallback').style.display='flex'">
-                    <div id="avatar-fallback" class="avatar-fallback">?</div>
+        <!-- 头部 -->
+        <div class="header">
+            <!-- 头像框 -->
+            <div class="avatar-frame">
+                <div class="avatar-bg">
+                    <canvas id="avatar-canvas" style="image-rendering:pixelated;"></canvas>
                 </div>
-                <div class="header-info">
-                    <div id="char-name" class="char-name">加载中...</div>
-                    <div id="status-text" class="status-text idle">● 待机</div>
+                <span class="corner tl">+</span>
+                <span class="corner tr">+</span>
+                <span class="corner bl">+</span>
+                <span class="corner br">+</span>
+            </div>
+
+            <!-- 角色信息 -->
+            <div class="char-info">
+                <div id="char-name" class="char-name">加载中</div>
+                <div id="status-badge" class="status-badge idle">
+                    <span class="status-dot"></span>
+                    <span id="status-text">待机</span>
                 </div>
             </div>
 
-            <div class="divider"></div>
-
-            <!-- 聊天区域 -->
-            <div class="chat-area">
-                <div id="chat-text" class="chat-text placeholder">点击下方按钮开始说话～</div>
+            <!-- 装饰 -->
+            <div class="deco-lines">
+                <div class="slash-group">
+                    <span></span><span></span><span></span><span></span>
+                </div>
+                <svg class="globe-icon" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+                    <ellipse cx="12" cy="12" rx="4" ry="10" stroke="currentColor" stroke-width="1.5"/>
+                    <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
             </div>
-
-            <!-- 底部双按钮（模拟硬件布局） -->
-            <div class="footer">
-                <button id="mic-btn" class="mic-btn" onclick="app.onMicTap()">
-                    <span id="mic-label">● 点击说话</span>
-                </button>
-                <button id="cam-btn" class="cam-btn" onclick="app.onRecognizeTap()">
-                    识别角色
-                </button>
-            </div>
-
-        </div><!-- /screen -->
-
-        <!-- 屏幕外辅助输入 -->
-        <div class="text-input-area">
-            <input id="text-input" type="text" placeholder="或直接输入文字（无需麦克风）"
-                   onkeydown="if(event.key==='Enter') app.sendText()">
-            <button onclick="app.sendText()">发送</button>
         </div>
 
-        <!-- 图片上传（识别角色用，模拟相机拍照） -->
-        <input type="file" id="img-upload" accept="image/*" style="display:none"
-               onchange="app.onImageSelected(this)">
-
-        <!-- 识别结果预览 -->
-        <div id="recognition-result" class="recognition-result" style="display:none">
-            <div class="result-title">识别结果</div>
-            <div id="result-content"></div>
+        <!-- 聊天历史区 -->
+        <div class="chat-panel">
+            <div id="chat-history" class="chat-history">
+                <div class="msg-system">点击下方按钮开始说话～</div>
+            </div>
+            <div class="dot-grid"></div>
         </div>
 
-        <!-- 提示信息 -->
-        <div id="error-banner" class="error-banner" style="display:none"></div>
+        <!-- 底部按钮 -->
+        <div class="bottom-btns-wrap">
+            <button id="mic-btn" class="btn btn-purple" onclick="app.onMicTap()">
+                <span class="btn-c tl"></span>
+                <span class="btn-c tr"></span>
+                <span class="btn-c bl"></span>
+                <svg viewBox="0 0 24 24" fill="none" class="btn-icon">
+                    <rect x="9" y="2" width="6" height="12" rx="3" fill="currentColor"/>
+                    <path d="M5 10a7 7 0 0 0 14 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="12" y1="19" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span class="btn-divider"></span>
+                <span id="mic-label">点击说话</span>
+            </button>
+
+            <button id="cam-btn" class="btn btn-yellow" onclick="app.onRecognizeTap()">
+                <span class="btn-c tl"></span>
+                <span class="btn-c tr"></span>
+                <span class="btn-c bl"></span>
+                <svg viewBox="0 0 24 24" fill="none" class="btn-icon">
+                    <path d="M3 7h2l2-3h10l2 3h2a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.8"/>
+                    <circle cx="12" cy="13" r="3.5" stroke="currentColor" stroke-width="1.8"/>
+                </svg>
+                <span class="btn-divider"></span>
+                <span id="cam-label">识别角色</span>
+            </button>
+        </div>
+
+    </div><!-- /screen -->
+
+    <!-- 文字输入（屏幕外备选） -->
+    <div class="text-row">
+        <input id="text-input" type="text" class="text-input"
+               placeholder="直接输入文字发送（任意浏览器可用）"
+               onkeydown="if(event.key==='Enter') app.sendText()">
+        <button class="send-btn" onclick="app.sendText()">发送</button>
     </div>
 
-    <script src="app.js"></script>
+    <!-- 角色收藏夹 -->
+    <div class="char-panel">
+        <div class="char-panel-header">
+            <span class="char-panel-title">// 角色收藏夹</span>
+            <span id="char-panel-count" class="char-panel-count">0 个角色</span>
+        </div>
+        <div id="char-cards" class="char-cards"></div>
+    </div>
+
+    <!-- 图片上传（识别用） -->
+    <input type="file" id="img-upload" accept="image/*" style="display:none"
+           onchange="app.onImageSelected(this)">
+
+    <!-- 识别结果 -->
+    <div id="recognition-result" class="recognition-result" style="display:none">
+        <div class="result-title">// 识别完成</div>
+        <div id="result-content"></div>
+    </div>
+
+    <!-- 错误提示 -->
+    <div id="error-banner" class="error-banner" style="display:none"></div>
+
+</div><!-- /ui-root -->
+<script src="app.js"></script>
 </body>
 </html>

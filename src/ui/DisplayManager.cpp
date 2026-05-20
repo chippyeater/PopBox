@@ -24,10 +24,10 @@ void DisplayManager::begin() {
 }
 
 void DisplayManager::drawFull(const String& characterName, AppState state,
-                               const String& replyText) {
+                               const String& replyText, int charIdx, int charTotal) {
     _lastCharName = characterName;
     M5.Display.fillScreen(COLOR_BG);
-    _drawHeader(characterName, state);
+    _drawHeader(characterName, state, charIdx, charTotal);
     _drawChatArea(replyText);
     _drawBottomBar(state);
 }
@@ -36,75 +36,58 @@ void DisplayManager::updateChatText(const String& text) {
     _drawChatArea(text);
 }
 
-void DisplayManager::updateStatus(AppState state) {
+void DisplayManager::updateStatus(AppState state, int charIdx, int charTotal) {
     int32_t statusX = AVATAR_X + AVATAR_SIZE + 8;
     int32_t statusY = AVATAR_Y + 28;
-    M5.Display.fillRect(statusX, statusY, SCREEN_W - statusX - 4, 22,
-                        COLOR_HEADER_BG);
+    M5.Display.fillRect(statusX, statusY, SCREEN_W - statusX - 4, 44, COLOR_HEADER_BG);
     M5.Display.setFont(FONT_SMALL);
     M5.Display.setTextColor(_stateLabelColor(state));
     M5.Display.setCursor(statusX, statusY + 2);
     M5.Display.print(_stateLabel(state));
+    if (charTotal > 1) {
+        M5.Display.setTextColor(0x778899);
+        M5.Display.setCursor(statusX, statusY + 18);
+        M5.Display.printf("%d / %d", charIdx, charTotal);
+    }
     _drawBottomBar(state);
 }
 
-void DisplayManager::updateCharacterName(const String& name) {
+void DisplayManager::updateCharacterName(const String& name, int charIdx, int charTotal) {
     _lastCharName = name;
     int32_t textX = AVATAR_X + AVATAR_SIZE + 8;
-    M5.Display.fillRect(textX, AVATAR_Y, SCREEN_W - textX - 4, 28, COLOR_HEADER_BG);
+    M5.Display.fillRect(textX, AVATAR_Y, SCREEN_W - textX - 4, 44, COLOR_HEADER_BG);
     M5.Display.setFont(FONT_LARGE);
     M5.Display.setTextColor(COLOR_NAME);
     M5.Display.setCursor(textX, AVATAR_Y + 6);
     M5.Display.print(name);
+    if (charTotal > 1) {
+        M5.Display.setFont(FONT_SMALL);
+        M5.Display.setTextColor(0x778899);
+        M5.Display.setCursor(textX, AVATAR_Y + 30);
+        M5.Display.printf("%d / %d", charIdx, charTotal);
+    }
 }
 
-bool DisplayManager::drawAvatar(const char* path) {
-    bool exists = SPIFFS.exists(path);
-    Serial.printf("[Display] drawAvatar: path=%s exists=%d\n", path, exists);
+void DisplayManager::drawSprite(const SpriteColors& colors, AppState state) {
+    // 清空头像区域（用背景色填充）
+    M5.Display.fillRect(AVATAR_X, AVATAR_Y, AVATAR_SIZE, AVATAR_SIZE, COLOR_HEADER_BG);
+    // 每格 5px → 16×5 = 80px，居中放置在 90px 区域里（偏移 5px）
+    SpriteRenderer::drawForState(
+        AVATAR_X + 5, AVATAR_Y + 5, 5,
+        state, colors.hasColors() ? colors : SpriteColors::defaults()
+    );
+    _lastState = state;
+}
 
-    if (!exists) {
-        // 占位圆形 + "？"
-        M5.Display.fillCircle(AVATAR_X + AVATAR_SIZE / 2,
-                              AVATAR_Y + AVATAR_SIZE / 2,
-                              AVATAR_SIZE / 2, 0x44475A);
-        M5.Display.setFont(FONT_LARGE);
-        M5.Display.setTextColor(COLOR_TEXT);
-        M5.Display.setCursor(AVATAR_X + AVATAR_SIZE / 2 - 10,
-                             AVATAR_Y + AVATAR_SIZE / 2 - 10);
-        M5.Display.print("?");
-        return false;
-    }
-
-    File f = SPIFFS.open(path, "r");
-    if (!f) {
-        Serial.println("[Display] 头像文件打开失败");
-        return false;
-    }
-
-    size_t   size = f.size();
-    Serial.printf("[Display] 头像文件大小: %zu 字节\n", size);
-
-    uint8_t* buf = (uint8_t*)heap_caps_malloc(size,
-                       MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    if (!buf) buf = (uint8_t*)malloc(size);
-    if (!buf) {
-        Serial.println("[Display] 头像缓冲区分配失败");
-        f.close();
-        return false;
-    }
-
-    f.read(buf, size);
-    f.close();
-
-    M5.Display.drawJpg(buf, size, AVATAR_X, AVATAR_Y, AVATAR_SIZE, AVATAR_SIZE);
-    free(buf);
-    Serial.println("[Display] 头像绘制完成");
-    return true;
+void DisplayManager::updateSpriteExpression(const SpriteColors& colors, AppState state) {
+    if (state == _lastState) return; // 表情没变，不重绘
+    drawSprite(colors, state);
 }
 
 // ── 私有方法 ──────────────────────────────────────────────────
 
-void DisplayManager::_drawHeader(const String& name, AppState state) {
+void DisplayManager::_drawHeader(const String& name, AppState state,
+                                  int charIdx, int charTotal) {
     M5.Display.fillRect(0, 0, SCREEN_W, 108, COLOR_HEADER_BG);
 
     int32_t textX = AVATAR_X + AVATAR_SIZE + 8;
@@ -120,6 +103,13 @@ void DisplayManager::_drawHeader(const String& name, AppState state) {
     M5.Display.setTextColor(_stateLabelColor(state));
     M5.Display.setCursor(textX, AVATAR_Y + 32);
     M5.Display.print(_stateLabel(state));
+
+    // 角色序号（多角色时显示 "2/3"）
+    if (charTotal > 1) {
+        M5.Display.setTextColor(0x778899);
+        M5.Display.setCursor(textX, AVATAR_Y + 50);
+        M5.Display.printf("%d / %d", charIdx, charTotal);
+    }
 
     M5.Display.drawFastHLine(0, 108, SCREEN_W, 0x334466);
 }

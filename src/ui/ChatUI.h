@@ -10,18 +10,15 @@
 // ─────────────────────────────────────────────────────────────
 // ChatUI — 顶层交互控制器
 //
-// 状态机：
-//   IDLE ──[左键]──► RECORDING ──[左键]──► PROCESSING ──► DISPLAYING_REPLY
-//   IDLE ──[右键]──► RECOGNIZING（拍照 → 识别 → 加载新角色）──► IDLE
+// 右键交互：
+//   短按（< 600ms） → 切换到下一个已收藏角色
+//   长按（≥ 600ms） → 拍照识别新角色（加入收藏夹）
 // ─────────────────────────────────────────────────────────────
 class ChatUI {
 public:
-    ChatUI(CharacterManager& charMgr,
-           AudioRecorder&    recorder,
-           SpeechToText&     stt,
-           LLMClient&        llm,
-           DisplayManager&   display,
-           CameraManager&    camera);
+    ChatUI(CharacterManager& charMgr, AudioRecorder& recorder,
+           SpeechToText& stt, LLMClient& llm,
+           DisplayManager& display, CameraManager& camera);
 
     void begin();
     void update();
@@ -35,11 +32,14 @@ private:
     CameraManager&    _camera;
 
     AppState _state;
-    String   _lastReply;
+    uint32_t _camPressStart;  // 右键按下时间
+    bool     _camPressing;    // 右键是否正在被按住
 
+    void _setState(AppState s);  // 更新状态 + 精灵表情 + 状态栏
     void _handleTouch();
     void _onMicButtonTap();
-    void _onRecognizeButtonTap();
+    void _onRecognizeButtonShortTap();   // 切换角色
+    void _onRecognizeButtonLongPress();  // 拍照识别
     void _processAndReply();
     void _runRecognition();
 

@@ -6,38 +6,59 @@
 const app = (() => {
     // ── DOM 引用 ─────────────────────────────────────────────
     const $ = id => document.getElementById(id);
-    const elCharName   = $('char-name');
-    const elStatus     = $('status-text');
-    const elChatText   = $('chat-text');
-    const elMicBtn     = $('mic-btn');
-    const elMicLabel   = $('mic-label');
-    const elTextInput  = $('text-input');
-    const elError      = $('error-banner');
-    const elCamBtn     = $('cam-btn');
-    const elImgUpload  = $('img-upload');
-    const elRecResult  = $('recognition-result');
+    const elCharName      = $('char-name');
+    const elStatus        = $('status-text');
+    const elBadge         = $('status-badge');
+    const elChatHistory   = $('chat-history');
+    const elMicBtn        = $('mic-btn');
+    const elMicLabel      = $('mic-label');
+    const elTextInput     = $('text-input');
+    const elError         = $('error-banner');
+    const elCamBtn        = $('cam-btn');
+    const elImgUpload     = $('img-upload');
+    const elRecResult     = $('recognition-result');
     const elResultContent = $('result-content');
+    const elCharCards     = $('char-cards');
+    const elCharCount     = $('char-panel-count');
 
     // ── 状态 ─────────────────────────────────────────────────
-    let state = 'idle';       // idle | recording | processing
-    let recognition = null;   // Web Speech API 实例
+    let state = 'idle';
+    let recognition = null;
     let speechSupported = false;
-    let characterId = 'xiao_ling';  // 从 /api/character 获取后更新
+    let characterId     = 'xiao_ling';
+    let charName        = '';
+    let spriteColors    = null;
+    let thinkingEl      = null;   // 思考中气泡元素
+    const elAvatar = document.getElementById('avatar-canvas');
 
     // ── 初始化 ───────────────────────────────────────────────
     async function init() {
-        await loadCharacter();
+        await loadCharacters();
         initSpeechRecognition();
     }
 
-    async function loadCharacter() {
+    function refreshSprite(expression) {
+        if (!elAvatar) return;
+        drawSprite(elAvatar, expression || STATE_TO_EXPRESSION[state] || 'idle',
+                   4, spriteColors || {});
+    }
+
+    async function loadCharacters() {
         try {
-            const res  = await fetch('/api/character');
-            const data = await res.json();
-            elCharName.textContent = data.name || '未知角色';
-            if (data.id) characterId = data.id;
+            const res  = await fetch('/api/characters');
+            const list = await res.json();
+            renderCharCards(list);
+            const cur = list.find(c => c.isCurrent) || list[0];
+            if (cur) {
+                elCharName.textContent = cur.name;
+                charName     = cur.name;
+                characterId  = cur.id;
+                spriteColors = cur.spriteColors || null;
+                refreshSprite('idle');
+            }
         } catch {
             elCharName.textContent = '小铃';
+            charName = '小铃';
         }
     }
 
@@ -47,7 +68,7 @@ const app = (() => {
 
         if (!SpeechRecognition) {
             speechSupported = false;
-            elMicLabel.textContent = '● 语音不可用（请用文字输入）';
+            elMicLabel.textContent = '● 语音不可用';
             elMicBtn.style.opacity = '0.5';
             console.warn('[Speech] 浏览器不支持 Web Speech API（建议使用 Chrome）');
             return;
@@ -76,43 +97,88 @@ const app = (() => {
         };
 
         recognition.onend = () => {
-            // recognition 自动结束（非手动停止）时重置
             if (state === 'recording') setState('idle');
         };
     }
 
     // ── 状态管理 ─────────────────────────────────────────────
-    function setState(newState, chatMsg) {
+    function setState(newState) {
         state = newState;
         hideError();
 
         const statusMap = {
-            idle:        { text: '● 待机',      cls: 'idle',       btn: 'idle',       mic: '● 点击说话', cam: '识别角色' },
-            recording:   { text: '● 录音中…',   cls: 'recording',  btn: 'recording',  mic: '■ 停止',     cam: '识别角色' },
-            processing:  { text: '● 思考中…',   cls: 'processing', btn: 'processing', mic: '⏳ 思考中…',  cam: '识别角色' },
-            recognizing: { text: '● 识别中…',   cls: 'processing', btn: 'processing', mic: '● 点击说话',  cam: '识别中…' },
+            idle:        { text: '待机',    cls: 'idle',       btn: 'idle',       mic: '点击说话', cam: '识别角色' },
+            recording:   { text: '录音中',  cls: 'recording',  btn: 'recording',  mic: '■ 停止',   cam: '识别角色' },
+            processing:  { text: '思考中',  cls: 'processing', btn: 'processing', mic: '⏳ 思考中', cam: '识别角色' },
+            recognizing: { text: '识别中',  cls: 'processing', btn: 'processing', mic: '点击说话', cam: '识别中…' },
         };
 
         const s = statusMap[newState] || statusMap.idle;
-        elStatus.textContent   = s.text;
-        elStatus.className     = `status-text ${s.cls}`;
-        elMicBtn.className     = `mic-btn ${s.btn}`;
+        elStatus.textContent = s.text;
+        if (elBadge) elBadge.className = `status-badge ${s.cls}`;
+
+        elMicBtn.className = 'btn btn-purple' + (
+            newState === 'recording'  ? ' recording' :
+            newState === 'processing' ? ' busy' : ''
+        );
         elMicLabel.textContent = s.mic;
+
         if (elCamBtn) {
-            elCamBtn.textContent = s.cam;
-            elCamBtn.className   = `cam-btn ${newState === 'recognizing' ? 'recognizing' : ''}`;
+            const elCamLabel = document.getElementById('cam-label');
+            if (elCamLabel) elCamLabel.textContent = s.cam;
+            elCamBtn.className = 'btn btn-yellow' +
+                (newState === 'recognizing' ? ' recognizing' : '');
         }
 
-        if (newState === 'recording') {
-            elMicLabel.classList.add('recording-blink');
-        } else {
-            elMicLabel.classList.remove('recording-blink');
-        }
+        // 精灵表情跟随状态
+        refreshSprite(STATE_TO_EXPRESSION[newState] || 'idle');
+    }
 
-        if (chatMsg !== undefined) {
-            elChatText.textContent  = chatMsg;
-            elChatText.className    = 'chat-text' + (chatMsg ? '' : ' placeholder');
-        }
+    // ── 聊天历史渲染 ─────────────────────────────────────────
+    function clearPlaceholder() {
+        const ph = elChatHistory.querySelector('.msg-system');
+        if (ph) ph.remove();
+    }
+
+    function addUserMsg(text) {
+        clearPlaceholder();
+        const el = document.createElement('div');
+        el.className = 'msg-user';
+        el.textContent = text;
+        elChatHistory.appendChild(el);
+        scrollToBottom();
+    }
+
+    function addCharMsg(text) {
+        removeThinker();
+        const wrap = document.createElement('div');
+        wrap.className = 'msg-char';
+        const label = document.createElement('div');
+        label.className = 'msg-char-name';
+        label.textContent = charName || '角色';
+        wrap.appendChild(label);
+        const body = document.createElement('div');
+        body.textContent = text;
+        wrap.appendChild(body);
+        elChatHistory.appendChild(wrap);
+        scrollToBottom();
+    }
+
+    function showThinker() {
+        removeThinker();
+        thinkingEl = document.createElement('div');
+        thinkingEl.className = 'msg-thinking';
+        thinkingEl.textContent = '思考中';
+        elChatHistory.appendChild(thinkingEl);
+        scrollToBottom();
+    }
+
+    function removeThinker() {
+        if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+    }
+
+    function scrollToBottom() {
+        elChatHistory.scrollTop = elChatHistory.scrollHeight;
     }
 
     // ── 麦克风按钮点击 ───────────────────────────────────────
@@ -123,14 +189,11 @@ const app = (() => {
         }
 
         if (state === 'idle' || state === 'reply') {
-            setState('recording', '');
+            setState('recording');
             recognition.start();
-
         } else if (state === 'recording') {
             recognition.stop();
-            setState('processing', '…');
-            // onresult 会自动触发 sendMessage
-
+            setState('processing');
         } else if (state === 'processing') {
             // 忽略
         }
@@ -151,7 +214,9 @@ const app = (() => {
             return;
         }
 
-        setState('processing', `你说：${userText}\n\n思考中…`);
+        addUserMsg(userText);
+        setState('processing');
+        showThinker();
 
         try {
             const res  = await fetch('/api/chat', {
@@ -163,18 +228,18 @@ const app = (() => {
 
             if (!res.ok || data.error) {
                 showError(data.error || '服务器错误');
+                removeThinker();
                 setState('idle');
                 return;
             }
 
-            // 展示角色回复
-            setState('idle', data.reply);
-            elChatText.className = 'chat-text';
-
-            // [EXTENSION POINT] 后续在此存入对话记忆
+            addCharMsg(data.reply);
+            setState('idle');
+            if (data.expression) refreshSprite(data.expression);
 
         } catch (err) {
             showError('网络请求失败：' + err.message);
+            removeThinker();
             setState('idle');
         }
     }
@@ -188,24 +253,70 @@ const app = (() => {
         elError.style.display = 'none';
     }
 
-    // ── 识别角色 ─────────────────────────────────────────────
+    // ── 角色卡片渲染 ─────────────────────────────────────────
+    function renderCharCards(list) {
+        if (!elCharCards) return;
+        elCharCount.textContent = `${list.length} 个角色`;
+        elCharCards.innerHTML = list.map(ch => `
+            <div class="char-card ${ch.isCurrent ? 'active' : ''}"
+                 onclick="app.switchCharacter('${ch.id}')">
+                <span class="char-card-del" onclick="event.stopPropagation();app.deleteCharacter('${ch.id}')" title="删除">×</span>
+                <div class="char-card-name">${ch.name}</div>
+                <div class="char-card-series">${ch.series || ''}</div>
+            </div>
+        `).join('');
+    }
 
+    async function switchCharacter(id) {
+        if (id === characterId) return;
+        try {
+            const res  = await fetch(`/api/characters/current/${id}`, { method: 'PUT' });
+            const data = await res.json();
+            if (!res.ok) return showError(data.error || '切换失败');
+            characterId  = id;
+            charName     = data.current?.name || '';
+            spriteColors = data.current?.spriteColors || null;
+            elCharName.textContent = charName;
+            setState('idle');
+            if (data.current?.catchphrases?.[0]) {
+                addCharMsg(data.current.catchphrases[0] + '我来了！');
+            }
+            await loadCharacters();
+        } catch (e) { showError('切换失败: ' + e.message); }
+    }
+
+    async function deleteCharacter(id) {
+        if (!confirm(`确定删除这个角色吗？对话历史也会保留。`)) return;
+        try {
+            const res = await fetch(`/api/characters/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (!res.ok) return showError(data.error || '删除失败');
+            await loadCharacters();
+            if (id === characterId) {
+                const res2 = await fetch('/api/character');
+                const cur  = await res2.json();
+                elCharName.textContent = cur.name;
+                charName    = cur.name;
+                characterId = cur.id;
+            }
+        } catch (e) { showError('删除失败: ' + e.message); }
+    }
+
+    // ── 识别角色 ─────────────────────────────────────────────
     function onRecognizeTap() {
         if (state === 'processing' || state === 'recognizing') return;
-        // 触发文件选择（模拟相机拍照）
         elImgUpload.click();
     }
 
     async function onImageSelected(input) {
         const file = input.files[0];
         if (!file) return;
-        input.value = ''; // 允许重复选同一文件
+        input.value = '';
 
-        setState('recognizing', '正在识别角色...');
+        setState('recognizing');
         elRecResult.style.display = 'none';
 
         try {
-            // 直接 POST 原始图片二进制（与硬件行为一致）
             const arrayBuffer = await file.arrayBuffer();
             const res = await fetch('/api/recognize/upload', {
                 method:  'POST',
@@ -220,12 +331,14 @@ const app = (() => {
                 return;
             }
 
-            // 更新角色显示
-            characterId = data.id || characterId;
-            elCharName.textContent = data.name || '未知角色';
-            setState('idle', `${data.catchphrases?.[0] || ''}我是${data.name}！很高兴认识你～`);
+            characterId  = data.id || characterId;
+            charName     = data.name || '未知角色';
+            spriteColors = data.spriteColors || null;
+            elCharName.textContent = charName;
+            setState('idle');
+            addCharMsg(`${data.catchphrases?.[0] || ''}我是${charName}！很高兴认识你～`);
+            await loadCharacters();
 
-            // 显示识别到的角色资料
             elResultContent.innerHTML = `
                 <b>角色：</b>${data.name}<br>
                 <b>性格：</b>${data.personality || '-'}<br>
@@ -244,5 +357,6 @@ const app = (() => {
     // ── 启动 ─────────────────────────────────────────────────
     init();
 
-    return { onMicTap, sendText, onRecognizeTap, onImageSelected };
+    return { onMicTap, sendText, onRecognizeTap, onImageSelected,
+             switchCharacter, deleteCharacter };
 })();

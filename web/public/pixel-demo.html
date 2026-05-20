@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>PopBox 像素小人 Demo</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #0d0d1a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  font-family: 'PingFang SC', sans-serif;
+  color: #eee;
+  gap: 40px;
+}
+h1 { font-size: 18px; color: #aaa; }
+.section { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.section-title { font-size: 13px; color: #666; letter-spacing: 2px; text-transform: uppercase; }
+.sprites-row { display: flex; gap: 32px; align-items: flex-end; }
+.sprite-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.sprite-label { font-size: 12px; color: #888; }
+canvas { image-rendering: pixelated; }
+
+/* 模拟 CoreS3 屏幕 */
+.screen-mock {
+  width: 320px;
+  height: 240px;
+  background: #1A1A2E;
+  border: 2px solid #333;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.screen-header {
+  height: 108px;
+  background: #16213E;
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  gap: 8px;
+}
+.avatar-slot {
+  width: 90px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.screen-info { display: flex; flex-direction: column; gap: 4px; }
+.screen-name { font-size: 16px; color: #FFD700; }
+.screen-status { font-size: 11px; color: #00C9A7; }
+.screen-divider { height: 1px; background: #334466; }
+.screen-chat {
+  height: 100px;
+  background: #0F3460;
+  padding: 8px;
+  font-size: 11px;
+  color: #ccc;
+  line-height: 1.6;
+}
+.screen-footer {
+  height: 30px;
+  background: #1A1A2E;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+}
+.btn-mic { flex: 0 0 185px; height: 22px; background: #533483; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; }
+.btn-cam { flex: 1; height: 22px; background: #1a5a3a; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; }
+
+/* 颜色面板 */
+.palette { display: flex; gap: 8px; }
+.swatch { width: 28px; height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: rgba(0,0,0,0.5); font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>PopBox 像素小人 Demo</h1>
+
+<!-- 色板 -->
+<div class="section">
+  <div class="section-title">Color Palette</div>
+  <div class="palette" id="palette"></div>
+</div>
+
+<!-- 单体展示（多尺寸） -->
+<div class="section">
+  <div class="section-title">模板 A — 待机 / 开心 / 思考</div>
+  <div class="sprites-row" id="variants-row"></div>
+</div>
+
+<!-- 模拟 CoreS3 实装效果 -->
+<div class="section">
+  <div class="section-title">CoreS3 屏幕模拟（点击切换表情）</div>
+  <div class="screen-mock">
+    <div class="screen-header">
+      <div class="avatar-slot">
+        <canvas id="screen-avatar" width="80" height="80" style="image-rendering:pixelated;"></canvas>
+      </div>
+      <div class="screen-info">
+        <div class="screen-name" id="screen-char-name">星星人</div>
+        <div class="screen-status" id="screen-status">● 待机</div>
+      </div>
+    </div>
+    <div class="screen-divider"></div>
+    <div class="screen-chat" id="screen-chat">哎呀～你好呀，今天过得怎么样？</div>
+    <div class="screen-footer">
+      <div class="btn-mic">● 点击说话</div>
+      <div class="btn-cam">识别角色</div>
+    </div>
+  </div>
+  <div style="font-size:12px;color:#555;">点击屏幕切换表情</div>
+</div>
+
+<script>
+// ── 调色板 ────────────────────────────────────────────────────
+const PALETTE = {
+  0: null,              // 透明（不绘制）
+  1: '#FFDDB5',         // 皮肤
+  2: '#5A3E2B',         // 头发（深棕，可按角色替换）
+  3: '#2A2A2A',         // 深色（眼睛/轮廓）
+  4: '#6B5BCD',         // 服装（紫色，可按角色替换）
+  5: '#FF8FA0',         // 腮红
+  6: '#FFFFFF',         // 高光
+};
+
+// ── 像素数据 ──────────────────────────────────────────────────
+// 16×16 格，每格 = 5×5 屏幕像素 → 80×80 正好填满头像区域
+
+const SPRITES = {
+
+  idle: [
+    // 头发
+    [0,0,0,0,2,2,2,2,2,2,2,2,0,0,0,0],
+    [0,0,0,2,2,2,2,2,2,2,2,2,2,0,0,0],
+    // 脸
+    [0,0,2,2,1,1,1,1,1,1,1,1,2,2,0,0],
+    [0,0,2,1,1,1,1,1,1,1,1,1,1,2,0,0],
+    [0,0,2,1,1,1,1,1,1,1,1,1,1,2,0,0],
+    [0,0,2,1,3,3,1,1,1,1,3,3,1,2,0,0], // 眼睛
+    [0,0,2,1,1,1,1,1,1,1,1,1,1,2,0,0],
+    [0,0,2,1,1,3,3,3,3,3,3,1,1,2,0,0], // 嘴（平静）
+    // 下巴
+    [0,0,0,2,1,1,1,1,1,1,1,2,0,0,0,0],
+    // 身体
+    [0,0,4,4,4,4,4,4,4,4,4,4,4,4,0,0],
+    [0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0],
+    [0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0],
+    // 手臂（自然垂下）
+    [1,4,4,4,4,4,4,4,4,4,4,4,4,4,4,1],
+    [1,4,4,4,4,4,4,4,4,4,4,4,4,4,4,1],
+    // 腿
+    [0,0,4,4,1,1,4,0,0,0,4,1,1,4,4,0],
+    [0,0,3,3,1,1,3,0,0,0,3,1,1,3,3,0], // 鞋
+  ],
+
+  happy: [
+    [0,0,0,0,2,2,2,2,2,2,2,2,0,0,0,0],
+    [0,0,0,2,2,2,2,2,2,2,2,2,2,0,0,0],
+    [0,0,2,2,1,1,1,1,1,1,1,1,2,2,0,0],
+    [0,0,2,1,1,1,1,1,1,1,1,1,1,2,0,0],
+    [0,0,2,1,1,1,1,1,1,1,1,1,1,2,0,0],
+    [0,0,2,1,3,1,1,1,1,1,1,3,1,2,0,0], // 眯眼（开心）
+    [0,0,2,1,1,1,5,1,1,5,1,1,1,2,0,0], // 腮红
+    [0,0,2,1,3,1,3,3,3,3,1,3,1,2,0,0], // 嘴（U形大笑）
+    [0,0,0,2,1,1,1,1,1,1,1,2,0,0,0,0],
+    [0,0,4,4,4,4,4,4,4,4,4,4,4,4,0,0],
+    [0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0],
+    [0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0],
+    // 手臂举起（开心）
+    [0,1,1,4,4,4,4,4,4,4,4,4,4,1,1,0],
+    [1,1,4,4,4,4,4,4,4,4,4,4,4,4,1,1],
+    [0,0,4,4,1,1,4,0,0,0,4,1,1,4,4,0],
+    [0,0,3,3,1,1,3,0,0,0,3,1,1,3,3,0],
+  ],
+
+  thinking: [
+    [0,0,0,0,2,2,2,2,2,2,2,2,0,0,0,0],
+    [0,0,0,2,2,2,2,2,2,2,2,2,2,0,0,0],
+    [0,0,2,2,1,1,1,1,1,1,1,1,2,2,0,0],
+    [0,0,2,1,1,1,1,1,1,1,1,1,1,2,0,0],
+    [0,0,2,1,1,1,1,1,1,1,1,1,1,2,0,0],
+    [0,0,2,1,3,3,1,1,1,3,1,3,1,2,0,0], // 一只眼稍眯（思考）
+    [0,0,2,1,1,1,1,1,1,1,1,1,1,2,0,0],
+    [0,0,2,1,1,1,3,1,1,1,1,1,1,2,0,0], // 嘴（小，偏一边）
+    [0,0,0,2,1,1,1,1,1,1,1,2,0,0,0,0],
+    [0,0,4,4,4,4,4,4,4,4,4,4,4,4,0,0],
+    [0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0],
+    [0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0],
+    // 一手托腮
+    [1,4,4,4,4,4,4,4,4,4,4,4,4,4,4,1],
+    [1,1,1,4,4,4,4,4,4,4,4,4,4,4,4,1], // 左手抬起
+    [0,0,4,4,1,1,4,0,0,0,4,1,1,4,4,0],
+    [0,0,3,3,1,1,3,0,0,0,3,1,1,3,3,0],
+  ],
+};
+
+const SPRITE_META = {
+  idle:     { label: '待机',  status: '● 待机',  chat: '哎呀～你好呀，今天过得怎么样？' },
+  happy:    { label: '开心',  status: '● 回复完成', chat: '真的假的！！太开心啦～我早就想说这个了！' },
+  thinking: { label: '思考中', status: '● 思考中…', chat: '这个嘛……让我想想……' },
+};
+
+// ── 渲染函数 ──────────────────────────────────────────────────
+function drawSprite(canvas, spriteKey, pixelSize, palette) {
+  const sprite = SPRITES[spriteKey];
+  const pal    = palette || PALETTE;
+  const rows   = sprite.length;
+  const cols   = sprite[0].length;
+  canvas.width  = cols * pixelSize;
+  canvas.height = rows * pixelSize;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const v = sprite[r][c];
+      if (v === 0 || !pal[v]) continue;
+      ctx.fillStyle = pal[v];
+      ctx.fillRect(c * pixelSize, r * pixelSize, pixelSize, pixelSize);
+    }
+  }
+}
+
+// ── 色板展示 ──────────────────────────────────────────────────
+const palEl = document.getElementById('palette');
+const swatchNames = { 1:'皮肤', 2:'头发', 3:'深色', 4:'服装', 5:'腮红' };
+Object.entries(PALETTE).forEach(([k, color]) => {
+  if (!color) return;
+  const el = document.createElement('div');
+  el.className = 'swatch';
+  el.style.background = color;
+  el.style.border = `1px solid ${color}`;
+  el.textContent = swatchNames[k] || k;
+  if (parseInt(k) >= 3) el.style.color = 'rgba(255,255,255,0.7)';
+  palEl.appendChild(el);
+});
+
+// ── 变体展示 ──────────────────────────────────────────────────
+const row = document.getElementById('variants-row');
+['idle','happy','thinking'].forEach(key => {
+  const card = document.createElement('div');
+  card.className = 'sprite-card';
+
+  // 大尺寸展示
+  const bigCanvas = document.createElement('canvas');
+  drawSprite(bigCanvas, key, 8, PALETTE);
+  bigCanvas.style.imageRendering = 'pixelated';
+
+  // 实际屏幕尺寸（5px/格 = 80x80）
+  const smallLabel = document.createElement('div');
+  smallLabel.className = 'sprite-label';
+  smallLabel.textContent = `屏幕实际尺寸 (5px/格)`;
+
+  const smallCanvas = document.createElement('canvas');
+  drawSprite(smallCanvas, key, 5, PALETTE);
+  smallCanvas.style.imageRendering = 'pixelated';
+
+  const label = document.createElement('div');
+  label.className = 'sprite-label';
+  label.textContent = `${SPRITE_META[key].label}  ·  8px/格`;
+
+  card.appendChild(bigCanvas);
+  card.appendChild(label);
+  card.appendChild(smallCanvas);
+  card.appendChild(smallLabel);
+  row.appendChild(card);
+});
+
+// ── CoreS3 模拟 ───────────────────────────────────────────────
+const states = ['idle','happy','thinking'];
+let stateIdx = 0;
+
+function updateScreen(key) {
+  const meta = SPRITE_META[key];
+  drawSprite(document.getElementById('screen-avatar'), key, 5, PALETTE);
+  document.getElementById('screen-status').textContent = meta.status;
+  document.getElementById('screen-chat').textContent   = meta.chat;
+}
+
+document.querySelector('.screen-mock').addEventListener('click', () => {
+  stateIdx = (stateIdx + 1) % states.length;
+  updateScreen(states[stateIdx]);
+});
+
+updateScreen('idle');
+</script>
+</body>
+</html>

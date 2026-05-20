@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <vector>
+#include "../ui/SpriteRenderer.h"  // SpriteColors 定义
 
 // ─────────────────────────────────────────────────────────────
 // CharacterMemory — 角色记忆层
@@ -32,6 +33,7 @@ struct Character {
     String              worldview;
     String              replyStyle;
     CharacterMemory     memory;
+    SpriteColors        spriteColors;  // 像素精灵专属配色（无则使用默认值）
 
     // [EXTENSION POINT] 角色来源标记，用于后续识别流程
     // enum class Source { MANUAL, PHOTO_RECOGNITION, IMPORTED };
