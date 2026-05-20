@@ -3,3 +3,4 @@
 src/config.h
 web/.env
 web/node_modules/
+web/data/history_*.json

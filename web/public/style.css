@@ -122,18 +122,19 @@ body {
 
 .chat-text.placeholder { color: #667799; }
 
-/* ── 底部按钮（30px） ── */
+/* ── 底部双按钮（30px） ── */
 .footer {
     height: 30px;
     background: #1A1A2E;
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 4px;
+    padding: 0 4px;
     flex-shrink: 0;
 }
 
 .mic-btn {
-    width: 140px;
+    flex: 0 0 185px;
     height: 24px;
     background: #533483;
     border: none;
@@ -144,9 +145,24 @@ body {
     transition: background 0.15s;
     font-family: inherit;
 }
-.mic-btn:hover   { background: #6b45a8; }
-.mic-btn.recording { background: #E94560; }
-.mic-btn.processing { background: #7a5a00; cursor: not-allowed; }
+.mic-btn:hover      { background: #6b45a8; }
+.mic-btn.recording  { background: #E94560; }
+.mic-btn.processing { background: #2a2a2a; cursor: not-allowed; }
+
+.cam-btn {
+    flex: 1;
+    height: 24px;
+    background: #1a5a3a;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: inherit;
+}
+.cam-btn:hover       { background: #237a50; }
+.cam-btn.recognizing { background: #E94560; cursor: not-allowed; }
 
 /* ── 屏幕外：文字输入备选 ── */
 .text-input-area {
@@ -179,6 +195,24 @@ body {
     font-family: inherit;
 }
 .text-input-area button:hover { background: #6b45a8; }
+
+/* ── 识别结果预览 ── */
+.recognition-result {
+    width: 320px;
+    background: #0d1a0d;
+    border: 1px solid #1a5a3a;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #b0ffb0;
+    line-height: 1.6;
+}
+.result-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: #00C9A7;
+    margin-bottom: 6px;
+}
 
 /* ── 错误提示 ── */
 .error-banner {

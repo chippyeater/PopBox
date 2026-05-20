@@ -13,11 +13,16 @@ const app = (() => {
     const elMicLabel   = $('mic-label');
     const elTextInput  = $('text-input');
     const elError      = $('error-banner');
+    const elCamBtn     = $('cam-btn');
+    const elImgUpload  = $('img-upload');
+    const elRecResult  = $('recognition-result');
+    const elResultContent = $('result-content');
 
     // ── 状态 ─────────────────────────────────────────────────
     let state = 'idle';       // idle | recording | processing
     let recognition = null;   // Web Speech API 实例
     let speechSupported = false;
+    let characterId = 'xiao_ling';  // 从 /api/character 获取后更新
 
     // ── 初始化 ───────────────────────────────────────────────
     async function init() {
@@ -30,6 +35,7 @@ const app = (() => {
             const res  = await fetch('/api/character');
             const data = await res.json();
             elCharName.textContent = data.name || '未知角色';
+            if (data.id) characterId = data.id;
         } catch {
             elCharName.textContent = '小铃';
         }
@@ -81,16 +87,21 @@ const app = (() => {
         hideError();
 
         const statusMap = {
-            idle:       { text: '● 待机',    cls: 'idle',       btn: 'idle',       mic: '● 点击说话' },
-            recording:  { text: '● 录音中…', cls: 'recording',  btn: 'recording',  mic: '■ 停止' },
-            processing: { text: '● 思考中…', cls: 'processing', btn: 'processing', mic: '⏳ 思考中…' },
+            idle:        { text: '● 待机',      cls: 'idle',       btn: 'idle',       mic: '● 点击说话', cam: '识别角色' },
+            recording:   { text: '● 录音中…',   cls: 'recording',  btn: 'recording',  mic: '■ 停止',     cam: '识别角色' },
+            processing:  { text: '● 思考中…',   cls: 'processing', btn: 'processing', mic: '⏳ 思考中…',  cam: '识别角色' },
+            recognizing: { text: '● 识别中…',   cls: 'processing', btn: 'processing', mic: '● 点击说话',  cam: '识别中…' },
         };
 
         const s = statusMap[newState] || statusMap.idle;
-        elStatus.textContent = s.text;
-        elStatus.className   = `status-text ${s.cls}`;
-        elMicBtn.className   = `mic-btn ${s.btn}`;
+        elStatus.textContent   = s.text;
+        elStatus.className     = `status-text ${s.cls}`;
+        elMicBtn.className     = `mic-btn ${s.btn}`;
         elMicLabel.textContent = s.mic;
+        if (elCamBtn) {
+            elCamBtn.textContent = s.cam;
+            elCamBtn.className   = `cam-btn ${newState === 'recognizing' ? 'recognizing' : ''}`;
+        }
 
         if (newState === 'recording') {
             elMicLabel.classList.add('recording-blink');
@@ -146,7 +157,7 @@ const app = (() => {
             const res  = await fetch('/api/chat', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ message: userText })
+                body:    JSON.stringify({ message: userText, characterId })
             });
             const data = await res.json();
 
@@ -177,8 +188,61 @@ const app = (() => {
         elError.style.display = 'none';
     }
 
+    // ── 识别角色 ─────────────────────────────────────────────
+
+    function onRecognizeTap() {
+        if (state === 'processing' || state === 'recognizing') return;
+        // 触发文件选择（模拟相机拍照）
+        elImgUpload.click();
+    }
+
+    async function onImageSelected(input) {
+        const file = input.files[0];
+        if (!file) return;
+        input.value = ''; // 允许重复选同一文件
+
+        setState('recognizing', '正在识别角色...');
+        elRecResult.style.display = 'none';
+
+        try {
+            // 直接 POST 原始图片二进制（与硬件行为一致）
+            const arrayBuffer = await file.arrayBuffer();
+            const res = await fetch('/api/recognize/upload', {
+                method:  'POST',
+                headers: { 'Content-Type': file.type || 'image/jpeg' },
+                body:    arrayBuffer
+            });
+
+            const data = await res.json();
+            if (!res.ok || data.error) {
+                showError(data.error || '识别失败');
+                setState('idle');
+                return;
+            }
+
+            // 更新角色显示
+            characterId = data.id || characterId;
+            elCharName.textContent = data.name || '未知角色';
+            setState('idle', `${data.catchphrases?.[0] || ''}我是${data.name}！很高兴认识你～`);
+
+            // 显示识别到的角色资料
+            elResultContent.innerHTML = `
+                <b>角色：</b>${data.name}<br>
+                <b>性格：</b>${data.personality || '-'}<br>
+                <b>世界观：</b>${data.worldview || '-'}<br>
+                <b>背景：</b>${data.background || '-'}<br>
+                <b>口头禅：</b>${(data.catchphrases || []).join('、') || '-'}
+            `;
+            elRecResult.style.display = 'block';
+
+        } catch (err) {
+            showError('识别请求失败：' + err.message);
+            setState('idle');
+        }
+    }
+
     // ── 启动 ─────────────────────────────────────────────────
     init();
 
-    return { onMicTap, sendText };
+    return { onMicTap, sendText, onRecognizeTap, onImageSelected };
 })();

@@ -2,9 +2,11 @@
 #include <M5Unified.h>
 
 ChatUI::ChatUI(CharacterManager& charMgr, AudioRecorder& recorder,
-               SpeechToText& stt, LLMClient& llm, DisplayManager& display)
+               SpeechToText& stt, LLMClient& llm,
+               DisplayManager& display, CameraManager& camera)
     : _charMgr(charMgr), _recorder(recorder), _stt(stt),
-      _llm(llm), _display(display), _state(AppState::IDLE) {}
+      _llm(llm), _display(display), _camera(camera),
+      _state(AppState::IDLE) {}
 
 void ChatUI::begin() {
     const auto& ch = _charMgr.current();
@@ -14,90 +16,129 @@ void ChatUI::begin() {
 
 void ChatUI::update() {
     M5.update();
-
-    // 录音中持续采集
     if (_state == AppState::RECORDING) {
         _recorder.update();
-
-        // 缓冲区满时自动停止录音
         if (!_recorder.isRecording()) {
             _processAndReply();
             return;
         }
     }
-
     _handleTouch();
 }
 
-// ── 私有方法 ──────────────────────────────────────────────────
+// ── 触摸处理 ──────────────────────────────────────────────────
 
 void ChatUI::_handleTouch() {
     if (M5.Touch.getCount() == 0) return;
-
     auto t = M5.Touch.getDetail(0);
     if (!t.wasPressed()) return;
 
     if (_isTouchOnMicButton(t.x, t.y)) {
         _onMicButtonTap();
+    } else if (_isTouchOnRecognizeButton(t.x, t.y)) {
+        _onRecognizeButtonTap();
     }
 }
 
 void ChatUI::_onMicButtonTap() {
-    switch (_state) {
-        case AppState::IDLE:
-        case AppState::DISPLAYING_REPLY:
-            // 开始录音
-            _recorder.startRecording();
-            _state = AppState::RECORDING;
-            _display.updateStatus(AppState::RECORDING);
-            break;
+    if (_state == AppState::PROCESSING || _state == AppState::RECOGNIZING) return;
 
-        case AppState::RECORDING:
-            // 手动停止录音并处理
-            _recorder.stopRecording();
-            _processAndReply();
-            break;
-
-        default:
-            // PROCESSING 中忽略触摸
-            break;
+    if (_state == AppState::IDLE || _state == AppState::DISPLAYING_REPLY) {
+        _recorder.startRecording();
+        _state = AppState::RECORDING;
+        _display.updateStatus(AppState::RECORDING);
+    } else if (_state == AppState::RECORDING) {
+        _recorder.stopRecording();
+        _processAndReply();
     }
 }
+
+void ChatUI::_onRecognizeButtonTap() {
+    if (_state != AppState::IDLE && _state != AppState::DISPLAYING_REPLY) return;
+    _runRecognition();
+}
+
+// ── 对话流程 ──────────────────────────────────────────────────
 
 void ChatUI::_processAndReply() {
     _state = AppState::PROCESSING;
     _display.updateStatus(AppState::PROCESSING);
     _display.updateChatText("...");
 
-    const auto& ch = _charMgr.current();
-
-    // Step 1: 语音 → 文字
-    String userText = _stt.recognize(
-        _recorder.getBuffer(),
-        _recorder.getSampleCount()
-    );
+    String userText = _stt.recognize(_recorder.getBuffer(),
+                                     _recorder.getSampleCount());
     _recorder.clearBuffer();
 
     if (userText.isEmpty()) {
         _lastReply = "哎呀～我没听清楚，再说一遍？";
-        Serial.println("[UI] STT 未识别到内容，使用默认回复");
     } else {
-        // Step 2: 文字 → 角色回复
-        _lastReply = _llm.chat(ch, userText);
+        _lastReply = _llm.chat(_charMgr.current(), userText);
         if (_lastReply.isEmpty()) {
-            _lastReply = ch.randomCatchphrase() + "我现在有点想不到说什么……";
+            _lastReply = _charMgr.current().randomCatchphrase() + "我现在有点想不到说什么……";
         }
     }
 
-    // 展示回复
     _state = AppState::DISPLAYING_REPLY;
     _display.updateStatus(AppState::DISPLAYING_REPLY);
     _display.updateChatText(_lastReply);
-
-    // [EXTENSION POINT] FEATURE_CHARACTER_MEMORY=1 时在此保存对话记录
 }
 
+// ── 识别流程 ──────────────────────────────────────────────────
+
+void ChatUI::_runRecognition() {
+    if (!_camera.isReady()) {
+        _display.updateChatText("相机未就绪，无法识别");
+        return;
+    }
+
+    _state = AppState::RECOGNIZING;
+    _display.updateStatus(AppState::RECOGNIZING);
+    _display.updateChatText("正在拍照...");
+
+    // 拍照
+    CameraFrame frame = _camera.capture();
+    if (!frame.valid) {
+        _display.updateChatText("拍照失败，请重试");
+        frame.release();
+        _state = AppState::IDLE;
+        _display.updateStatus(AppState::IDLE);
+        return;
+    }
+
+    _display.updateChatText("正在识别角色...");
+
+    // 发送到后端识别
+    bool ok = _charMgr.loadFromRecognition(frame.data, frame.len);
+    frame.release(); // 立即释放相机帧内存
+
+    if (!ok) {
+        _display.updateChatText("未能识别角色，请换一张更清晰的图片");
+        _state = AppState::IDLE;
+        _display.updateStatus(AppState::IDLE);
+        return;
+    }
+
+    // 识别成功：更新显示
+    const auto& newChar = _charMgr.current();
+    _display.updateCharacterName(newChar.name);
+    _display.updateChatText(
+        newChar.randomCatchphrase() + "我是" + newChar.name + "！很高兴认识你～"
+    );
+
+    _state = AppState::DISPLAYING_REPLY;
+    _display.updateStatus(AppState::DISPLAYING_REPLY);
+}
+
+// ── 触摸区域判断 ──────────────────────────────────────────────
+
 bool ChatUI::_isTouchOnMicButton(int32_t x, int32_t y) {
-    return (x >= SCREEN_W / 2 - 70 && x <= SCREEN_W / 2 + 70 &&
+    // 左侧按钮：x 4~189，y MIC_BTN_Y~MIC_BTN_Y+MIC_BTN_H
+    return (x >= 4 && x <= 189 &&
+            y >= MIC_BTN_Y && y <= MIC_BTN_Y + MIC_BTN_H);
+}
+
+bool ChatUI::_isTouchOnRecognizeButton(int32_t x, int32_t y) {
+    // 右侧按钮：x 193~316，y MIC_BTN_Y~MIC_BTN_Y+MIC_BTN_H
+    return (x >= 193 && x <= 316 &&
             y >= MIC_BTN_Y && y <= MIC_BTN_Y + MIC_BTN_H);
 }

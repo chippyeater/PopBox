@@ -4,31 +4,34 @@
 // ─────────────────────────────────────────────────────────────
 // CharacterManager — 角色加载与管理
 //
-// MVP: 从 SPIFFS 的 character.json 加载单个角色
+// 加载来源：
+//   1. SPIFFS JSON（默认，MVP）
+//   2. 拍照识别 → 后端两步识别（FEATURE_PHOTO_RECOGNITION=1）
 //
-// [EXTENSION POINT] 后续扩展入口：
-//   loadFromRecognition(imagePath) — 拍照 → 云端识别 → 填充角色
-//   enrichFromWeb(character)       — 网络搜索 → 丰富角色故事
-//   switchCharacter(id)            — 多角色切换
+// 识别流程（后端负责）：
+//   Step1: qwen-vl-plus 看图 → 角色名
+//   Step2: qwen-turbo + enable_search 联网搜索 → 填充人设
+//   → 保存到 SPIFFS character.json 供下次启动直接加载
 // ─────────────────────────────────────────────────────────────
 class CharacterManager {
 public:
-    // 从 SPIFFS JSON 加载角色，失败返回 false
+    // 从 SPIFFS JSON 加载角色
     bool loadFromSPIFFS(const char* jsonPath);
 
-    // 返回当前角色（只读引用）
-    const Character& current() const { return _character; }
+    // 拍照识别并加载新角色（FEATURE_PHOTO_RECOGNITION=1 时可用）
+    // imageData: JPEG 字节流，imageLen: 字节数
+    // 成功后自动保存到 SPIFFS 并更新当前角色
+    bool loadFromRecognition(const uint8_t* imageData, size_t imageLen);
 
-    bool hasCharacter() const { return _character.isValid(); }
+    const Character& current()      const { return _character; }
+    bool             hasCharacter() const { return _character.isValid(); }
 
-    // [EXTENSION POINT] 从拍照识别结果加载角色（后续实现）
-    // bool loadFromRecognition(const uint8_t* imageData, size_t imageLen);
-
-    // [EXTENSION POINT] 通过网络搜索丰富当前角色信息（后续实现）
-    // bool enrichFromWeb();
+    // [EXTENSION POINT] 多角色切换（后续实现）
+    // bool switchCharacter(const String& id);
 
 private:
     Character _character;
 
     bool _parseJson(const String& json);
+    bool _saveToSPIFFS(const char* jsonPath);
 };

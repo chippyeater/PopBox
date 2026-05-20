@@ -8,6 +8,7 @@
 #include "audio/AudioRecorder.h"
 #include "audio/SpeechToText.h"
 #include "ai/LLMClient.h"
+#include "camera/CameraManager.h"
 #include "ui/DisplayManager.h"
 #include "ui/ChatUI.h"
 
@@ -16,6 +17,7 @@ CharacterManager charMgr;
 AudioRecorder    recorder;
 SpeechToText     stt;
 LLMClient        llm;
+CameraManager    camera;
 DisplayManager   display;
 ChatUI*          chatUI = nullptr;
 
@@ -26,7 +28,7 @@ static void connectWiFi() {
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     uint8_t attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 30) {
-        delay(500);
+        ::delay(500);
         Serial.print(".");
         attempts++;
     }
@@ -47,56 +49,51 @@ static void showBootError(const char* msg) {
     M5.Display.println(msg);
 }
 
-// ── setup ────────────────────────────────────────────────────
+// ── setup ─────────────────────────────────────────────────────
 
 void setup() {
-    // M5Unified 初始化（自动检测 CoreS3 硬件）
     auto cfg = M5.config();
     M5.begin(cfg);
 
     Serial.begin(115200);
     Serial.println("\n[PopBox] 启动中...");
 
-    // SPIFFS
     if (!SPIFFS.begin(true)) {
         showBootError("SPIFFS 初始化失败");
         return;
     }
 
-    // 显示初始化
     display.begin();
     M5.Display.setTextColor(0xFFFFFF);
     M5.Display.setCursor(10, 10);
     M5.Display.println("PopBox 启动中...");
 
-    // WiFi
     connectWiFi();
 
-    // 加载角色
     if (!charMgr.loadFromSPIFFS(CHARACTER_JSON_PATH)) {
         showBootError("角色数据加载失败\n请检查 data/character.json");
         return;
     }
 
-    // 麦克风
     if (!recorder.begin()) {
         showBootError("麦克风初始化失败");
         return;
     }
 
-    // 初始化 UI 控制器
-    chatUI = new ChatUI(charMgr, recorder, stt, llm, display);
+    // 相机初始化失败不阻塞启动（没有相机时聊天功能仍可用）
+    if (!camera.begin()) {
+        Serial.println("[PopBox] 警告：相机初始化失败，识别功能不可用");
+    }
+
+    chatUI = new ChatUI(charMgr, recorder, stt, llm, display, camera);
     chatUI->begin();
 
     Serial.println("[PopBox] 启动完成 ✓");
 }
 
-// ── loop ─────────────────────────────────────────────────────
+// ── loop ──────────────────────────────────────────────────────
 
 void loop() {
-    if (chatUI) {
-        chatUI->update();
-    }
-    // 小延迟降低 CPU 占用
-    delay(10);
+    if (chatUI) chatUI->update();
+    ::delay(10);
 }

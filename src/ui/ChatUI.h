@@ -5,16 +5,14 @@
 #include "../audio/AudioRecorder.h"
 #include "../audio/SpeechToText.h"
 #include "../ai/LLMClient.h"
+#include "../camera/CameraManager.h"
 
 // ─────────────────────────────────────────────────────────────
 // ChatUI — 顶层交互控制器
-// 管理状态机、触摸输入、调用各模块、更新显示
 //
-// 状态机流转：
-//   IDLE ──[点击]──► RECORDING
-//   RECORDING ──[点击]──► PROCESSING（STT → LLM）
-//   PROCESSING ──[完成]──► DISPLAYING_REPLY
-//   DISPLAYING_REPLY ──[自动/点击]──► IDLE
+// 状态机：
+//   IDLE ──[左键]──► RECORDING ──[左键]──► PROCESSING ──► DISPLAYING_REPLY
+//   IDLE ──[右键]──► RECOGNIZING（拍照 → 识别 → 加载新角色）──► IDLE
 // ─────────────────────────────────────────────────────────────
 class ChatUI {
 public:
@@ -22,10 +20,11 @@ public:
            AudioRecorder&    recorder,
            SpeechToText&     stt,
            LLMClient&        llm,
-           DisplayManager&   display);
+           DisplayManager&   display,
+           CameraManager&    camera);
 
     void begin();
-    void update(); // 在 loop() 中调用
+    void update();
 
 private:
     CharacterManager& _charMgr;
@@ -33,13 +32,17 @@ private:
     SpeechToText&     _stt;
     LLMClient&        _llm;
     DisplayManager&   _display;
+    CameraManager&    _camera;
 
     AppState _state;
     String   _lastReply;
 
     void _handleTouch();
     void _onMicButtonTap();
+    void _onRecognizeButtonTap();
     void _processAndReply();
+    void _runRecognition();
 
     bool _isTouchOnMicButton(int32_t x, int32_t y);
+    bool _isTouchOnRecognizeButton(int32_t x, int32_t y);
 };

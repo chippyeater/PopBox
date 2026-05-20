@@ -33,20 +33,33 @@
                 <div id="chat-text" class="chat-text placeholder">点击下方按钮开始说话～</div>
             </div>
 
-            <!-- 底部麦克风按钮 -->
+            <!-- 底部双按钮（模拟硬件布局） -->
             <div class="footer">
                 <button id="mic-btn" class="mic-btn" onclick="app.onMicTap()">
                     <span id="mic-label">● 点击说话</span>
+                </button>
+                <button id="cam-btn" class="cam-btn" onclick="app.onRecognizeTap()">
+                    识别角色
                 </button>
             </div>
 
         </div><!-- /screen -->
 
-        <!-- 屏幕外：语音输入备选（文字输入） -->
+        <!-- 屏幕外辅助输入 -->
         <div class="text-input-area">
             <input id="text-input" type="text" placeholder="或直接输入文字（无需麦克风）"
                    onkeydown="if(event.key==='Enter') app.sendText()">
             <button onclick="app.sendText()">发送</button>
+        </div>
+
+        <!-- 图片上传（识别角色用，模拟相机拍照） -->
+        <input type="file" id="img-upload" accept="image/*" style="display:none"
+               onchange="app.onImageSelected(this)">
+
+        <!-- 识别结果预览 -->
+        <div id="recognition-result" class="recognition-result" style="display:none">
+            <div class="result-title">识别结果</div>
+            <div id="result-content"></div>
         </div>
 
         <!-- 提示信息 -->
