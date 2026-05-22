@@ -2,7 +2,7 @@
 #include <Arduino.h>
 #include <M5Unified.h>
 #include "SpriteData.h"
-#include "DisplayManager.h"  // AppState 定义
+#include "AppState.h"
 
 // ─────────────────────────────────────────────────────────────
 // SpriteColors — 角色专属配色

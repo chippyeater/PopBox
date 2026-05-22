@@ -3,6 +3,8 @@ const express = require('express');
 const path    = require('path');
 const fs      = require('fs');
 const os      = require('os');
+const WebSocket = require('ws');
+const { randomUUID } = require('crypto');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -10,7 +12,6 @@ const PORT = process.env.PORT || 3000;
 // 原始二进制流：PCM 音频 & JPEG 图片
 // 注意：精确匹配路径，避免影响子路径（如 /api/recognize/upload）
 const rawImage = express.raw({ type: ['image/jpeg', 'image/*', 'application/octet-stream'], limit: '8mb' });
-app.use('/api/stt', express.raw({ type: 'application/octet-stream', limit: '4mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -217,46 +218,172 @@ app.delete('/api/characters/:id', (req, res) => {
     res.json({ ok: true });
 });
 
-// ── POST /api/stt — 硬件专用，接收原始 PCM 音频 ──────────────
-// Content-Type: application/octet-stream
-// Header: X-Sample-Rate: 16000
-app.post('/api/stt', async (req, res) => {
+// ── POST /api/stt — 硬件专用，接收原始 PCM，经 DashScope 实时识别 WebSocket 转写 ──
+const sttRaw = express.raw({ type: 'application/octet-stream', limit: '4mb' });
+
+function pcmToWav(pcmBuf, sampleRate) {
+    const ch = 1, bits = 16;
+    const hdr = Buffer.alloc(44);
+    hdr.write('RIFF', 0);                 hdr.writeUInt32LE(36 + pcmBuf.length, 4);
+    hdr.write('WAVE', 8);                 hdr.write('fmt ', 12);
+    hdr.writeUInt32LE(16, 16);            hdr.writeUInt16LE(1, 20);
+    hdr.writeUInt16LE(ch, 22);            hdr.writeUInt32LE(sampleRate, 24);
+    hdr.writeUInt32LE(sampleRate * ch * bits / 8, 28);
+    hdr.writeUInt16LE(ch * bits / 8, 32); hdr.writeUInt16LE(bits, 34);
+    hdr.write('data', 36);                hdr.writeUInt32LE(pcmBuf.length, 40);
+    return Buffer.concat([hdr, pcmBuf]);
+}
+
+function sendWsJson(ws, body) {
+    ws.send(JSON.stringify(body));
+}
+
+function runRealtimeStt(pcmBuf, sampleRate, apiKey) {
+    return new Promise((resolve, reject) => {
+        const taskId = randomUUID();
+        const model = process.env.DASHSCOPE_REALTIME_STT_MODEL || 'paraformer-realtime-v2';
+        const wsUrl = process.env.DASHSCOPE_REALTIME_STT_WS || 'wss://dashscope.aliyuncs.com/api-ws/v1/inference';
+        const ws = new WebSocket(wsUrl, {
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'user-agent': 'PopBox-STT/1.0'
+            }
+        });
+
+        let settled = false;
+        let finalText = '';
+        let latestText = '';
+        let audioStarted = false;
+        let audioTimer = null;
+
+        const cleanup = () => {
+            if (audioTimer) clearTimeout(audioTimer);
+            audioTimer = null;
+        };
+
+        const finish = (err, transcript = '') => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            try { ws.close(); } catch {}
+            if (err) reject(err);
+            else resolve(transcript.trim());
+        };
+
+        const timeout = setTimeout(() => finish(new Error('STT realtime timeout')), 30000);
+        const clearMainTimeout = () => clearTimeout(timeout);
+
+        const sendAudioChunks = () => {
+            if (audioStarted) return;
+            audioStarted = true;
+            const bytesPer100ms = Math.max(2, Math.floor(sampleRate * 2 / 10));
+            let offset = 0;
+
+            const sendNext = () => {
+                if (settled || ws.readyState !== WebSocket.OPEN) return;
+                if (offset >= pcmBuf.length) {
+                    sendWsJson(ws, {
+                        header: { action: 'finish-task', task_id: taskId, streaming: 'duplex' },
+                        payload: { input: {} }
+                    });
+                    return;
+                }
+                const end = Math.min(offset + bytesPer100ms, pcmBuf.length);
+                ws.send(pcmBuf.subarray(offset, end));
+                offset = end;
+                audioTimer = setTimeout(sendNext, 100);
+            };
+
+            sendNext();
+        };
+
+        ws.on('open', () => {
+            sendWsJson(ws, {
+                header: { action: 'run-task', task_id: taskId, streaming: 'duplex' },
+                payload: {
+                    task_group: 'audio',
+                    task: 'asr',
+                    function: 'recognition',
+                    model,
+                    parameters: {
+                        format: 'pcm',
+                        sample_rate: sampleRate,
+                        language_hints: ['zh', 'en'],
+                        disfluency_removal_enabled: false,
+                        semantic_punctuation_enabled: false,
+                        punctuation_prediction_enabled: true,
+                        inverse_text_normalization_enabled: true
+                    },
+                    input: {}
+                }
+            });
+        });
+
+        ws.on('message', data => {
+            let event;
+            try {
+                event = JSON.parse(data.toString());
+            } catch {
+                return;
+            }
+
+            const name = event?.header?.event;
+            if (name === 'task-started') {
+                sendAudioChunks();
+                return;
+            }
+            if (name === 'result-generated') {
+                const sentence = event?.payload?.output?.sentence;
+                const text = sentence?.text || '';
+                if (!text || sentence?.heartbeat) return;
+                latestText = text;
+                if (sentence?.sentence_end) finalText += text;
+                return;
+            }
+            if (name === 'task-finished') {
+                clearMainTimeout();
+                finish(null, finalText || latestText);
+                return;
+            }
+            if (name === 'task-failed') {
+                clearMainTimeout();
+                finish(new Error(event?.header?.error_message || event?.header?.error_code || 'STT task failed'));
+            }
+        });
+
+        ws.on('error', err => {
+            clearMainTimeout();
+            finish(err);
+        });
+        ws.on('close', () => {
+            clearMainTimeout();
+            if (!settled) finish(new Error('STT websocket closed before task finished'));
+        });
+    });
+}
+
+app.post('/api/stt', sttRaw, async (req, res) => {
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
         return res.status(400).json({ error: '未收到音频数据' });
     }
 
-    const apiKey    = process.env.GOOGLE_STT_API_KEY;
+    const apiKey     = process.env.DASHSCOPE_API_KEY;
     const sampleRate = parseInt(req.headers['x-sample-rate'] || '16000');
 
-    if (!apiKey || apiKey === 'your_google_stt_api_key_here') {
-        return res.status(500).json({ error: 'Google STT API Key 未配置' });
+    if (!apiKey || apiKey === 'your_dashscope_api_key_here') {
+        return res.status(500).json({ error: 'DashScope API Key 未配置' });
     }
 
-    const audioB64 = req.body.toString('base64');
-    const url = `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`;
-    const body = {
-        config: { encoding: 'LINEAR16', sampleRateHertz: sampleRate, languageCode: 'zh-CN' },
-        audio:  { content: audioB64 }
-    };
+    const wavBuf = pcmToWav(req.body, sampleRate);
+    try { fs.writeFileSync(path.join(DATA_DIR, 'debug_mic.wav'), wavBuf); } catch {}
 
     try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        if (!response.ok) {
-            const t = await response.text();
-            console.error('[STT] 错误:', t);
-            return res.status(502).json({ error: `STT 返回错误: ${response.status}` });
-        }
-        const data       = await response.json();
-        const transcript = data?.results?.[0]?.alternatives?.[0]?.transcript || '';
-        console.log(`[STT] 识别结果: "${transcript}"`);
+        const transcript = await runRealtimeStt(req.body, sampleRate, apiKey);
+        console.log(`[STT] realtime result: "${transcript}"`);
         res.json({ transcript });
     } catch (err) {
-        console.error('[STT] 请求失败:', err.message);
-        res.status(500).json({ error: '网络请求失败' });
+        console.error('[STT] realtime failed:', err.message);
+        res.status(500).json({ error: '实时语音识别请求失败' });
     }
 });
 
@@ -592,7 +719,10 @@ async function runRecognition(imageBuffer, mimeType, res) {
         return res.status(500).json({ error: 'DashScope API Key 未配置' });
     }
 
-    console.log(`[识别] 开始，图片: ${imageBuffer.length} 字节, 类型: ${mimeType}`);
+    const ext = mimeType.includes('png') ? 'png' : 'jpg';
+    const debugPath = path.join(DATA_DIR, `debug_capture_${Date.now()}.${ext}`);
+    try { fs.writeFileSync(debugPath, imageBuffer); } catch {}
+    console.log(`[识别] 开始，图片: ${imageBuffer.length} 字节 → 已保存到 ${debugPath}`);
 
     try {
         // Step1: VL 模型看图 → 完整角色信息
@@ -675,7 +805,7 @@ app.post('/api/tts', async (req, res) => {
             body: JSON.stringify({
                 model: 'cosyvoice-v2',
                 input:      { text: text.trim() },
-                parameters: { voice },
+                parameters: { voice, format: 'wav', sample_rate: 16000 },
             })
         }, 20000);
 
@@ -695,7 +825,7 @@ app.post('/api/tts', async (req, res) => {
         const audioResp   = await fetchWithTimeout(audioUrl, {}, 15000);
         const audioBuffer = Buffer.from(await audioResp.arrayBuffer());
         console.log(`[TTS] voice=${voice} text="${text.slice(0, 20)}…" size=${audioBuffer.length}B`);
-        res.set('Content-Type', 'audio/mpeg');
+        res.set('Content-Type', 'audio/wav');
         res.send(audioBuffer);
 
     } catch (err) {
@@ -705,22 +835,46 @@ app.post('/api/tts', async (req, res) => {
     }
 });
 
+// ── POST /api/debug/mic — 接收硬件录音，保存为 WAV 供浏览器下载验证 ──
+const micRaw = express.raw({ type: 'application/octet-stream', limit: '8mb' });
+app.post('/api/debug/mic', micRaw, (req, res) => {
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0)
+        return res.status(400).json({ error: '无数据' });
+    const sampleRate = parseInt(req.headers['x-sample-rate'] || '16000');
+    const wavBuf = pcmToWav(req.body, sampleRate);
+    const wavPath = path.join(DATA_DIR, 'debug_mic.wav');
+    fs.writeFileSync(wavPath, wavBuf);
+    console.log(`[MicDebug] 已保存 ${wavBuf.length} 字节 WAV → ${wavPath}`);
+    res.json({ ok: true, bytes: wavBuf.length, seconds: req.body.length / 2 / sampleRate });
+});
+
+app.get('/api/debug/mic', (req, res) => {
+    const wavPath = path.join(DATA_DIR, 'debug_mic.wav');
+    if (!fs.existsSync(wavPath)) return res.status(404).json({ error: '还没有录音' });
+    res.download(wavPath, 'debug_mic.wav');
+});
+
 // ── 启动 ──────────────────────────────────────────────────────
 app.listen(PORT, '0.0.0.0', () => {
-    // 显示本机局域网 IP，方便填入 CoreS3 的 config.h
     const ifaces = os.networkInterfaces();
     let localIP  = 'localhost';
     for (const name of Object.values(ifaces)) {
         for (const iface of name) {
-            if (iface.family === 'IPv4' && !iface.internal) {
-                localIP = iface.address;
-                break;
-            }
+            if (iface.family === 'IPv4' && !iface.internal) { localIP = iface.address; break; }
         }
+    }
+
+    try {
+        const { Bonjour } = require('bonjour-service');
+        const bonjour = new Bonjour();
+        bonjour.publish({ name: 'PopBox', type: 'http', port: PORT, host: 'popbox.local' });
+        console.log('   mDNS 广播:   http://popbox.local:' + PORT + '  (CoreS3 使用此地址)');
+    } catch (e) {
+        console.warn('   mDNS 广播失败，CoreS3 请手动填写 IP:', localIP);
     }
 
     console.log('\n PopBox 后端服务已启动');
     console.log(`   浏览器访问:  http://localhost:${PORT}`);
-    console.log(`   CoreS3 填写: http://${localIP}:${PORT}`);
+    console.log(`   本机 IP:     http://${localIP}:${PORT}`);
     console.log(`   对话历史保存到: ${DATA_DIR}\n`);
 });

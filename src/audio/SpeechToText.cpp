@@ -16,7 +16,7 @@ String SpeechToText::recognize(const int16_t* pcmData, size_t sampleCount,
     http.begin(url);
     http.addHeader("Content-Type", "application/octet-stream");
     http.addHeader("X-Sample-Rate", String(sampleRate));
-    http.setTimeout(15000);
+    http.setTimeout(35000);
 
     size_t byteLen = sampleCount * sizeof(int16_t);
     int code = http.POST((uint8_t*)pcmData, byteLen);

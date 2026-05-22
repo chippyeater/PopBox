@@ -13,6 +13,8 @@ public:
     ~AudioRecorder();
 
     bool begin();
+    void pauseMic();
+    bool resumeMic();
 
     // 开始录音（非阻塞，配合 update() 使用）
     void startRecording();

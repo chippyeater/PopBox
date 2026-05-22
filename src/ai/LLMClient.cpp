@@ -30,12 +30,13 @@ String LLMClient::chat(const Character& character, const String& userMessage) {
         return "";
     }
 
-    String resp = http.getString();
+    // 直接从 HTTP 流解析 JSON，避免 getString() 在 chunked 编码下读不完整
+    JsonDocument res;
+    DeserializationError err = deserializeJson(res, http.getStream());
     http.end();
 
-    JsonDocument res;
-    if (deserializeJson(res, resp)) {
-        Serial.println("[LLM] 响应解析失败");
+    if (err) {
+        Serial.printf("[LLM] JSON解析失败: %s\n", err.c_str());
         return "";
     }
 

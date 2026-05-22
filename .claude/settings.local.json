@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.github.com)",
+      "Bash(taskkill /F /IM platformio.exe)"
+    ]
+  }
+}

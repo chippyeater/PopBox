@@ -1,12 +1,14 @@
 #include <Arduino.h>
 #include <M5Unified.h>
 #include <WiFi.h>
+#include <ESPmDNS.h>
 #include <SPIFFS.h>
 
 #include "config.h"
 #include "character/CharacterManager.h"
 #include "audio/AudioRecorder.h"
 #include "audio/SpeechToText.h"
+#include "audio/TextToSpeech.h"
 #include "ai/LLMClient.h"
 #include "camera/CameraManager.h"
 #include "ui/DisplayManager.h"
@@ -16,6 +18,7 @@
 CharacterManager charMgr;
 AudioRecorder    recorder;
 SpeechToText     stt;
+TextToSpeech     tts;
 LLMClient        llm;
 CameraManager    camera;
 DisplayManager   display;
@@ -33,8 +36,11 @@ static void connectWiFi() {
         attempts++;
     }
     if (WiFi.status() == WL_CONNECTED) {
-        Serial.printf("\n[WiFi] 已连接，IP: %s\n",
-                      WiFi.localIP().toString().c_str());
+        Serial.printf("\n[WiFi] 已连接，IP: %s\n", WiFi.localIP().toString().c_str());
+        // 启用 mDNS，使 ESP32 能解析 popbox.local
+        if (MDNS.begin("popboxclient")) {
+            Serial.println("[mDNS] 已启动，可解析 popbox.local");
+        }
     } else {
         Serial.println("\n[WiFi] 连接失败！请检查 config.h 中的 WiFi 配置");
     }
@@ -83,12 +89,11 @@ void setup() {
         return;
     }
 
-    // 相机初始化失败不阻塞启动（没有相机时聊天功能仍可用）
-    if (!camera.begin()) {
-        Serial.println("[PopBox] 警告：相机初始化失败，识别功能不可用");
-    }
+    // 相机延迟初始化：CoreS3 相机 I2C 初始化失败会污染 I2C 总线，
+    // 导致触摸控制器失效。改为识别时按需初始化（在 ChatUI._runRecognition 中）。
+    Serial.println("[PopBox] 相机将在首次识别时初始化");
 
-    chatUI = new ChatUI(charMgr, recorder, stt, llm, display, camera);
+    chatUI = new ChatUI(charMgr, recorder, stt, tts, llm, display, camera);
     chatUI->begin();
 
     Serial.println("[PopBox] 启动完成 ✓");
@@ -98,5 +103,9 @@ void setup() {
 
 void loop() {
     if (chatUI) chatUI->update();
+    else {
+        // chatUI 未初始化：显示错误时仍需 M5.update() 防止看门狗触发
+        M5.update();
+    }
     ::delay(10);
 }

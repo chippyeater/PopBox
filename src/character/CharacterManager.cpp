@@ -10,10 +10,32 @@ static const char* OFFLINE_CACHE_PATH = "/characters.json";
 
 // ── 从后端拉取全部角色 ────────────────────────────────────────
 bool CharacterManager::fetchAll() {
-    String url = String(BACKEND_URL) + "/api/characters";
+    // 先解析主机名（最多等 5s），避免 mDNS 卡死整个启动流程
+    String backendUrl = BACKEND_URL;
+    {
+        int slashSlash = backendUrl.indexOf("://") + 3;
+        int colonOrSlash = backendUrl.indexOf(':', slashSlash);
+        if (colonOrSlash < 0) colonOrSlash = backendUrl.indexOf('/', slashSlash);
+        String host = backendUrl.substring(slashSlash,
+                      colonOrSlash > 0 ? colonOrSlash : backendUrl.length());
+        if (host.endsWith(".local")) {
+            IPAddress ip;
+            bool ok = (WiFi.hostByName(host.c_str(), ip) != 0);
+            if (!ok) {
+                Serial.printf("[Characters] mDNS 解析超时 (%s)，降级到离线缓存\n", host.c_str());
+                _loadOfflineCache();
+                return _current.isValid();
+            }
+            // 替换 hostname 为解析到的 IP
+            backendUrl.replace(host, ip.toString());
+            Serial.printf("[Characters] mDNS → %s\n", ip.toString().c_str());
+        }
+    }
+
+    String url = backendUrl + "/api/characters";
     HTTPClient http;
     http.begin(url);
-    http.setTimeout(10000);
+    http.setTimeout(8000);
     int code = http.GET();
     if (code != 200) {
         Serial.printf("[Characters] 拉取失败 (%d)，降级到离线缓存\n", code);
