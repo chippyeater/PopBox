@@ -10,13 +10,13 @@ ChatUI::ChatUI(CharacterManager& charMgr, AudioRecorder& recorder,
     : _charMgr(charMgr), _recorder(recorder), _stt(stt),
       _tts(tts), _llm(llm), _display(display), _camera(camera),
       _state(AppState::NO_CHARACTER), _isRecording(false),
-      _idleStartMs(0) {}
+      _idleStartMs(0), _lastExpression("idle") {}
 
 void ChatUI::begin() {
     _display.begin();
     if (_charMgr.count() > 0) {
         const auto& ch = _charMgr.current();
-        _display.drawIdle(ch.name, ch.avatarPath);
+        _display.drawIdle(ch.name, ch.avatarPath, "idle");
         _display.showBottomBar(false);
         _state = AppState::IDLE;
     } else {
@@ -37,11 +37,12 @@ void ChatUI::update() {
         }
     }
 
-    // GREETING → CHATTING（头像表情从开心→平常，文字不变）
+    // GREETING → CHATTING（表情从 happy → idle）
     if (_state == AppState::GREETING
         && millis() - _idleStartMs > GREETING_DURATION_MS) {
         const auto& ch = _charMgr.current();
-        _display.drawSplitLayout(ch.name, ch.avatarPath, _lastReplyText);
+        _lastExpression = "idle";
+        _display.drawSplitLayout(ch.name, ch.avatarPath, _lastReplyText, _lastExpression);
         _display.showBottomBar(false);
         _state = AppState::CHATTING;
         _idleStartMs = millis();
@@ -52,7 +53,8 @@ void ChatUI::update() {
     if (_state == AppState::CHATTING
         && millis() - _idleStartMs > IDLE_TIMEOUT_MS) {
         const auto& ch = _charMgr.current();
-        _display.drawIdle(ch.name, ch.avatarPath);
+        _lastExpression = "idle";
+        _display.drawIdle(ch.name, ch.avatarPath, _lastExpression);
         _display.showBottomBar(false);
         _state = AppState::IDLE;
         _idleStartMs = millis();
@@ -111,7 +113,8 @@ void ChatUI::_processAndReply() {
     _display.hideBottomBar();
 
     const auto& ch = _charMgr.current();
-    _display.drawSplitLayout(ch.name, ch.avatarPath, "……");
+    _lastExpression = "thinking";
+    _display.drawSplitLayout(ch.name, ch.avatarPath, "……", _lastExpression);
     _display.showBottomBar(false);
 
     String userText = _stt.recognize(_recorder.getBuffer(),
@@ -121,14 +124,19 @@ void ChatUI::_processAndReply() {
     String reply;
     if (userText.isEmpty()) {
         reply = "哎呀～我没听清楚，再说一遍？";
+        _lastExpression = "idle";
     } else {
-        reply = _llm.chat(ch, userText);
-        if (reply.isEmpty())
+        LLMResponse resp = _llm.chat(ch, userText);
+        reply = resp.reply;
+        _lastExpression = resp.expression;
+        if (reply.isEmpty()) {
             reply = "[ERROR] 角色回复为空";
+            _lastExpression = "idle";
+        }
     }
 
     _lastReplyText = reply;
-    _display.drawSplitLayout(ch.name, ch.avatarPath, _lastReplyText);
+    _display.drawSplitLayout(ch.name, ch.avatarPath, _lastReplyText, _lastExpression);
     _display.showBottomBar(false);
 
     _recorder.pauseMic();
@@ -207,7 +215,8 @@ void ChatUI::_runRecognition() {
 void ChatUI::_showGreeting() {
     const auto& ch = _charMgr.current();
     _lastReplyText = "你好呀～\n我是" + ch.name + "！";
-    _display.drawSplitLayout(ch.name, ch.avatarPath, _lastReplyText);
+    _lastExpression = "happy";
+    _display.drawSplitLayout(ch.name, ch.avatarPath, _lastReplyText, _lastExpression);
     _display.showBottomBar(false);
     _setState(AppState::GREETING);
 }

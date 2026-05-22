@@ -30,6 +30,7 @@ private:
     bool     _isRecording;
     uint32_t _idleStartMs;
     String   _lastReplyText;
+    String   _lastExpression;
 
     void _setState(AppState s);
     void _handleTouch();

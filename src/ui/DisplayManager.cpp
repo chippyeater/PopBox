@@ -46,7 +46,8 @@ void DisplayManager::drawNoCharacter() {
 }
 
 // ── 全屏待机 ────────────────────────────────────────────────────
-void DisplayManager::drawIdle(const String& name, const String& avatarPath) {
+void DisplayManager::drawIdle(const String& name, const String& avatarPath,
+                               const String& expression) {
     M5.Display.fillScreen(C_BG);
 
     int aw = 128, ah = 128;
@@ -57,7 +58,7 @@ void DisplayManager::drawIdle(const String& name, const String& avatarPath) {
     M5.Display.fillRoundRect(ax - 6, ay - 6, aw + 12, ah + 12, 8, C_CARD);
     M5.Display.drawRoundRect(ax - 6, ay - 6, aw + 12, ah + 12, 8, C_BORDER);
 
-    _drawAvatar(ax, ay, aw, ah, avatarPath);
+    _drawAvatar(ax, ay, aw, ah, _resolveAvatarPath(avatarPath, expression));
 
     _drawNameAt((SCREEN_W - M5.Display.textWidth(name.c_str())) / 2,
                 175, name);
@@ -87,7 +88,8 @@ void DisplayManager::drawRecognizing(int step) {
 // ── 左右分栏 ────────────────────────────────────────────────────
 void DisplayManager::drawSplitLayout(const String& name,
                                       const String& avatarPath,
-                                      const String& text) {
+                                      const String& text,
+                                      const String& expression) {
     M5.Display.fillScreen(C_BG);
 
     // 竖分隔线
@@ -100,7 +102,7 @@ void DisplayManager::drawSplitLayout(const String& name,
     M5.Display.fillRoundRect(ax - 4, ay - 4, aw + 8, ah + 8, 6, C_CARD);
     M5.Display.drawRoundRect(ax - 4, ay - 4, aw + 8, ah + 8, 6, C_BORDER);
 
-    _drawAvatar(ax, ay, aw, ah, avatarPath);
+    _drawAvatar(ax, ay, aw, ah, _resolveAvatarPath(avatarPath, expression));
     _drawNameAt(NAME_X, NAME_Y, name);
 
     // 右半：文字
@@ -201,6 +203,19 @@ void DisplayManager::_drawButton(int32_t x, int32_t y, int32_t w, int32_t h,
         M5.Display.setCursor(x + (w - tw) / 2, y + (h - th) / 2);
         M5.Display.print(label);
     }
+}
+
+// ── 表情变体路径解析 ────────────────────────────────────────────
+// 在 basePath 扩展名前插入 _expression，不存在时回退到 basePath
+String DisplayManager::_resolveAvatarPath(const String& basePath,
+                                           const String& expression) {
+    if (expression.isEmpty() || expression == "idle") return basePath;
+    int dot = basePath.lastIndexOf('.');
+    if (dot < 0) return basePath;
+    String variant = basePath.substring(0, dot) + "_" + expression
+                   + basePath.substring(dot);
+    if (SPIFFS.exists(variant)) return variant;
+    return basePath;
 }
 
 // ── UTF-8 文本换行 ──────────────────────────────────────────────

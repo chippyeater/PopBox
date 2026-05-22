@@ -5,8 +5,9 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-String LLMClient::chat(const Character& character, const String& userMessage) {
-    if (!character.isValid() || userMessage.isEmpty()) return "";
+LLMResponse LLMClient::chat(const Character& character, const String& userMessage) {
+    LLMResponse resp;
+    if (!character.isValid() || userMessage.isEmpty()) return resp;
 
     // 向后端发送消息，后端负责维护历史和调用 Qwen
     String url = String(BACKEND_URL) + "/api/chat";
@@ -27,7 +28,7 @@ String LLMClient::chat(const Character& character, const String& userMessage) {
         Serial.printf("[LLM] 后端返回错误: %d — %s\n", code,
                       http.getString().c_str());
         http.end();
-        return "";
+        return resp;
     }
 
     // 直接从 HTTP 流解析 JSON，避免 getString() 在 chunked 编码下读不完整
@@ -37,13 +38,20 @@ String LLMClient::chat(const Character& character, const String& userMessage) {
 
     if (err) {
         Serial.printf("[LLM] JSON解析失败: %s\n", err.c_str());
-        return "";
+        return resp;
     }
 
-    String reply = res["reply"].as<String>();
-    reply.trim();
-    Serial.printf("[LLM] 角色回复: %s\n", reply.c_str());
-    return reply;
+    resp.reply = res["reply"].as<String>();
+    resp.reply.trim();
+
+    resp.expression = res["expression"].as<String>();
+    resp.expression.toLowerCase();
+    if (resp.expression != "happy" && resp.expression != "thinking") {
+        resp.expression = "idle";
+    }
+
+    Serial.printf("[LLM] 角色回复: %s [表情: %s]\n", resp.reply.c_str(), resp.expression.c_str());
+    return resp;
 }
 
 String LLMClient::_buildRequestBody(const Character&, const String&) {

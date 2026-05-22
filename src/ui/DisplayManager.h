@@ -21,14 +21,15 @@ public:
 
     // 全屏状态：无人入住 / 待机
     void drawNoCharacter();
-    void drawIdle(const String& name, const String& avatarPath);
+    void drawIdle(const String& name, const String& avatarPath,
+                  const String& expression = "");
 
     // 识别中：文字 + 进度条动画
     void drawRecognizing(int step);
 
     // 左右分栏：打招呼 / 交流（avatarPath 为 /avatar.jpg 等）
     void drawSplitLayout(const String& name, const String& avatarPath,
-                         const String& text);
+                         const String& text, const String& expression = "");
 
     // 更新右侧文字（不刷新左半）
     void updateRightText(const String& text);
@@ -50,6 +51,7 @@ private:
                      bool disabled = false);
     void _wrapText(const String& text, int32_t maxWidth,
                    String* lines, int& lineCount, int maxLines);
+    String _resolveAvatarPath(const String& basePath, const String& expression);
 
     String   _lastRightText;
     AppState _lastState = AppState::NO_CHARACTER;
