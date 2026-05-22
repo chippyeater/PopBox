@@ -1,9 +1,13 @@
 #pragma once
 
+// ─────────────────────────────────────────────────────────────
+// PopBox 硬件界面状态
+// ─────────────────────────────────────────────────────────────
 enum class AppState {
-    IDLE,
-    RECORDING,
-    PROCESSING,
-    DISPLAYING_REPLY,
-    RECOGNIZING,
+    NO_CHARACTER,    // 无人入住：全屏"等待人物入住"
+    RECOGNIZING,     // 识别中：文字 + 进度条
+    GREETING,        // 打招呼：左半精灵+名字 / 右半招呼语
+    CHATTING,        // 交流中：左半精灵+名字 / 右半角色说话
+    IDLE,            // 待机：全屏精灵+名字
+    PHYSICAL,        // 物理交互：特殊像素反馈
 };

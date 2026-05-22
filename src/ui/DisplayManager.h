@@ -3,45 +3,54 @@
 #include <M5Unified.h>
 #include "../config.h"
 #include "AppState.h"
-#include "SpriteRenderer.h"
 
+// ─────────────────────────────────────────────────────────────
+// DisplayManager — 屏幕布局渲染
+//
+// 按状态渲染不同布局：
+//   NO_CHARACTER → 全屏"正在等待人物入住"
+//   RECOGNIZING  → 识别中文字 + 进度条
+//   GREETING     → 左半角色头像+名字 / 右半招呼语
+//   CHATTING     → 左半角色头像+名字 / 右半角色回复
+//   IDLE         → 全屏角色头像+名字居中
+//   PHYSICAL     → 由外部调 Special 动效
+// ─────────────────────────────────────────────────────────────
 class DisplayManager {
 public:
     void begin();
 
-    void drawFull(const String& characterName, AppState state,
-                  const String& replyText = "",
-                  int charIdx = 0, int charTotal = 0);
+    // 全屏状态：无人入住 / 待机
+    void drawNoCharacter();
+    void drawIdle(const String& name, const String& avatarPath);
 
-    // 对话气泡接口
-    void addMessage(const String& text, bool isUser);  // 追加一条消息
-    void clearMessages();                              // 切换角色时清空
-    void showThinking();                               // 显示"思考中…"占位
-    void removeThinking();                             // 移除占位，由 addMessage 自动调用
+    // 识别中：文字 + 进度条动画
+    void drawRecognizing(int step);
 
-    void updateStatus(AppState state, int charIdx = 0, int charTotal = 0);
-    void updateChatText(const String& text);  // 兼容旧调用（单行提示）
-    void drawSprite(const SpriteColors& colors, AppState state);
-    void updateSpriteExpression(const SpriteColors& colors, AppState state);
-    void updateCharacterName(const String& name, int charIdx = 0, int charTotal = 0);
+    // 左右分栏：打招呼 / 交流（avatarPath 为 /avatar.jpg 等）
+    void drawSplitLayout(const String& name, const String& avatarPath,
+                         const String& text);
+
+    // 更新右侧文字（不刷新左半）
+    void updateRightText(const String& text);
+
+    // 底部按钮栏
+    void showBottomBar(bool showRecognize);
+    void hideBottomBar();
+
+    // 识别进度条动画步进（内部用）
+    int  progressStep;
 
 private:
-    // 消息历史
-    static const int MSG_MAX = 6;
-    struct ChatMsg {
-        bool    isUser;
-        String  text;
-        bool    isThinking;  // 临时占位气泡
-    };
-    ChatMsg _msgs[MSG_MAX];
-    int     _msgCount    = 0;
-    bool    _hasThinking = false;
+    void _drawRightText(const String& text);
+    void _drawAvatar(int32_t x, int32_t y, int32_t w, int32_t h,
+                     const String& avatarPath);
+    void _drawNameAt(int32_t x, int32_t y, const String& name);
+    void _drawButton(int32_t x, int32_t y, int32_t w, int32_t h,
+                     uint32_t col, uint32_t shadowCol, const char* label,
+                     bool disabled = false);
+    void _wrapText(const String& text, int32_t maxWidth,
+                   String* lines, int& lineCount, int maxLines);
 
-    void _drawHeader(const String& name, AppState state, int charIdx = 0, int charTotal = 0);
-    void _drawChatHistory();
-    void _drawBottomBar(AppState state);
-    void _drawStatusBadge(int32_t x, int32_t y, AppState state);
-
-    String   _lastCharName;
-    AppState _lastState = AppState::IDLE;
+    String   _lastRightText;
+    AppState _lastState = AppState::NO_CHARACTER;
 };

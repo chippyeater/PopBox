@@ -3,11 +3,12 @@
 // AppState → 精灵模板
 const uint8_t (*SpriteRenderer::spriteForState(AppState state))[SpriteData::COLS] {
     switch (state) {
-        case AppState::PROCESSING:
         case AppState::RECOGNIZING:
             return SpriteData::THINKING;
-        case AppState::DISPLAYING_REPLY:
+        case AppState::GREETING:
             return SpriteData::HAPPY;
+        case AppState::PHYSICAL:
+            return SpriteData::SHOCK;
         default:
             return SpriteData::IDLE;
     }
@@ -17,14 +18,14 @@ const uint8_t (*SpriteRenderer::spriteForState(AppState state))[SpriteData::COLS
 uint32_t SpriteRenderer::_resolve(int idx, const SpriteColors& colors) {
     switch (idx) {
         case 1: return SpriteColors::toRGB(
-                    colors.skin.isEmpty() ? "#FFDDB5" : colors.skin);
+                    colors.skin.isEmpty() ? "#E8B089" : colors.skin);
         case 2: return SpriteColors::toRGB(
-                    colors.hair.isEmpty() ? "#5A3E2B" : colors.hair);
+                    colors.hair.isEmpty() ? "#F47F20" : colors.hair);
         case 3: return 0x2A2A2A;  // 深色固定
         case 4: return SpriteColors::toRGB(
-                    colors.clothes.isEmpty() ? "#6B5BCD" : colors.clothes);
+                    colors.clothes.isEmpty() ? "#FF6B35" : colors.clothes);
         case 5: return SpriteColors::toRGB(
-                    colors.blush.isEmpty() ? "#FF8FA0" : colors.blush);
+                    colors.blush.isEmpty() ? "#FFB0B0" : colors.blush);
         default: return 0x000000;
     }
 }
