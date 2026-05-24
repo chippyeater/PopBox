@@ -14,17 +14,30 @@ const PORT = process.env.PORT || 3000;
 const rawImage = express.raw({ type: ['image/jpeg', 'image/*', 'application/octet-stream'], limit: '8mb' });
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '../data'), { index: false }));
 
 // ── 目录 ─────────────────────────────────────────────────────
-const DATA_DIR  = path.join(__dirname, 'data');
-const CHARS_DIR = path.join(DATA_DIR, 'characters');
-[DATA_DIR, CHARS_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
+const DATA_DIR = path.join(__dirname, 'data');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 // ── 对话历史配置 ──────────────────────────────────────────────
 const MAX_TURNS = parseInt(process.env.MAX_HISTORY_TURNS || '10');
 
+// ── MiniMax 音色映射（全局，角色对象和 TTS 接口共用）────────────
+// 角色名 → 音色 ID（精确匹配，优先级最高）
+const MINIMAX_VOICE_MAP = {
+    // 'Zsiga': 'xxx',
+    'Zsiga': 'Chinese (Mandarin)_Cute_Spirit',
+    '杜尚': 'Chinese (Mandarin)_Unrestrained_Young_Man',
+    '齐妃': 'Chinese (Mandarin)_Kind-hearted_Antie'
+};
+
+// 无匹配时的 fallback 音色
+const MINIMAX_VOICE_FALLBACK = 'Chinese (Mandarin)_Cute_Spirit';
+
 // ── 角色库 ────────────────────────────────────────────────────
-const CHARACTER_PATH = path.join(__dirname, '../data/character.json');
+// 单一 JSON 数组文件，与硬件端 data/characters.json 共用同一份
+const CHARACTERS_JSON = path.join(__dirname, '../data/characters.json');
 
 const characterLibrary = new Map();  // id → character object
 let   currentCharacterId = null;
@@ -37,61 +50,56 @@ function getCurrentCharacter() {
     return null;
 }
 
+function persistCharactersJson() {
+    const arr = Array.from(characterLibrary.values()).map(ch => ({
+        ...ch,
+        isCurrent: ch.id === currentCharacterId
+    }));
+    try {
+        fs.writeFileSync(CHARACTERS_JSON, JSON.stringify(arr, null, 2), 'utf-8');
+    } catch (e) { console.warn('[Characters] 写入 characters.json 失败:', e.message); }
+}
+
 function saveCharacterToLibrary(charObj) {
     if (!charObj?.id) return;
     characterLibrary.set(charObj.id, charObj);
-    try {
-        fs.writeFileSync(
-            path.join(CHARS_DIR, `${charObj.id}.json`),
-            JSON.stringify(charObj, null, 2), 'utf-8'
-        );
-    } catch (e) { console.warn('[Characters] 保存失败:', e.message); }
+    persistCharactersJson();
 }
 
 function setCurrentCharacter(id) {
     if (!characterLibrary.has(id)) return false;
     currentCharacterId = id;
-    // 同步 hardware 兼容的 character.json
-    try { fs.writeFileSync(CHARACTER_PATH, JSON.stringify(characterLibrary.get(id), null, 2), 'utf-8'); } catch {}
+    persistCharactersJson();
     try { fs.writeFileSync(path.join(DATA_DIR, 'current.json'), JSON.stringify({ id }, null, 2), 'utf-8'); } catch {}
     console.log(`[Characters] 当前角色 → ${characterLibrary.get(id).name}`);
     return true;
 }
 
 function loadCharacterLibrary() {
-    // 加载所有已保存角色
-    const files = fs.readdirSync(CHARS_DIR).filter(f => f.endsWith('.json'));
-    for (const f of files) {
-        try {
-            const obj = JSON.parse(fs.readFileSync(path.join(CHARS_DIR, f), 'utf-8'));
-            if (obj.id) characterLibrary.set(obj.id, obj);
-        } catch {}
-    }
-
-    // 如果角色库为空，从 character.json 迁移默认角色
-    if (characterLibrary.size === 0) {
-        let defaultChar = null;
-        try { defaultChar = JSON.parse(fs.readFileSync(CHARACTER_PATH, 'utf-8')); } catch {}
-        if (!defaultChar) {
-            defaultChar = {
-                id: 'xiao_ling', name: '小铃',
-                catchphrases: ['哎呀～', '真的假的！', '这个嘛……'],
-                personality:  '活泼好奇，有点迷糊但内心温暖',
-                worldview:    '来自「星盒世界」，相信每件物品都有自己的灵魂',
-                background:   '某个下雨天被装进盲盒，睡了很久直到被你打开',
-                reply_style:  '简短口语化，50字以内，偶尔用口头禅'
-            };
-        }
-        saveCharacterToLibrary(defaultChar);
-    }
-
-    // 恢复上次的当前角色
     try {
-        const cur = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'current.json'), 'utf-8'));
-        if (cur.id && characterLibrary.has(cur.id)) currentCharacterId = cur.id;
+        const arr = JSON.parse(fs.readFileSync(CHARACTERS_JSON, 'utf-8'));
+        for (const obj of arr) {
+            if (obj.id) {
+                characterLibrary.set(obj.id, obj);
+                if (obj.isCurrent) currentCharacterId = obj.id;
+            }
+        }
     } catch {}
-    if (!currentCharacterId) currentCharacterId = characterLibrary.keys().next().value;
 
+    if (characterLibrary.size === 0) {
+        const defaultChar = {
+            id: 'xiao_ling', name: '小铃', avatar: '',
+            catchphrases: ['哎呀～', '真的假的！', '这个嘛……'],
+            personality:  '活泼好奇，有点迷糊但内心温暖',
+            worldview:    '来自「星盒世界」，相信每件物品都有自己的灵魂',
+            background:   '某个下雨天被装进盲盒，睡了很久直到被你打开',
+            reply_style:  '简短口语化，50字以内，偶尔用口头禅'
+        };
+        characterLibrary.set(defaultChar.id, defaultChar);
+        persistCharactersJson();
+    }
+
+    if (!currentCharacterId) currentCharacterId = characterLibrary.keys().next().value;
     console.log(`[Characters] 已加载 ${characterLibrary.size} 个角色，当前: ${getCurrentCharacter()?.name}`);
 }
 
@@ -109,9 +117,11 @@ function buildSystemPrompt(ch) {
     }
     p += `回复风格：${ch.reply_style}\n`;
     p += '重要规则：必须严格按照以下JSON格式输出，不要加任何其他内容：\n';
-    p += '{"reply":"角色说的话","expression":"idle"}\n';
-    p += 'reply 要求：只根据对方说的内容和角色特色自然回应，说该说的，不要为了凑字数而添加多余内容，简短时就简短。不加旁白。\n';
-    p += 'expression 只能是以下三个值之一：happy（开心/兴奋/被夸/撒娇）、thinking（困惑/认真/沉思）、idle（其他普通情况）。';
+    p += '{"reply":"角色说的话","expression":"idle","emotion":"calm"}\n';
+    p += 'reply 要求：以角色身份自然回应，话说到位即止，不铺陈、不重复、不强行补充。不加旁白。\n';
+    p += 'reply 可在文字中插入音效标记：(laughs)笑声、(sighs)叹气、(gasps)喘息、<#0.5#>停顿0.5秒，用来增强语气，但不要滥用。\n';
+    p += 'expression 只能是以下三个值之一：happy（开心/兴奋/被夸/撒娇）、thinking（困惑/认真/沉思）、idle（其他普通情况）。\n';
+    p += 'emotion 只能是以下值之一：happy、sad、angry、fearful、disgusted、surprised、calm、fluent、whisper。根据角色当前情绪选择最贴切的。';
     return p;
 }
 
@@ -414,14 +424,18 @@ app.post('/api/chat', async (req, res) => {
     const url   = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
 
     try {
-        const response = await fetch(url, {
+        const promptChars = messages.reduce((n, m) => n + m.content.length, 0);
+        console.log(`[Chat] 发送消息数: ${messages.length}，prompt 总字符: ${promptChars}`);
+        const t0 = Date.now();
+        const response = await fetchWithTimeout(url, {
             method:  'POST',
             headers: {
                 'Content-Type':  'application/json',
                 'Authorization': `Bearer ${apiKey}`
             },
-            body: JSON.stringify({ model, messages, max_tokens: 120, temperature: 0.85 })
-        });
+            body: JSON.stringify({ model, messages, max_tokens: 120, temperature: 0.85, enable_thinking: false })
+        }, 15000);
+        console.log(`[Chat] API 响应: ${Date.now() - t0}ms`);
 
         if (!response.ok) {
             const t = await response.text();
@@ -430,16 +444,18 @@ app.post('/api/chat', async (req, res) => {
         }
 
         const data = await response.json();
+        console.log(`[Chat] JSON 解析完成: ${Date.now() - t0}ms`);
         const raw  = data?.choices?.[0]?.message?.content?.trim() || '';
 
         // 解析 JSON，容错处理
-        let reply = raw, expression = 'idle';
+        const VALID_EMOTIONS = ['happy','sad','angry','fearful','disgusted','surprised','calm','fluent','whisper'];
+        let reply = raw, expression = 'idle', emotion = 'calm';
         try {
             const jsonStr = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
             const parsed  = JSON.parse(jsonStr);
             reply      = parsed.reply      || raw;
-            expression = ['idle','happy','thinking'].includes(parsed.expression)
-                         ? parsed.expression : 'idle';
+            expression = ['idle','happy','thinking'].includes(parsed.expression) ? parsed.expression : 'idle';
+            emotion    = VALID_EMOTIONS.includes(parsed.emotion) ? parsed.emotion : 'calm';
         } catch {
             // 模型没按格式输出时直接用原始文本
         }
@@ -447,8 +463,8 @@ app.post('/api/chat', async (req, res) => {
         // 持久化这一轮对话（存纯文本）
         appendTurn(characterId, message, reply);
 
-        console.log(`[Chat] (${characterId}) 用户: ${message} | 角色: ${reply} | 表情: ${expression}`);
-        res.json({ reply, expression });
+        console.log(`[Chat] (${characterId}) 用户: ${message} | 角色: ${reply} | 表情: ${expression} | emotion: ${emotion} | 总耗时: ${Date.now() - t0}ms`);
+        res.json({ reply, expression, emotion });
 
     } catch (err) {
         console.error('[LLM] 请求失败:', err.message);
@@ -481,28 +497,17 @@ app.delete('/api/history/:characterId', (req, res) => {
 // 新流程让 VL 模型直接给出它知道的全部信息，名字和系列都明确区分。
 // ══════════════════════════════════════════════════════════════
 
-const VL_PROMPT = `请识别图中的角色，用 JSON 格式返回所有你知道的信息：
+function buildVlPrompt() {
+    return `请识别图中角色，只返回以下 JSON，不加任何其他文字或代码块标记：
 {
-  "name": "角色本人的名字（精确到个体，如'派蒙'，而不是系列名'原神'）",
-  "series": "所属作品/IP/系列名称",
-  "gender": "角色性别，只能填以下四个值之一：girl（少女/萝莉）、boy（少年/正太）、woman（成年女性）、man（成年男性）",
-  "personality": "性格特点，2-3句话",
-  "worldview": "所在世界观和作品背景，1-2句话",
-  "background": "角色背景故事，2-3句话",
-  "catchphrases": ["角色的代表性台词或口头禅，列2-4条"],
-  "reply_style": "说话风格，1句话",
-  "spriteColors": {
-    "hair": "角色经典发色，十六进制如 #FF5566",
-    "clothes": "主服装色，十六进制",
-    "skin": "肤色，十六进制（若无特殊肤色填 #FFDDB5）",
-    "blush": "腮红色，十六进制（若无特殊腮红填 #FF8FA0）"
-  }
+  "name": "角色个人名字（精确到个体，如'派蒙'，而非系列名'原神'）",
+  "series": "所属作品/IP/系列名称"
 }
 要求：
-- 只输出 JSON，不要 markdown 代码块标记，不要任何其他文字
-- name 字段必须是角色个人名字，不能只写作品名
-- 如果有多个角色，只写最主要的那一个
-- 不确定的字段填写你的最佳推测，不要留空`;
+- name 必须是角色自身的名字，不能只写作品名
+- 如果图中有多个角色，只写最主要的那一个
+- 不确定时填写最佳推测，不要留空`;
+}
 
 // 带超时的 fetch 封装（防止 API 无响应时永久挂起）
 async function fetchWithTimeout(url, options, timeoutMs = 45000) {
@@ -516,7 +521,7 @@ async function fetchWithTimeout(url, options, timeoutMs = 45000) {
     }
 }
 
-// Step1: VL 模型看图，直接输出完整结构化角色信息
+// Step1: VL 模型看图，只输出 name 和 series
 async function extractCharacterFromImage(imageBuffer, mimeType = 'image/jpeg') {
     const apiKey = process.env.DASHSCOPE_API_KEY;
     const model  = process.env.QWEN_VL_MODEL || 'qwen-vl-max';
@@ -532,11 +537,11 @@ async function extractCharacterFromImage(imageBuffer, mimeType = 'image/jpeg') {
             role: 'user',
             content: [
                 { type: 'image_url', image_url: { url: dataUrl } },
-                { type: 'text', text: VL_PROMPT }
+                { type: 'text', text: buildVlPrompt() }
             ]
         }],
-        max_tokens:      1200,  // Qwen3 thinking 模式会先消耗 token 思考，需要更大空间
-        enable_thinking: false, // 关闭 Qwen3 系列的思考模式，直接输出答案
+        max_tokens:      200,
+        enable_thinking: false,
     };
 
     console.log(`[识别 VL] 发送请求...`);
@@ -625,92 +630,24 @@ async function supplementWithSearch(name, series) {
     return {};
 }
 
-// 判断 VL 输出是否缺失关键信息，决定是否补充搜索
-function needsSupplementSearch(info) {
-    const missing = [
-        !info.personality || info.personality.length < 5,
-        !info.background  || info.background.length  < 10,
-        !info.catchphrases || info.catchphrases.length === 0
-    ];
-    return missing.filter(Boolean).length >= 2;
-}
-
-// 合并 VL 信息和搜索信息（VL 的结果优先，搜索填补空缺）
-function mergeInfo(vlInfo, searchInfo) {
-    return {
-        personality:  vlInfo.personality  || searchInfo.personality  || '',
-        worldview:    vlInfo.worldview    || searchInfo.worldview    || '',
-        background:   vlInfo.background   || searchInfo.background   || '',
-        catchphrases: (vlInfo.catchphrases?.length ? vlInfo.catchphrases : searchInfo.catchphrases) || [],
-        reply_style:  vlInfo.reply_style  || searchInfo.reply_style  || '简短口语化，50字以内'
-    };
-}
-
-function buildCharacterObject(vlInfo, supplementInfo = {}) {
-    const merged = mergeInfo(vlInfo, supplementInfo);
-    const name   = vlInfo.name || '未知角色';
-    const id     = name.replace(/[^\w]/g, '_').toLowerCase().slice(0, 24) || `char_${Date.now()}`;
-    const validGenders = ['girl', 'boy', 'woman', 'man'];
-    const gender = validGenders.includes(vlInfo.gender) ? vlInfo.gender : 'woman';
-
-    // 提取配色，字段不合法时用 null（前端/硬件降级为默认色）
-    let spriteColors = null;
-    const sc = vlInfo.spriteColors;
-    if (sc && sc.hair && sc.clothes) {
-        spriteColors = {
-            hair:    sc.hair,
-            clothes: sc.clothes,
-            skin:    sc.skin    || '#FFDDB5',
-            blush:   sc.blush   || '#FF8FA0',
-        };
-    }
+function buildCharacterObject(nameStr, series, searchInfo = {}) {
+    const name = nameStr || '未知角色';
+    const id   = name.replace(/[\\/:*?"<>|]/g, '_').slice(0, 32) || `char_${Date.now()}`;
 
     return {
         id,
         name,
-        series:      vlInfo.series || '',
-        gender,
-        avatar:      '/avatar.jpg',
-        catchphrases: merged.catchphrases,
-        personality:  merged.personality,
-        worldview:    merged.worldview,
-        background:   merged.background,
-        reply_style:  merged.reply_style,
-        spriteColors,
+        series:       series || '',
+        voice:        MINIMAX_VOICE_MAP[name] || MINIMAX_VOICE_FALLBACK,
+        avatar:       `/${id}.jpg`,
+        catchphrases: searchInfo.catchphrases || [],
+        personality:  searchInfo.personality  || '',
+        worldview:    searchInfo.worldview    || '',
+        background:   searchInfo.background   || '',
+        reply_style:  searchInfo.reply_style  || '简短口语化，50字以内',
     };
 }
 
-// ── 像素精灵配色生成（识别完成后调用，速度快无需搜索）────────
-async function generateSpriteColors(charObj) {
-    const apiKey = process.env.DASHSCOPE_API_KEY;
-    const model  = process.env.QWEN_CHAT_MODEL || 'qwen-turbo';
-    const url    = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
-
-    const prompt = `角色「${charObj.name}」（${charObj.series || ''}）的外观形象。
-请根据该角色的经典配色方案，返回以下颜色（十六进制格式，如 #FF5566）：
-{"hair":"发色","clothes":"主服装色","skin":"肤色（默认#FFDDB5）","blush":"腮红色（默认#FF8FA0）"}
-只返回JSON，不加其他文字。`;
-
-    try {
-        const resp = await fetchWithTimeout(url, {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-            body: JSON.stringify({
-                model,
-                messages: [{ role: 'user', content: prompt }],
-                max_tokens: 80
-            })
-        }, 15000);
-
-        const data    = await resp.json();
-        const content = data?.choices?.[0]?.message?.content?.trim() || '';
-        const match   = content.match(/\{[\s\S]*\}/);
-        if (match) return JSON.parse(match[0]);
-    } catch (e) {
-        console.warn('[配色] 生成失败:', e.message);
-    }
-    return null; // 失败时由前端/硬件使用默认配色
-}
 
 // ── 识别流程核心（硬件和网页共用）───────────────────────────
 async function runRecognition(imageBuffer, mimeType, res) {
@@ -725,7 +662,7 @@ async function runRecognition(imageBuffer, mimeType, res) {
     console.log(`[识别] 开始，图片: ${imageBuffer.length} 字节 → 已保存到 ${debugPath}`);
 
     try {
-        // Step1: VL 模型看图 → 完整角色信息
+        // Step1: VL 模型看图 → 只拿 name 和 series
         const vlInfo = await extractCharacterFromImage(imageBuffer, mimeType);
 
         if (!vlInfo.name || vlInfo.name === '未知' || vlInfo.name === '未知角色') {
@@ -733,16 +670,22 @@ async function runRecognition(imageBuffer, mimeType, res) {
         }
         console.log(`[识别] VL 识别 → ${vlInfo.name}（${vlInfo.series || '未知系列'}）`);
 
-        // Step2: 按需补充联网搜索
-        let supplementInfo = {};
-        if (needsSupplementSearch(vlInfo)) {
-            console.log(`[识别] 关键字段缺失，启动补充搜索: ${vlInfo.name} / ${vlInfo.series}`);
-            supplementInfo = await supplementWithSearch(vlInfo.name, vlInfo.series);
+        // 规则命中本地库（按名字精确匹配）→ 直接复用，跳过搜索
+        const libMatch = [...characterLibrary.values()].find(
+            c => c.name === vlInfo.name
+        );
+        if (libMatch) {
+            console.log(`[识别] 命中本地库 → ${libMatch.name}，跳过联网搜索`);
+            setCurrentCharacter(libMatch.id);
+            return res.json({ ...libMatch, isCurrent: true });
         }
 
-        const charObj = buildCharacterObject(vlInfo, supplementInfo);
-        const sc = charObj.spriteColors;
-        console.log(`[识别] 完成 → ${charObj.name}，口头禅: ${charObj.catchphrases.join(' / ')}${sc ? `，配色: 发=${sc.hair} 衣=${sc.clothes}` : ''}`);
+        // Step2: 未命中 → 联网搜索全部字段
+        console.log(`[识别] 未命中本地库，启动联网搜索: ${vlInfo.name} / ${vlInfo.series}`);
+        const searchInfo = await supplementWithSearch(vlInfo.name, vlInfo.series);
+
+        const charObj = buildCharacterObject(vlInfo.name, vlInfo.series, searchInfo);
+        console.log(`[识别] 完成 → ${charObj.name}，口头禅: ${charObj.catchphrases.join(' / ')}`);
 
         // 保存到角色收藏夹并设为当前
         saveCharacterToLibrary(charObj);
@@ -774,28 +717,20 @@ app.post('/api/recognize/upload', rawImage, async (req, res) => {
 });
 
 // ── POST /api/tts ─────────────────────────────────────────────
-// Body: { text: string, gender?: 'girl'|'boy'|'woman'|'man' }
-// 返回: audio/mpeg 二进制流
-const VOICE_MAP = {
-    girl:  'longhuhu',
-    boy:   'longshanshan',
-    woman: 'longdaiyu',
-    man:   'longhouge',
-};
-
+// Body: { text: string, voice: string }
+// 返回: audio/mp3 二进制流
 app.post('/api/tts', async (req, res) => {
-    const { text, gender = 'woman' } = req.body;
+    const { text, voice } = req.body;
     if (!text?.trim()) return res.status(400).json({ error: 'text 不能为空' });
+    if (!voice)        return res.status(400).json({ error: 'voice 不能为空' });
 
-    const apiKey = process.env.DASHSCOPE_API_KEY;
-    if (!apiKey || apiKey === 'your_dashscope_api_key_here') {
-        return res.status(500).json({ error: 'DashScope API Key 未配置' });
-    }
+    const apiKey = process.env.MINIMAX_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'MINIMAX_API_KEY 未配置' });
 
-    const voice = VOICE_MAP[gender] || VOICE_MAP.woman;
-    const url   = 'https://dashscope.aliyuncs.com/api/v1/services/audio/tts/SpeechSynthesizer';
+    const url = 'https://api.minimaxi.com/v1/t2a_v2';
 
     try {
+        const t0 = Date.now();
         const response = await fetchWithTimeout(url, {
             method:  'POST',
             headers: {
@@ -803,29 +738,35 @@ app.post('/api/tts', async (req, res) => {
                 'Authorization': `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-                model: 'cosyvoice-v2',
-                input:      { text: text.trim() },
-                parameters: { voice, format: 'wav', sample_rate: 16000 },
+                model: 'speech-02-hd',
+                text:  text.trim(),
+                voice_setting: {
+                    voice_id: voice,
+                    speed: 1.0,
+                    vol:   1.0,
+                    pitch: 0,
+                },
+                audio_setting: { format: 'mp3', sample_rate: 32000 },
             })
-        }, 20000);
+        }, 30000);
 
         const data = await response.json();
-        if (!response.ok || data.code) {
+        console.log(`[TTS] 合成请求: ${Date.now() - t0}ms | voice=${voice}`);
+
+        if (!response.ok || data.base_resp?.status_code !== 0) {
             console.error('[TTS] 错误:', JSON.stringify(data));
-            return res.status(502).json({ error: data.message || `TTS 错误: ${response.status}` });
+            return res.status(502).json({ error: data.base_resp?.status_msg || `TTS 错误: ${response.status}` });
         }
 
-        // 响应中包含音频 URL，代理下载后返回给前端
-        const audioUrl = data?.output?.audio?.url;
-        if (!audioUrl) {
-            console.error('[TTS] 响应中无音频 URL:', JSON.stringify(data));
-            return res.status(502).json({ error: 'TTS 未返回音频地址' });
+        const hexAudio = data?.data?.audio;
+        if (!hexAudio) {
+            console.error('[TTS] 响应中无音频数据:', JSON.stringify(data));
+            return res.status(502).json({ error: 'TTS 未返回音频数据' });
         }
 
-        const audioResp   = await fetchWithTimeout(audioUrl, {}, 15000);
-        const audioBuffer = Buffer.from(await audioResp.arrayBuffer());
-        console.log(`[TTS] voice=${voice} text="${text.slice(0, 20)}…" size=${audioBuffer.length}B`);
-        res.set('Content-Type', 'audio/wav');
+        const audioBuffer = Buffer.from(hexAudio, 'hex');
+        console.log(`[TTS] 总计: ${Date.now() - t0}ms | size=${audioBuffer.length}B`);
+        res.set('Content-Type', 'audio/mpeg');
         res.send(audioBuffer);
 
     } catch (err) {

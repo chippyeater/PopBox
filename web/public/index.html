@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PopBox</title>
     <link rel="stylesheet" href="style.css">
-    <script src="sprites.js"></script>
 </head>
 <body>
 <div class="ui-root">
@@ -18,7 +17,8 @@
             <!-- 头像框 -->
             <div class="avatar-frame">
                 <div class="avatar-bg">
-                    <canvas id="avatar-canvas" style="image-rendering:pixelated;"></canvas>
+                    <img id="avatar-img" src="" alt="avatar"
+                         onerror="this.style.display='none'">
                 </div>
                 <span class="corner tl">+</span>
                 <span class="corner tr">+</span>

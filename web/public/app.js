@@ -27,22 +27,38 @@ const app = (() => {
     let speechSupported = false;
     let characterId     = 'xiao_ling';
     let charName        = '';
-    let charGender      = 'woman';
-    let spriteColors    = null;
+    let charVoice       = '';
+    let charAvatarBase  = '';   // 当前角色头像基础路径
     let thinkingEl      = null;
-    let currentAudio    = null;   // 当前播放的 Audio 实例
-    const elAvatar = document.getElementById('avatar-canvas');
+    let currentAudio    = null;
+    const elAvatar = document.getElementById('avatar-img');
+
+    // 和硬件 _resolveAvatarPath 逻辑相同：在扩展名前插入 _expression
+    // 尝试加载变体，失败则 fallback 到基础路径
+    function setAvatarExpression(expression) {
+        if (!elAvatar || !charAvatarBase) return;
+        const tryLoad = (src, fallback) => {
+            const img = new Image();
+            img.onload  = () => { elAvatar.src = src; elAvatar.style.display = ''; };
+            img.onerror = () => fallback ? tryLoad(fallback, null)
+                                         : (elAvatar.style.display = 'none');
+            img.src = src;
+        };
+        if (!expression || expression === 'idle') {
+            tryLoad(charAvatarBase, null);
+            return;
+        }
+        const dot = charAvatarBase.lastIndexOf('.');
+        const variant = dot >= 0
+            ? charAvatarBase.slice(0, dot) + '_' + expression + charAvatarBase.slice(dot)
+            : charAvatarBase;
+        tryLoad(variant, charAvatarBase);
+    }
 
     // ── 初始化 ───────────────────────────────────────────────
     async function init() {
         await loadCharacters();
         initSpeechRecognition();
-    }
-
-    function refreshSprite(expression) {
-        if (!elAvatar) return;
-        drawSprite(elAvatar, expression || STATE_TO_EXPRESSION[state] || 'idle',
-                   4, spriteColors || {});
     }
 
     async function loadCharacters() {
@@ -53,11 +69,11 @@ const app = (() => {
             const cur = list.find(c => c.isCurrent) || list[0];
             if (cur) {
                 elCharName.textContent = cur.name;
-                charName     = cur.name;
-                characterId  = cur.id;
-                charGender   = cur.gender || 'woman';
-                spriteColors = cur.spriteColors || null;
-                refreshSprite('idle');
+                charName       = cur.name;
+                characterId    = cur.id;
+                charVoice      = cur.voice  || '';
+                charAvatarBase = cur.avatar || '';
+                setAvatarExpression('idle');
             }
         } catch {
             elCharName.textContent = '小铃';
@@ -133,8 +149,7 @@ const app = (() => {
                 (newState === 'recognizing' ? ' recognizing' : '');
         }
 
-        // 精灵表情跟随状态
-        refreshSprite(STATE_TO_EXPRESSION[newState] || 'idle');
+        setAvatarExpression(newState === 'processing' ? 'thinking' : 'idle');
     }
 
     // ── 聊天历史渲染 ─────────────────────────────────────────
@@ -296,11 +311,12 @@ const app = (() => {
             try {
                 audio = await fetchAudio(data.reply);
             } catch (e) {
-                console.warn('[TTS] 加载失败，直接显示:', e.message);
+                console.error('[TTS] 加载失败:', e.message);
+                showError('TTS 失败: ' + e.message);
             }
             addCharMsg(data.reply);
             setState('idle');
-            if (data.expression) refreshSprite(data.expression);
+            if (data.expression) setAvatarExpression(data.expression);
             if (audio) audio.play();
 
         } catch (err) {
@@ -316,7 +332,7 @@ const app = (() => {
         const res = await fetch('/api/tts', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ text, gender: charGender })
+            body:    JSON.stringify({ text, voice: charVoice })
         });
         if (!res.ok) throw new Error(`TTS ${res.status}`);
         const blob  = await res.blob();
@@ -355,12 +371,12 @@ const app = (() => {
             const res  = await fetch(`/api/characters/current/${id}`, { method: 'PUT' });
             const data = await res.json();
             if (!res.ok) return showError(data.error || '切换失败');
-            characterId  = id;
-            charName     = data.current?.name || '';
-            charGender   = data.current?.gender || 'woman';
-            spriteColors = data.current?.spriteColors || null;
+            characterId    = id;
+            charName       = data.current?.name   || '';
+            charVoice      = data.current?.voice  || '';
+            charAvatarBase = data.current?.avatar || '';
             elCharName.textContent = charName;
-            refreshSprite('idle');
+            setAvatarExpression('idle');
             setState('idle');
             await loadAndRenderHistory(id, charName);
             await loadCharacters();
@@ -413,13 +429,16 @@ const app = (() => {
                 return;
             }
 
-            characterId  = data.id || characterId;
-            charName     = data.name || '未知角色';
-            charGender   = data.gender || 'woman';
-            spriteColors = data.spriteColors || null;
+            characterId    = data.id   || characterId;
+            charName       = data.name || '未知角色';
+            charVoice      = data.voice   || '';
+            charAvatarBase = data.avatar  || '';
             elCharName.textContent = charName;
+            setAvatarExpression('idle');
             setState('idle');
-            addCharMsg(`${data.catchphrases?.[0] || ''}我是${charName}！很高兴认识你～`);
+            const greeting = `${data.catchphrases?.[0] || ''}我是${charName}！很高兴认识你～`;
+            addCharMsg(greeting);
+            fetchAudio(greeting).then(audio => audio?.play()).catch(() => {});
             await loadCharacters();
 
             elResultContent.innerHTML = `
