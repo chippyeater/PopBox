@@ -218,6 +218,9 @@ void ChatUI::_showGreeting() {
     _lastExpression = "happy";
     _display.drawSplitLayout(ch.name, ch.avatarPath, _lastReplyText, _lastExpression);
     _display.showBottomBar(false);
+    _recorder.pauseMic();
+    _tts.speak(_lastReplyText);
+    _recorder.resumeMic();
     _setState(AppState::GREETING);
 }
 
