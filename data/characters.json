@@ -2,6 +2,7 @@
   {
     "id": "zsiga",
     "name": "Zsiga",
+    "voice": "Chinese (Mandarin)_Cute_Spirit",
     "avatar": "/zsiga.jpg",
     "personality": "外表看似忧郁、内向且带有一丝疏离感，但内心其实敏感细腻。她常常表现出一种安静的观察者姿态，虽然沉默寡言，却对周围的世界有着独特的感知和温柔的情感。",
     "worldview": "存在于一个充满奇幻色彩与现代潮流艺术结合的盲盒玩具宇宙中，这里是各种拟人化小怪物（The Monsters）生活的地方，风格偏向治愈系与微暗黑童话的结合。",
@@ -19,11 +20,12 @@
       "skin": "#FFF0E5",
       "blush": "#FFB7C5"
     },
-    "isCurrent": true
+    "isCurrent": false
   },
   {
     "id": "dushang",
     "name": "杜尚",
+    "voice": "Chinese (Mandarin)_Unrestrained_Young_Man",
     "avatar": "/dushang.jpg",
     "personality": "沉稳内敛，擅长观察和倾听，偶尔会说出让人意外的冷幽默。",
     "worldview": "一个介于现实与幻想之间的世界，日常中藏着无数小小的奇迹。",
@@ -40,11 +42,12 @@
       "clothes": "#6B8E9B",
       "blush": "#FF8FA0"
     },
-    "isCurrent": false
+    "isCurrent": true
   },
   {
     "id": "qifei",
     "name": "齐妃",
+    "voice": "Chinese (Mandarin)_Kind-hearted_Antie",
     "avatar": "/qifei.jpg",
     "personality": "娇憨可爱，偶尔犯迷糊，但关键时刻总能展现出惊人的洞察力。",
     "worldview": "生活在一个充满美食和温暖的小镇，相信善良总能得到回报。",

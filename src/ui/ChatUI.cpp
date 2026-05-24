@@ -2,6 +2,35 @@
 #include <M5Unified.h>
 
 static constexpr uint32_t GREETING_DURATION_MS = 5000;
+
+// 过滤 TTS 标记，仅用于屏幕显示
+static String stripTtsMarkers(const String& text) {
+    String result = text;
+    // 括号语气词：(laughs) (sighs) (gasps) (cries) (whispers) 等
+    String cleaned;
+    cleaned.reserve(result.length());
+    bool inParen = false;
+    for (int i = 0; i < (int)result.length(); i++) {
+        char c = result[i];
+        if (c == '(') { inParen = true; continue; }
+        if (c == ')') { inParen = false; continue; }
+        if (!inParen) cleaned += c;
+    }
+    // 停顿标记 <#数字#>
+    String out;
+    out.reserve(cleaned.length());
+    bool inTag = false;
+    for (int i = 0; i < (int)cleaned.length(); i++) {
+        if (cleaned[i] == '<' && i + 1 < (int)cleaned.length() && cleaned[i+1] == '#') {
+            inTag = true; continue;
+        }
+        if (inTag && cleaned[i] == '>') { inTag = false; continue; }
+        if (!inTag) out += cleaned[i];
+    }
+    // 去除多余空格
+    out.trim();
+    return out;
+}
 static constexpr uint32_t IDLE_TIMEOUT_MS      = 30000;
 
 ChatUI::ChatUI(CharacterManager& charMgr, AudioRecorder& recorder,
@@ -135,7 +164,7 @@ void ChatUI::_processAndReply() {
         }
     }
 
-    _lastReplyText = reply;
+    _lastReplyText = stripTtsMarkers(reply);
     _display.drawSplitLayout(ch.name, ch.avatarPath, _lastReplyText, _lastExpression);
     _display.showBottomBar(false);
 

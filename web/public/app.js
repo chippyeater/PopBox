@@ -170,13 +170,21 @@ const app = (() => {
         scrollToBottom();
     }
 
+    function stripTtsMarkers(text) {
+        return text
+            .replace(/\(laughs?\)|(\(sighs?\))|(\(gasps?\))|(\(cries?\))|(\(whispers?\))/gi, '')
+            .replace(/<#[\d.]+#>/g, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+    }
+
     function addCharMsg(text, ts) {
         removeThinker();
         const wrap = document.createElement('div');
         wrap.className = 'msg-char';
         wrap.appendChild(makeHeader(charName || '角色', ts));
         const body = document.createElement('div');
-        body.textContent = text;
+        body.textContent = stripTtsMarkers(text);
         wrap.appendChild(body);
         elChatHistory.appendChild(wrap);
         scrollToBottom();

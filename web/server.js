@@ -738,7 +738,7 @@ app.post('/api/tts', async (req, res) => {
                 'Authorization': `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-                model: 'speech-02-hd',
+                model: 'speech-2.8-hd',
                 text:  text.trim(),
                 voice_setting: {
                     voice_id: voice,
