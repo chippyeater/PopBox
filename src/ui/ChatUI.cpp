@@ -45,16 +45,10 @@ ChatUI::ChatUI(CharacterManager& charMgr, AudioRecorder& recorder,
 
 void ChatUI::begin() {
     _display.begin();
-    if (_charMgr.count() > 0) {
-        const auto& ch = _charMgr.current();
-        _display.drawIdle(ch.name, ch.avatarPath, "idle");
-        _display.showBottomBar(false);
-        _state = AppState::IDLE;
-    } else {
-        _display.drawNoCharacter();
-        _display.showBottomBar(true);
-        _state = AppState::NO_CHARACTER;
-    }
+    // 始终显示欢迎/入住界面，无论是否有角色
+    _display.drawNoCharacter();
+    _display.showBottomBar(true);
+    _state = AppState::NO_CHARACTER;
 }
 
 void ChatUI::update() {
@@ -135,13 +129,39 @@ void ChatUI::_handleTouch() {
     auto t = M5.Touch.getDetail(0);
     if (!t.wasPressed()) return;
 
+    // ── 识别按钮（NO_CHARACTER / CHARACTER_SELECT 均可触发）──
     if (_isTouchOnRecognizeButton(t.x, t.y)) {
         _onRecognizeTap();
         return;
     }
 
-    // ── IDLE：双击屏幕唤醒 ──
+    // ── NO_CHARACTER：点击进入角色选择 ──
+    if (_state == AppState::NO_CHARACTER) {
+        // 在识别按钮已被排除的前提下，任何点击都进入选择
+        if (_charMgr.count() > 0) {
+            _enterCharacterSelect();
+        }
+        return;
+    }
+
+    // ── CHARACTER_SELECT：点击角色卡片入住 ──
+    if (_state == AppState::CHARACTER_SELECT) {
+        int charIndex;
+        if (_isTouchOnCharacterCard(t.x, t.y, charIndex)) {
+            _onCharacterSelect(charIndex);
+        }
+        return;
+    }
+
+    // ── IDLE：换角色 / 双击屏幕唤醒 ──
     if (_state == AppState::IDLE) {
+        // 点击左上角"换角色"按钮 → 回到角色选择
+        if (t.x >= SWITCH_BTN_X && t.x <= SWITCH_BTN_X + SWITCH_BTN_W
+            && t.y >= SWITCH_BTN_Y && t.y <= SWITCH_BTN_Y + SWITCH_BTN_H) {
+            _enterCharacterSelect();
+            return;
+        }
+        // 双击唤醒
         uint32_t now = millis();
         if (now - _lastTapTime < 500 && _tapCount == 1) {
             _tapCount = 0;
@@ -189,7 +209,8 @@ void ChatUI::_onMicButtonTap() {
 }
 
 void ChatUI::_onRecognizeTap() {
-    if (_state != AppState::NO_CHARACTER) return;
+    if (_state != AppState::NO_CHARACTER
+        && _state != AppState::CHARACTER_SELECT) return;
     _runRecognition();
 }
 
@@ -368,10 +389,65 @@ void ChatUI::_restoreM5() {
                   i2cOk ? "ok" : "failed");
 }
 
+// ── 角色选择流程 ──────────────────────────────────────────────────
+
+void ChatUI::_enterCharacterSelect() {
+    int count = _charMgr.count();
+    int n = (count > 3) ? 3 : count;
+    String names[3];
+    String avatars[3];
+    for (int i = 0; i < n; i++) {
+        names[i]   = _charMgr.characterAt(i).name;
+        avatars[i] = _charMgr.characterAt(i).avatarPath;
+    }
+    _display.drawCharacterSelect(names, avatars, n);
+    _state = AppState::CHARACTER_SELECT;
+    _idleStartMs = millis();
+}
+
+void ChatUI::_onCharacterSelect(int index) {
+    _charMgr.selectCharacter(index);
+    const auto& ch = _charMgr.current();
+    _lastExpression = "idle";
+    _display.drawIdle(ch.name, ch.avatarPath, _lastExpression);
+    _display.showBottomBar(false);
+    _state = AppState::IDLE;
+    _idleStartMs = millis();
+    Serial.printf("[ChatUI] 角色入住 → %s\n", ch.name.c_str());
+}
+
+bool ChatUI::_isTouchOnCharacterCard(int32_t x, int32_t y, int& outIndex) {
+    if (_state != AppState::CHARACTER_SELECT) return false;
+
+    int n = _charMgr.count();
+    if (n > 3) n = 3;
+    int totalW = n * CARD_W + (n - 1) * CARD_GAP;
+    int startX = (SCREEN_W - totalW) / 2;
+
+    for (int i = 0; i < n; i++) {
+        int cx = startX + i * (CARD_W + CARD_GAP);
+        if (x >= cx && x <= cx + CARD_W && y >= CARD_Y && y <= CARD_Y + CARD_H) {
+            outIndex = i;
+            return true;
+        }
+    }
+    return false;
+}
+
 // ── 触摸区域 ──────────────────────────────────────────────────────
 
 bool ChatUI::_isTouchOnRecognizeButton(int32_t x, int32_t y) {
-    if (_state != AppState::NO_CHARACTER) return false;
-    return (x >= 96 && x <= 96 + 128
-            && y >= BTN_Y && y <= BTN_Y + BTN_H);
+    if (_state == AppState::NO_CHARACTER) {
+        // 欢迎页底部"识别角色"按钮（宽大居中）
+        static constexpr int BW = 160, BH = 30, BY = 182;
+        int bx = (SCREEN_W - BW) / 2;
+        return (x >= bx && x <= bx + BW && y >= BY && y <= BY + BH);
+    }
+    if (_state == AppState::CHARACTER_SELECT) {
+        // 选择页底部"拍照识别"按钮（居中宽大）
+        static constexpr int BW = 160, BH = 30, BY = 182;
+        int bx = (SCREEN_W - BW) / 2;
+        return (x >= bx && x <= bx + BW && y >= BY && y <= BY + BH);
+    }
+    return false;
 }

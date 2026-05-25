@@ -139,6 +139,21 @@ bool CharacterManager::switchToNext() {
     return true;
 }
 
+// ── 按索引选择角色 ─────────────────────────────────────────────
+const Character& CharacterManager::characterAt(int index) const {
+    return _cache[index];
+}
+
+bool CharacterManager::selectCharacter(int index) {
+    if (index < 0 || index >= (int)_cache.size()) return false;
+    _currentIndex = index;
+    _current      = _cache[_currentIndex];
+    _notifyBackend(_current.id);
+    Serial.printf("[Characters] 选择 → %s (%d/%d)\n",
+                  _current.name.c_str(), _currentIndex + 1, (int)_cache.size());
+    return true;
+}
+
 // ── 私有方法 ──────────────────────────────────────────────────
 
 bool CharacterManager::_parseCharacter(const String& json, Character& out) {

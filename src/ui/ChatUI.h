@@ -36,6 +36,8 @@ private:
     void _handleTouch();
     void _onMicButtonTap();
     void _onRecognizeTap();
+    void _enterCharacterSelect();
+    void _onCharacterSelect(int index);
     void _processAndReply();
     void _runRecognition();
     bool _waitForCaptureTap();
@@ -44,6 +46,7 @@ private:
     void _onDoubleTapWake();
 
     bool _isTouchOnRecognizeButton(int32_t x, int32_t y);
+    bool _isTouchOnCharacterCard(int32_t x, int32_t y, int& outIndex);
 
     uint32_t _lastTapTime;
     uint8_t  _tapCount;

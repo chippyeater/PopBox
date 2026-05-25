@@ -29,6 +29,12 @@ public:
     // 切换到下一个角色（循环）
     bool switchToNext();
 
+    // 按索引访问角色
+    const Character& characterAt(int index) const;
+
+    // 切换到指定索引的角色
+    bool selectCharacter(int index);
+
     const Character& current()      const { return _current; }
     bool             hasCharacter() const { return _current.isValid(); }
     int              count()        const { return (int)_cache.size(); }

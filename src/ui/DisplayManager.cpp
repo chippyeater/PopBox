@@ -37,11 +37,14 @@ void DisplayManager::begin() {
 void DisplayManager::drawNoCharacter() {
     M5.Display.fillScreen(C_BG);
     M5.Display.setFont(FONT_L);
+    M5.Display.setTextSize(2);
     M5.Display.setTextColor(C_MUTED);
-    M5.Display.setTextWrap(true);
-    M5.Display.setCursor(40, 90);
-    M5.Display.println("正在等待人物入住");
-    M5.Display.setTextWrap(false);
+    const char* msg = "正在等待人物入住";
+    int tw = M5.Display.textWidth(msg);
+    int th = M5.Display.fontHeight();
+    M5.Display.setCursor((SCREEN_W - tw) / 2, (SCREEN_H - th) / 2);
+    M5.Display.print(msg);
+    M5.Display.setTextSize(1);
     _lastState = AppState::NO_CHARACTER;
 }
 
@@ -68,7 +71,64 @@ void DisplayManager::drawIdle(const String& name, const String& avatarPath,
     M5.Display.setCursor((SCREEN_W - hintW) / 2, 200);
     M5.Display.print(hint);
 
+    // 左上角"换角色"按钮
+    M5.Display.fillRoundRect(SWITCH_BTN_X, SWITCH_BTN_Y, SWITCH_BTN_W, SWITCH_BTN_H,
+                              10, C_BORDER);
+    M5.Display.setTextColor(C_TEXT);
+    M5.Display.setFont(FONT_S);
+    M5.Display.setCursor(SWITCH_BTN_X + 8, SWITCH_BTN_Y + 5);
+    M5.Display.print("← 换角色");
+
     _lastState = AppState::IDLE;
+}
+
+// ── 角色选择 ────────────────────────────────────────────────────
+void DisplayManager::drawCharacterSelect(const String names[],
+                                          const String avatarPaths[],
+                                          int count) {
+    M5.Display.fillScreen(C_BG);
+
+    // 标题
+    M5.Display.setFont(FONT_L);
+    M5.Display.setTextColor(C_TEXT);
+    const char* title = "选择一位角色入住";
+    int tw = M5.Display.textWidth(title);
+    M5.Display.setCursor((SCREEN_W - tw) / 2, 16);
+    M5.Display.print(title);
+
+    int n = (count > 3) ? 3 : count;
+    int totalW = n * CARD_W + (n - 1) * CARD_GAP;
+    int startX = (SCREEN_W - totalW) / 2;
+
+    for (int i = 0; i < n; i++) {
+        int cx = startX + i * (CARD_W + CARD_GAP);
+
+        // 卡片阴影 + 背景
+        M5.Display.fillRoundRect(cx + 2, CARD_Y + 2, CARD_W, CARD_H, 8, C_SHAD_Y);
+        M5.Display.fillRoundRect(cx, CARD_Y, CARD_W, CARD_H, 8, C_CARD);
+
+        // 头像（透明底，缩放适配卡片大小）
+        int ax = cx + (CARD_W - AVATAR_S) / 2;
+        _drawAvatarTransparent(ax, CARD_Y + 8, AVATAR_S, AVATAR_S, avatarPaths[i], 0.52f);
+
+        // 名字
+        String name = names[i];
+        M5.Display.setFont(FONT_M);
+        M5.Display.setTextColor(C_NEON);
+        int nw = M5.Display.textWidth(name.c_str());
+        M5.Display.setCursor(cx + (CARD_W - nw) / 2, CARD_Y + 8 + AVATAR_S + 6);
+        M5.Display.print(name);
+    }
+
+    // 底部"拍照识别"按钮（宽大居中）
+    static constexpr int RECOG_BTN_W = 160;
+    static constexpr int RECOG_BTN_H = 30;
+    static constexpr int RECOG_BTN_Y = 182;
+    int btnX = (SCREEN_W - RECOG_BTN_W) / 2;
+    M5.Display.fillRect(0, RECOG_BTN_Y - 4, SCREEN_W, RECOG_BTN_H + 8, C_BG);
+    _drawButton(btnX, RECOG_BTN_Y, RECOG_BTN_W, RECOG_BTN_H, C_PURPLE, C_SHAD_P, "拍照识别", false);
+
+    _lastState = AppState::CHARACTER_SELECT;
 }
 
 // ── 识别中 ──────────────────────────────────────────────────────
@@ -132,7 +192,10 @@ void DisplayManager::showBottomBar(bool showRecognize) {
     M5.Display.fillRect(0, BTN_Y, SCREEN_W, BTN_H + BTN_S + 2, C_BG);
 
     if (showRecognize) {
-        _drawButton(96, BTN_Y, 128, BTN_H, C_NEON, C_SHAD_Y, "识别角色", false);
+        // 宽大居中"识别角色"按钮
+        static constexpr int BW = 160, BH = 30, BY = 182;
+        int bx = (SCREEN_W - BW) / 2;
+        _drawButton(bx, BY, BW, BH, C_NEON, C_SHAD_Y, "识别角色", false);
     }
     // 普通状态下不再画说话按钮，改为由 drawWaveIcon 绘制声波动画
 }
@@ -181,7 +244,7 @@ void DisplayManager::drawWaveIcon(int level) {
 // ══════════════════════════════════════════════════════════════════
 
 void DisplayManager::_drawAvatar(int32_t x, int32_t y, int32_t w, int32_t h,
-                                  const String& avatarPath) {
+                                  const String& avatarPath, float scale) {
     if (!SPIFFS.exists(avatarPath)) return;
     fs::File file = SPIFFS.open(avatarPath, "r");
     if (!file) return;
@@ -193,8 +256,37 @@ void DisplayManager::_drawAvatar(int32_t x, int32_t y, int32_t w, int32_t h,
     file.read(buf, len);
     file.close();
 
-    M5.Display.drawJpg(buf, len, x, y, w, h, 0, 0, 1.0f, 0.0f);
+    M5.Display.drawJpg(buf, len, x, y, w, h, 0, 0, scale, 0.0f);
     free(buf);
+}
+
+void DisplayManager::_drawAvatarTransparent(int32_t x, int32_t y, int32_t w,
+                                              int32_t h,
+                                              const String& avatarPath,
+                                              float scale) {
+    // 优先尝试 PNG（支持透明底）
+    String pngPath = avatarPath;
+    int dot = pngPath.lastIndexOf('.');
+    if (dot > 0) {
+        pngPath = pngPath.substring(0, dot) + ".png";
+        if (SPIFFS.exists(pngPath)) {
+            fs::File file = SPIFFS.open(pngPath, "r");
+            if (file) {
+                size_t len = file.size();
+                uint8_t* buf = (uint8_t*)malloc(len);
+                if (buf) {
+                    file.read(buf, len);
+                    file.close();
+                    M5.Display.drawPng(buf, len, x, y, w, h, 0, 0, scale);
+                    free(buf);
+                    return;
+                }
+                file.close();
+            }
+        }
+    }
+    // 无 PNG 则退回 JPG
+    _drawAvatar(x, y, w, h, avatarPath, scale);
 }
 
 void DisplayManager::_drawRightText(const String& text) {
