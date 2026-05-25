@@ -5,7 +5,42 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-// 检查 WiFi 状态并尝试重连
+// ── CoreS3 扬声器硬件直接控制（AW88298 + AW9523）───────────────
+// M5Unified 的 _speaker_enabled_cb_cores3 不会设置 AW9523 GPIO 方向寄存器
+// （复位后默认全为输入），导致 SPK_EN 无法真正拉高，功放不被供电。
+// 这里直接操作 I2C 寄存器确保硬件正确初始化。
+
+static constexpr uint8_t AW88298_ADDR = 0x36;
+static constexpr uint8_t AW9523_ADDR  = 0x58;
+
+static void _aw88298_write(uint8_t reg, uint16_t value) {
+    value = __builtin_bswap16(value);
+    bool ok = M5.In_I2C.writeRegister(AW88298_ADDR, reg, (const uint8_t*)&value, 2, 400000);
+    if (!ok) Serial.printf("[TTS] AW88298[0x%02X] I2C FAIL\n", reg);
+}
+
+static void _speaker_hw_enable() {
+    // 1. AW9523 P0_2 设为输出（清除配置寄存器 0x04 bit 2）
+    M5.In_I2C.bitOff(AW9523_ADDR, 0x04, 0b00000100, 400000);
+
+    // 2. AW9523 P0_2 拉高 → SPK_EN 使能功放供电
+    M5.In_I2C.bitOn(AW9523_ADDR, 0x02, 0b00000100, 400000);
+
+    // 3. AW88298 放大器寄存器配置
+    _aw88298_write(0x61, 0x0673);  // boost disabled
+    _aw88298_write(0x04, 0x4040);  // I2SEN=1, AMPPD=0, PWDN=0
+    _aw88298_write(0x05, 0x0008);  // RMSE=0, HAGCE=0, HDCCE=0, HMUTE=0
+    // rate_tbl[] = {4,5,6,8,10,11,15,20,22,44}, rate=(24000+1102)/2205=11 → idx=5
+    _aw88298_write(0x06, 0x14C5);
+    _aw88298_write(0x0C, 0x0064);  // volume 100
+}
+
+static void _speaker_hw_disable() {
+    _aw88298_write(0x04, 0x4000);  // I2SEN=0, power down
+}
+
+// ── WiFi ──────────────────────────────────────────────────────
+
 static bool _ensureWiFi() {
     if (WiFi.status() == WL_CONNECTED) return true;
     Serial.printf("[TTS] WiFi 已断开（状态 %d），尝试重连 %s ...\n",
@@ -94,19 +129,13 @@ bool TextToSpeech::speak(const String& text, const String& voice) {
         return false;
     }
 
-    // CoreS3 AW88298 功放通过 I2C 控制。
-    // M5.Mic.end() 可能污染 I2C 总线，先恢复再初始化扬声器。
-    M5.In_I2C.begin();
-    delay(50);
-    if (!M5.Speaker.begin()) {
-        Serial.println("[TTS] M5.Speaker.begin() 失败");
-        free(audio);
-        return false;
-    }
-    M5.Speaker.setVolume(255);
+    // ── 扬声器硬件初始化 ──
+    _speaker_hw_enable();
+    M5.Speaker.end();
+    delay(20);
+    M5.Speaker.begin();
+    M5.Speaker.setVolume(200);
 
-    // 用非阻塞方式播放，手动控制等待时间
-    //（CoreS3 上 waitComplete=true 不阻塞）
     if (!M5.Speaker.playWav(audio, received, 24000, 1, false)) {
         Serial.println("[TTS] playWav 失败");
         M5.Speaker.end();
@@ -114,8 +143,8 @@ bool TextToSpeech::speak(const String& text, const String& voice) {
         return false;
     }
 
-    // 计算音频时长（16-bit mono WAV）并等待播放完成
-    unsigned long audioMs = (unsigned long)received / 48;  // bytes / (24000*2/1000)
+    // 等待播放完成
+    unsigned long audioMs = (unsigned long)received / 48;
     Serial.printf("[TTS] 播放中: %u 字节 ≈ %lu ms\n", (unsigned)received, audioMs);
     unsigned long tStart = millis();
     while (M5.Speaker.isPlaying(0) && millis() - tStart < audioMs + 1000) {
@@ -125,6 +154,7 @@ bool TextToSpeech::speak(const String& text, const String& voice) {
     Serial.printf("[TTS] 播放完成, 实际等待 %lu ms\n", millis() - tStart);
 
     M5.Speaker.end();
+    _speaker_hw_disable();
     free(audio);
     return true;
 }

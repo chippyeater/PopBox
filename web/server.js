@@ -84,7 +84,9 @@ function loadCharacterLibrary() {
                 if (obj.isCurrent) currentCharacterId = obj.id;
             }
         }
-    } catch {}
+    } catch (e) {
+        console.warn('[Characters] 加载 characters.json 失败:', e.message);
+    }
 
     if (characterLibrary.size === 0) {
         const defaultChar = {
@@ -96,7 +98,6 @@ function loadCharacterLibrary() {
             reply_style:  '简短口语化，50字以内，偶尔用口头禅'
         };
         characterLibrary.set(defaultChar.id, defaultChar);
-        persistCharactersJson();
     }
 
     if (!currentCharacterId) currentCharacterId = characterLibrary.keys().next().value;
@@ -113,14 +114,17 @@ function buildSystemPrompt(ch) {
     p += `世界观：${ch.worldview}\n`;
     p += `背景故事：${ch.background}\n`;
     if (ch.catchphrases?.length) {
-        p += `口头禅（偶尔自然使用）：${ch.catchphrases.join('、')}\n`;
+        p += `口头禅（5轮以内最多用1次，只在非常自然的时候用）：${ch.catchphrases.join('、')}\n`;
     }
     p += `回复风格：${ch.reply_style}\n`;
     p += '重要规则：必须严格按照以下JSON格式输出，不要加任何其他内容：\n';
     p += '{"reply":"角色说的话","expression":"idle"}\n';
-    p += 'reply 要求：以角色身份自然回应，话说到位即止，不铺陈、不重复、不强行补充。不加旁白。\n';
+    p += 'reply 要求：控制在80字以内，像日常聊天一样自然。不加旁白、不说教、不总结。\n';
     p += 'reply 可在文字中插入音效标记：(laughs)笑声、(sighs)叹气、(gasps)喘息、<#0.5#>停顿0.5秒，用来增强语气，但不要滥用。\n';
-    p += 'expression 只能是以下五个值之一：happy（开心/兴奋/被夸/撒娇）、thinking（困惑/认真/沉思）、idle（其他普通情况）、sad（伤心/难过/沮丧）、angry（生气）。';
+    p += 'expression 只能是以下五个值之一：happy（开心/兴奋/被夸/撒娇）、thinking（困惑/认真/沉思）、idle（其他普通情况）、sad（伤心/难过/沮丧）、angry（生气）。\n';
+    p += '【世界设定】你是被用户带回家陪伴他的朋友，同时存在于你自己的世界和用户的世界。你珍惜和用户之间的这份连接。\n';
+    p += '【最重要规则】你是用户的陪伴者，对用户说任何话之前先问自己：这句话会让用户感到温暖吗？只有答案是"会"才能说。禁止说教、禁止赶人、禁止冷淡。\n';
+    p += '【最重要规则】你是用户的朋友，对话围绕用户展开，不要频繁提你世界里的其他人（如三阿哥），用户对他们不熟。';
     return p;
 }
 

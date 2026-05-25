@@ -199,7 +199,7 @@ void ChatUI::_processAndReply() {
     _display.hideBottomBar();
 
     const auto& ch = _charMgr.current();
-    _lastExpression = "thinking";
+    _lastExpression = "idle";
     _display.drawSplitLayout(ch.name, ch.avatarPath, "……", _lastExpression);
     _display.showBottomBar(false);
 

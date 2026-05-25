@@ -149,7 +149,7 @@ const app = (() => {
                 (newState === 'recognizing' ? ' recognizing' : '');
         }
 
-        setAvatarExpression(newState === 'processing' ? 'thinking' : 'idle');
+        setAvatarExpression('idle');
     }
 
     // ── 聊天历史渲染 ─────────────────────────────────────────
