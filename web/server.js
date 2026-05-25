@@ -421,10 +421,8 @@ app.post('/api/chat', async (req, res) => {
         { role: 'user', content: message }
     ];
 
-    const model   = process.env.QWEN_CHAT_MODEL || 'qwen-turbo';
-    const baseUrl = process.env.CHAT_BASE_URL   || 'https://dashscope.aliyuncs.com/compatible-mode/v1';
-    const chatKey = process.env.VOLC_API_KEY    || apiKey;
-    const url     = `${baseUrl}/chat/completions`;
+    const model = process.env.QWEN_CHAT_MODEL || 'qwen-turbo';
+    const url   = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
 
     try {
         const promptChars = messages.reduce((n, m) => n + m.content.length, 0);
@@ -434,7 +432,7 @@ app.post('/api/chat', async (req, res) => {
             method:  'POST',
             headers: {
                 'Content-Type':  'application/json',
-                'Authorization': `Bearer ${chatKey}`
+                'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({ model, messages, max_tokens: 120, temperature: 0.85, enable_thinking: false })
         }, 15000);
