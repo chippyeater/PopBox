@@ -74,20 +74,17 @@ void setup() {
     M5.Display.setCursor(10, 10);
     M5.Display.println("PopBox 启动中...");
 
+    // 连接 WiFi（同时解析 mDNS）
     connectWiFi();
 
-    // 从后端拉取角色收藏夹（失败时降级到 SPIFFS 离线缓存）
+    // 从后端拉取角色列表（自动降级到 SPIFFS 离线缓存）
     if (!charMgr.fetchAll()) {
-        if (!charMgr.loadFromSPIFFS(CHARACTER_JSON_PATH)) {
-            showBootError("角色数据加载失败\n请确认后端服务已启动");
-            return;
-        }
-    }
-
-    if (!recorder.begin()) {
-        showBootError("麦克风初始化失败");
+        showBootError("角色数据加载失败\n请确认后端已启动");
         return;
     }
+
+    // 初始化麦克风（语音唤醒需要）
+    recorder.begin();
 
     // 相机延迟初始化：CoreS3 相机 I2C 初始化失败会污染 I2C 总线，
     // 导致触摸控制器失效。改为识别时按需初始化（在 ChatUI._runRecognition 中）。

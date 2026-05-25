@@ -20,7 +20,7 @@
       "skin": "#FFF0E5",
       "blush": "#FFB7C5"
     },
-    "isCurrent": false
+    "isCurrent": true
   },
   {
     "id": "dushang",
@@ -42,7 +42,7 @@
       "clothes": "#6B8E9B",
       "blush": "#FF8FA0"
     },
-    "isCurrent": true
+    "isCurrent": false
   },
   {
     "id": "qifei",

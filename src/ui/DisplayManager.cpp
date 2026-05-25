@@ -54,10 +54,7 @@ void DisplayManager::drawIdle(const String& name, const String& avatarPath,
     int ax = (SCREEN_W - aw) / 2;
     int ay = 36;
 
-    // 头像卡片
-    M5.Display.fillRoundRect(ax - 6, ay - 6, aw + 12, ah + 12, 8, C_CARD);
-    M5.Display.drawRoundRect(ax - 6, ay - 6, aw + 12, ah + 12, 8, C_BORDER);
-
+    // 头像（无框）
     _drawAvatar(ax, ay, aw, ah, _resolveAvatarPath(avatarPath, expression));
 
     _drawNameAt((SCREEN_W - M5.Display.textWidth(name.c_str())) / 2,
@@ -93,17 +90,19 @@ void DisplayManager::drawSplitLayout(const String& name,
     M5.Display.fillScreen(C_BG);
 
     // 竖分隔线
-    M5.Display.fillRect(160, 0, 2, BTN_Y, C_BORDER);
+    M5.Display.fillRect(160, 0, 2, SCREEN_H, C_BORDER);
 
-    // 左半：头像 + 名字
-    int aw = 96, ah = 96;
+    // 左半：大图头像（无框）+ 底部名字
     int ax = SPRITE_X, ay = SPRITE_Y;
 
-    M5.Display.fillRoundRect(ax - 4, ay - 4, aw + 8, ah + 8, 6, C_CARD);
-    M5.Display.drawRoundRect(ax - 4, ay - 4, aw + 8, ah + 8, 6, C_BORDER);
+    _drawAvatar(ax, ay, AVATAR_L_W, AVATAR_L_H,
+                _resolveAvatarPath(avatarPath, expression));
 
-    _drawAvatar(ax, ay, aw, ah, _resolveAvatarPath(avatarPath, expression));
-    _drawNameAt(NAME_X, NAME_Y, name);
+    // 名字在左半底部居中
+    M5.Display.setFont(FONT_L);
+    int nameW = M5.Display.textWidth(name.c_str());
+    int nameX = (160 - nameW) / 2;
+    _drawNameAt(max(0, nameX), NAME_Y, name);
 
     // 右半：文字
     _lastRightText = text;
@@ -125,18 +124,49 @@ void DisplayManager::updateRightText(const String& text) {
 void DisplayManager::showBottomBar(bool showRecognize) {
     M5.Display.fillRect(0, BTN_Y, SCREEN_W, BTN_H + BTN_S + 2, C_BG);
 
-    int btnY = BTN_Y;
-
     if (showRecognize) {
-        _drawButton(6,  btnY, 148, BTN_H, C_BTN_DIS, C_SHD_DIS, "●  说话", true);
-        _drawButton(166, btnY, 148, BTN_H, C_NEON,    C_SHAD_Y,  "识别角色", false);
-    } else {
-        _drawButton(10, btnY, 300, BTN_H, C_PURPLE, C_SHAD_P, "●  说话", false);
+        _drawButton(96, BTN_Y, 128, BTN_H, C_NEON, C_SHAD_Y, "识别角色", false);
     }
+    // 普通状态下不再画说话按钮，改为由 drawWaveIcon 绘制声波动画
 }
 
 void DisplayManager::hideBottomBar() {
     M5.Display.fillRect(0, BTN_Y, SCREEN_W, BTN_H + BTN_S + 2, C_BG);
+}
+
+// ── 声波动画指示器 ──────────────────────────────────────────────
+void DisplayManager::drawWaveIcon(int level) {
+    // 只重绘声波区域，不刷全屏
+    const int barW = 4, gap = 5, n = 3;
+    const int totalW = n * barW + (n - 1) * gap;  // 22px
+    const int startX = (SCREEN_W - totalW) / 2;
+    const int baseY  = BTN_Y + BTN_H - 5;
+    const int maxH   = 14;
+
+    // 清除声波区域（稍微大一点避免残影）
+    M5.Display.fillRect(startX - 2, baseY - maxH - 2, totalW + 4, maxH + 8, C_BG);
+
+    for (int i = 0; i < n; i++) {
+        float breathe = sinf(millis() / 600.0f + i * 2.1f) * 0.35f + 0.5f;
+        int h;
+        if (level <= 0) {
+            // 待机：轻微呼吸
+            h = 3 + (int)(breathe * 3);
+        } else if (level < 30) {
+            // 小声：呼吸 + 微动
+            float mix = level / 30.0f;
+            h = 3 + (int)((breathe * 3 * (1 - mix) + level / 100.0f * maxH * breathe * mix));
+        } else {
+            // 说话中：随音频能量起伏
+            float wave = sinf(millis() / 180.0f + i * 1.8f) * 0.25f + 0.55f;
+            h = 3 + (int)(level / 100.0f * maxH * wave);
+        }
+        h = constrain(h, 2, maxH);
+
+        int x = startX + i * (barW + gap);
+        int y = baseY - h;
+        M5.Display.fillRoundRect(x, y, barW, h, 2, C_NEON);
+    }
 }
 
 // ══════════════════════════════════════════════════════════════════
