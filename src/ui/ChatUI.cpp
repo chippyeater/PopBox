@@ -39,7 +39,8 @@ ChatUI::ChatUI(CharacterManager& charMgr, AudioRecorder& recorder,
     : _charMgr(charMgr), _recorder(recorder), _stt(stt),
       _tts(tts), _llm(llm), _display(display), _camera(camera),
       _state(AppState::NO_CHARACTER), _isRecording(false),
-      _idleStartMs(0), _lastExpression("idle") {}
+      _idleStartMs(0), _lastExpression("idle"),
+      _lastTapTime(0), _tapCount(0) {}
 
 void ChatUI::begin() {
     _display.begin();
@@ -48,7 +49,6 @@ void ChatUI::begin() {
         _display.drawIdle(ch.name, ch.avatarPath, "idle");
         _display.showBottomBar(false);
         _state = AppState::IDLE;
-        _recorder.startListening();
     } else {
         _display.drawNoCharacter();
         _display.showBottomBar(true);
@@ -62,19 +62,17 @@ void ChatUI::update() {
     // ── 音频泵（驱动录音和 VAD 监听）──
     _recorder.update();
 
-    // ── 声波动画（监听状态显示音频能量）──
-    if (_state == AppState::IDLE || _state == AppState::CHATTING) {
-        int lvl = _recorder.isListening() ? _recorder.getAudioLevel() : 0;
-        _display.drawWaveIcon(lvl);
+    // ── 声波动画（CHATTING 状态显示用户语音能量）──
+    if (_state == AppState::CHATTING) {
+        int lvl = _recorder.getAudioLevel();
+        if (lvl > 0) _display.drawWaveIcon(lvl);
     }
 
-    // ── 语音结束处理（IDLE = 唤醒检测，CHATTING = 对话）──
+    // ── 语音结束处理（仅 CHATTING 状态下的对话）──
     if (_recorder.speechJustEnded()) {
         _recorder.stopListening();
 
-        if (_state == AppState::IDLE) {
-            _processWakeWord();
-        } else if (_state == AppState::CHATTING) {
+        if (_state == AppState::CHATTING) {
             _processAndReply();
         }
         return;
@@ -102,7 +100,7 @@ void ChatUI::update() {
         return;
     }
 
-    // CHATTING → IDLE 超时 → 启动语音监听
+    // CHATTING → IDLE 超时
     if (_state == AppState::CHATTING
         && millis() - _idleStartMs > IDLE_TIMEOUT_MS) {
         const auto& ch = _charMgr.current();
@@ -111,7 +109,7 @@ void ChatUI::update() {
         _display.showBottomBar(false);
         _state = AppState::IDLE;
         _idleStartMs = millis();
-        _recorder.startListening();
+        _recorder.stopListening();
         return;
     }
 
@@ -134,7 +132,25 @@ void ChatUI::_handleTouch() {
 
     if (_isTouchOnRecognizeButton(t.x, t.y)) {
         _onRecognizeTap();
-    } else if (_isTouchOnMicButton(t.x, t.y)) {
+        return;
+    }
+
+    // ── IDLE：双击屏幕唤醒 ──
+    if (_state == AppState::IDLE) {
+        uint32_t now = millis();
+        if (now - _lastTapTime < 500 && _tapCount == 1) {
+            _tapCount = 0;
+            _lastTapTime = 0;
+            _onDoubleTapWake();
+            return;
+        }
+        _tapCount = 1;
+        _lastTapTime = now;
+        return;
+    }
+
+    // ── CHATTING：单击回到待机 ──
+    if (_state == AppState::CHATTING) {
         _onMicButtonTap();
     }
 }
@@ -142,23 +158,9 @@ void ChatUI::_handleTouch() {
 void ChatUI::_onMicButtonTap() {
     if (_state == AppState::RECOGNIZING
         || _state == AppState::PHYSICAL) return;
-
     if (_state == AppState::NO_CHARACTER) return;
 
-    // 离线调试：待机时点击麦克风直接显示对话界面预览
-    if (_state == AppState::IDLE) {
-        _recorder.stopListening();
-        const auto& ch = _charMgr.current();
-        _lastReplyText = "你好呀～我是" + ch.name + "！\n今天想聊点什么呢？";
-        _lastExpression = "happy";
-        _display.drawSplitLayout(ch.name, ch.avatarPath, _lastReplyText, _lastExpression);
-        _display.showBottomBar(false);
-        _state = AppState::CHATTING;
-        _idleStartMs = millis();
-        return;
-    }
-
-    // 离线调试：对话界面再点麦克风回到待机
+    // 单击回到待机
     if (_state == AppState::CHATTING) {
         const auto& ch = _charMgr.current();
         _lastExpression = "idle";
@@ -166,7 +168,7 @@ void ChatUI::_onMicButtonTap() {
         _display.showBottomBar(false);
         _state = AppState::IDLE;
         _idleStartMs = millis();
-        _recorder.startListening();
+        _recorder.stopListening();
         return;
     }
 
@@ -226,42 +228,17 @@ void ChatUI::_processAndReply() {
     _recorder.startListening();  // 连续对话：继续监听下一句
 }
 
-// ── 唤醒词检测 ──────────────────────────────────────────────────────
+// ── 双击屏幕唤醒 ──────────────────────────────────────────────────
 
-void ChatUI::_processWakeWord() {
-    // 不改变 UI，静默发送 STT 检测唤醒词
-    String text = _stt.recognize(_recorder.getBuffer(),
-                                  _recorder.getSampleCount());
-    _recorder.clearBuffer();
-
-    if (!_isWakeWord(text)) {
-        // 不是唤醒词 → 无声忽略，继续监听
-        _recorder.startListening();
-        return;
-    }
-
-    Serial.printf("[Wake] 唤醒词: %s\n", text.c_str());
-
-    // 唤醒成功：此时才更新 UI
+void ChatUI::_onDoubleTapWake() {
     const auto& ch = _charMgr.current();
-    _lastReplyText = "在呢！";
+    _lastReplyText = "你好呀～我是" + ch.name + "！\n今天想聊点什么呢？";
     _lastExpression = "happy";
     _display.drawSplitLayout(ch.name, ch.avatarPath, _lastReplyText, _lastExpression);
     _display.showBottomBar(false);
-
-    _recorder.pauseMic();
-    _tts.speak("在呢！");
-    _recorder.resumeMic();
-
-    // 进入对话状态，监听用户的下一个问题
-    _setState(AppState::CHATTING);
+    _state = AppState::CHATTING;
+    _idleStartMs = millis();
     _recorder.startListening();
-}
-
-bool ChatUI::_isWakeWord(const String& text) {
-    if (text.isEmpty()) return false;
-    // 只要文本包含"哈喽哈喽"就认为是唤醒词
-    return text.indexOf("哈喽哈喽") >= 0;
 }
 
 // ── 识别流程 ──────────────────────────────────────────────────────
@@ -378,12 +355,6 @@ void ChatUI::_restoreM5() {
 }
 
 // ── 触摸区域 ──────────────────────────────────────────────────────
-
-bool ChatUI::_isTouchOnMicButton(int32_t x, int32_t y) {
-    // 隐藏调试：底部中间区域双击触发 mock 对话（按钮已从 UI 移除）
-    if (!(y >= BTN_Y && y <= BTN_Y + BTN_H)) return false;
-    return (x >= 110 && x <= 210);
-}
 
 bool ChatUI::_isTouchOnRecognizeButton(int32_t x, int32_t y) {
     if (_state != AppState::NO_CHARACTER) return false;

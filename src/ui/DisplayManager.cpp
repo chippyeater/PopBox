@@ -59,6 +59,15 @@ void DisplayManager::drawIdle(const String& name, const String& avatarPath,
 
     _drawNameAt((SCREEN_W - M5.Display.textWidth(name.c_str())) / 2,
                 175, name);
+
+    // 待机提示：双击唤醒
+    M5.Display.setFont(FONT_S);
+    M5.Display.setTextColor(C_MUTED);
+    const char* hint = "敲一敲唤醒我哦";
+    int hintW = M5.Display.textWidth(hint);
+    M5.Display.setCursor((SCREEN_W - hintW) / 2, 200);
+    M5.Display.print(hint);
+
     _lastState = AppState::IDLE;
 }
 
@@ -107,8 +116,6 @@ void DisplayManager::drawSplitLayout(const String& name,
     // 右半：文字
     _lastRightText = text;
     _drawRightText(text);
-
-    _lastState = AppState::GREETING;
 }
 
 // ── 更新右侧文字 ────────────────────────────────────────────────

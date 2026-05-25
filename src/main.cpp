@@ -83,7 +83,7 @@ void setup() {
         return;
     }
 
-    // 初始化麦克风（语音唤醒需要）
+    // 初始化麦克风（对话录音需要）
     recorder.begin();
 
     // 相机延迟初始化：CoreS3 相机 I2C 初始化失败会污染 I2C 总线，

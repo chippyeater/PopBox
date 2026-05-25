@@ -37,13 +37,14 @@ private:
     void _onMicButtonTap();
     void _onRecognizeTap();
     void _processAndReply();
-    void _processWakeWord();
-    bool _isWakeWord(const String& text);
     void _runRecognition();
     bool _waitForCaptureTap();
     void _restoreM5();
     void _showGreeting();
+    void _onDoubleTapWake();
 
-    bool _isTouchOnMicButton(int32_t x, int32_t y);
     bool _isTouchOnRecognizeButton(int32_t x, int32_t y);
+
+    uint32_t _lastTapTime;
+    uint8_t  _tapCount;
 };
