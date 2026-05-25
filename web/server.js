@@ -108,7 +108,7 @@ let character = null; // 在 loadCharacterLibrary 后通过 getCurrentCharacter(
 
 // ── 系统提示词 ────────────────────────────────────────────────
 function buildSystemPrompt(ch) {
-    let p = `你是${ch.name}，一个来自「星盒世界」的盲盒角色。\n`;
+    let p = `你是${ch.name}。\n`;
     p += `性格：${ch.personality}\n`;
     p += `世界观：${ch.worldview}\n`;
     p += `背景故事：${ch.background}\n`;
@@ -117,11 +117,10 @@ function buildSystemPrompt(ch) {
     }
     p += `回复风格：${ch.reply_style}\n`;
     p += '重要规则：必须严格按照以下JSON格式输出，不要加任何其他内容：\n';
-    p += '{"reply":"角色说的话","expression":"idle","emotion":"calm"}\n';
+    p += '{"reply":"角色说的话","expression":"idle"}\n';
     p += 'reply 要求：以角色身份自然回应，话说到位即止，不铺陈、不重复、不强行补充。不加旁白。\n';
     p += 'reply 可在文字中插入音效标记：(laughs)笑声、(sighs)叹气、(gasps)喘息、<#0.5#>停顿0.5秒，用来增强语气，但不要滥用。\n';
-    p += 'expression 只能是以下三个值之一：happy（开心/兴奋/被夸/撒娇）、thinking（困惑/认真/沉思）、idle（其他普通情况）。\n';
-    p += 'emotion 只能是以下值之一：happy、sad、angry、fearful、disgusted、surprised、calm、fluent、whisper。根据角色当前情绪选择最贴切的。';
+    p += 'expression 只能是以下五个值之一：happy（开心/兴奋/被夸/撒娇）、thinking（困惑/认真/沉思）、idle（其他普通情况）、sad（伤心/难过/沮丧）、angry（生气）。';
     return p;
 }
 
@@ -142,8 +141,9 @@ function loadAllHistory() {
         const files = fs.readdirSync(DATA_DIR)
             .filter(f => f.startsWith('history_') && f.endsWith('.json'));
         for (const f of files) {
-            const id = f.replace('history_', '').replace('.json', '');
-            const raw = fs.readFileSync(path.join(DATA_DIR, f), 'utf-8');
+            const id  = f.replace('history_', '').replace('.json', '');
+            const raw = fs.readFileSync(path.join(DATA_DIR, f), 'utf-8').trim();
+            if (!raw) continue;
             historyCache[id] = JSON.parse(raw);
             console.log(`[History] 已加载 ${id}：${historyCache[id].length} 条消息`);
         }
@@ -411,8 +411,9 @@ app.post('/api/chat', async (req, res) => {
     }
 
     // 组装带历史的消息列表
-    const ch       = characterLibrary.get(characterId) || getCurrentCharacter();
-    const history  = getHistory(characterId);
+    const ch = characterLibrary.get(characterId) || getCurrentCharacter();
+    if (!ch) return res.status(500).json({ error: '没有可用角色，请先识别一个角色' });
+    const history = getHistory(characterId);
     const messages = [
         { role: 'system', content: buildSystemPrompt(ch) },
         // 历史对话（只取 content，去掉 ts 字段）
@@ -420,8 +421,10 @@ app.post('/api/chat', async (req, res) => {
         { role: 'user', content: message }
     ];
 
-    const model = process.env.QWEN_CHAT_MODEL || 'qwen-turbo';
-    const url   = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+    const model   = process.env.QWEN_CHAT_MODEL || 'qwen-turbo';
+    const baseUrl = process.env.CHAT_BASE_URL   || 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+    const chatKey = process.env.VOLC_API_KEY    || apiKey;
+    const url     = `${baseUrl}/chat/completions`;
 
     try {
         const promptChars = messages.reduce((n, m) => n + m.content.length, 0);
@@ -431,7 +434,7 @@ app.post('/api/chat', async (req, res) => {
             method:  'POST',
             headers: {
                 'Content-Type':  'application/json',
-                'Authorization': `Bearer ${apiKey}`
+                'Authorization': `Bearer ${chatKey}`
             },
             body: JSON.stringify({ model, messages, max_tokens: 120, temperature: 0.85, enable_thinking: false })
         }, 15000);
@@ -448,14 +451,13 @@ app.post('/api/chat', async (req, res) => {
         const raw  = data?.choices?.[0]?.message?.content?.trim() || '';
 
         // 解析 JSON，容错处理
-        const VALID_EMOTIONS = ['happy','sad','angry','fearful','disgusted','surprised','calm','fluent','whisper'];
-        let reply = raw, expression = 'idle', emotion = 'calm';
+        const VALID_EXPRESSIONS = ['idle','happy','thinking','sad','angry'];
+        let reply = raw, expression = 'idle';
         try {
             const jsonStr = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
             const parsed  = JSON.parse(jsonStr);
-            reply      = parsed.reply      || raw;
-            expression = ['idle','happy','thinking'].includes(parsed.expression) ? parsed.expression : 'idle';
-            emotion    = VALID_EMOTIONS.includes(parsed.emotion) ? parsed.emotion : 'calm';
+            reply      = parsed.reply || raw;
+            expression = VALID_EXPRESSIONS.includes(parsed.expression) ? parsed.expression : 'idle';
         } catch {
             // 模型没按格式输出时直接用原始文本
         }
@@ -463,8 +465,8 @@ app.post('/api/chat', async (req, res) => {
         // 持久化这一轮对话（存纯文本）
         appendTurn(characterId, message, reply);
 
-        console.log(`[Chat] (${characterId}) 用户: ${message} | 角色: ${reply} | 表情: ${expression} | emotion: ${emotion} | 总耗时: ${Date.now() - t0}ms`);
-        res.json({ reply, expression, emotion });
+        console.log(`[Chat] (${characterId}) 用户: ${message} | 角色: ${reply} | 表情: ${expression} | 总耗时: ${Date.now() - t0}ms`);
+        res.json({ reply, expression });
 
     } catch (err) {
         console.error('[LLM] 请求失败:', err.message);

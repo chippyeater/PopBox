@@ -46,7 +46,8 @@ LLMResponse LLMClient::chat(const Character& character, const String& userMessag
 
     resp.expression = res["expression"].as<String>();
     resp.expression.toLowerCase();
-    if (resp.expression != "happy" && resp.expression != "thinking") {
+    if (resp.expression != "happy" && resp.expression != "thinking" &&
+        resp.expression != "sad"   && resp.expression != "angry") {
         resp.expression = "idle";
     }
 
