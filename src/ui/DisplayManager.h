@@ -38,6 +38,9 @@ public:
     void showBottomBar(bool showRecognize);
     void hideBottomBar();
 
+    // 声波动画指示器（level 0-100，0 = 待机呼吸，>0 = 音频能量）
+    void drawWaveIcon(int level);
+
     // 识别进度条动画步进（内部用）
     int  progressStep;
 

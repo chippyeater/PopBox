@@ -37,6 +37,8 @@ private:
     void _onMicButtonTap();
     void _onRecognizeTap();
     void _processAndReply();
+    void _processWakeWord();
+    bool _isWakeWord(const String& text);
     void _runRecognition();
     bool _waitForCaptureTap();
     void _restoreM5();
