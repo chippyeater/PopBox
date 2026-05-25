@@ -28,6 +28,7 @@ struct Character {
     String              id;
     String              name;
     String              avatarPath;
+    String              voice;          // MiniMax 音色 ID
     std::vector<String> catchphrases;
     String              personality;
     String              worldview;

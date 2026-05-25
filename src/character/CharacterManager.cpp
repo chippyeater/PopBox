@@ -147,6 +147,7 @@ bool CharacterManager::_parseCharacter(const String& json, Character& out) {
     out.id          = doc["id"].as<String>();
     out.name        = doc["name"].as<String>();
     out.avatarPath  = doc["avatar"]      | String("/avatar.jpg");
+    out.voice       = doc["voice"]       | String("");
     out.personality = doc["personality"].as<String>();
     out.worldview   = doc["worldview"].as<String>();
     out.replyStyle  = doc["reply_style"].as<String>();
@@ -175,6 +176,7 @@ void CharacterManager::_saveOfflineCache() {
         obj["id"]          = ch.id;
         obj["name"]        = ch.name;
         obj["avatar"]      = ch.avatarPath;
+        obj["voice"]       = ch.voice;
         obj["personality"] = ch.personality;
         obj["worldview"]   = ch.worldview;
         obj["background"]  = ch.memory.background;

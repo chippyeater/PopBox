@@ -1,15 +1,33 @@
 #include "SpeechToText.h"
 #include "../config.h"
+#include <WiFi.h>
 #include <WiFiClient.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
+// 检查 WiFi 状态并尝试重连，返回 true 表示已连接
+static bool _ensureWiFi() {
+    if (WiFi.status() == WL_CONNECTED) return true;
+    Serial.printf("[STT] WiFi 已断开（状态 %d），尝试重连 %s ...\n",
+                  (int)WiFi.status(), WIFI_SSID);
+    WiFi.reconnect();
+    for (int i = 0; i < 20; i++) {
+        ::delay(500);
+        if (WiFi.status() == WL_CONNECTED) {
+            Serial.printf("[STT] WiFi 重连成功，IP: %s\n",
+                          WiFi.localIP().toString().c_str());
+            return true;
+        }
+    }
+    Serial.println("[STT] WiFi 重连失败");
+    return false;
+}
+
 String SpeechToText::recognize(const int16_t* pcmData, size_t sampleCount,
                                 int sampleRate) {
     if (!pcmData || sampleCount == 0) return "";
+    if (!_ensureWiFi()) return "";
 
-    // 向后端发送原始 PCM 二进制（后端负责调用 Google STT）
-    // 比在设备端 base64 编码更省内存，请求体更小
     String url = String(BACKEND_URL) + "/api/stt";
 
     HTTPClient http;

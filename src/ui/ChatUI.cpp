@@ -1,4 +1,5 @@
 #include "ChatUI.h"
+#include <WiFi.h>
 #include <M5Unified.h>
 
 static constexpr uint32_t GREETING_DURATION_MS = 5000;
@@ -70,6 +71,10 @@ void ChatUI::update() {
 
     // ── 语音结束处理（仅 CHATTING 状态下的对话）──
     if (_recorder.speechJustEnded()) {
+        size_t samples = _recorder.getSampleCount();
+        Serial.printf("[ChatUI] 语音结束: %zu 采样 (%.1f 秒), 状态=%d WiFi=%d\n",
+                      samples, (float)samples / AUDIO_SAMPLE_RATE,
+                      (int)_state, (int)WiFi.status());
         _recorder.stopListening();
 
         if (_state == AppState::CHATTING) {
@@ -198,9 +203,18 @@ void ChatUI::_processAndReply() {
     _display.drawSplitLayout(ch.name, ch.avatarPath, "……", _lastExpression);
     _display.showBottomBar(false);
 
-    String userText = _stt.recognize(_recorder.getBuffer(),
-                                     _recorder.getSampleCount());
+    size_t samples = _recorder.getSampleCount();
+    float seconds = (float)samples / AUDIO_SAMPLE_RATE;
+    Serial.printf("[ChatUI] 开始 STT: %zu 采样 (%.1f 秒), WiFi=%d\n",
+                  samples, seconds, (int)WiFi.status());
+
+    String userText = _stt.recognize(_recorder.getBuffer(), samples);
     _recorder.clearBuffer();
+
+    // 把用户说的话显示在屏幕上
+    if (userText.length() > 0) {
+        _display.updateRightText(userText);
+    }
 
     String reply;
     if (userText.isEmpty()) {
@@ -221,7 +235,7 @@ void ChatUI::_processAndReply() {
     _display.showBottomBar(false);
 
     _recorder.pauseMic();
-    _tts.speak(reply);
+    _tts.speak(reply, ch.voice);
     _recorder.resumeMic();
 
     _setState(AppState::CHATTING);
@@ -314,7 +328,7 @@ void ChatUI::_showGreeting() {
     _display.drawSplitLayout(ch.name, ch.avatarPath, _lastReplyText, _lastExpression);
     _display.showBottomBar(false);
     _recorder.pauseMic();
-    _tts.speak(_lastReplyText);
+    _tts.speak(_lastReplyText, ch.voice);
     _recorder.resumeMic();
     _setState(AppState::GREETING);
 }

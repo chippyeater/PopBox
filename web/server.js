@@ -746,7 +746,7 @@ app.post('/api/tts', async (req, res) => {
                     vol:   1.0,
                     pitch: 0,
                 },
-                audio_setting: { format: 'mp3', sample_rate: 32000 },
+                audio_setting: { format: 'wav', sample_rate: 24000 },
             })
         }, 30000);
 
@@ -766,7 +766,7 @@ app.post('/api/tts', async (req, res) => {
 
         const audioBuffer = Buffer.from(hexAudio, 'hex');
         console.log(`[TTS] 总计: ${Date.now() - t0}ms | size=${audioBuffer.length}B`);
-        res.set('Content-Type', 'audio/mpeg');
+        res.set('Content-Type', 'audio/wav');
         res.send(audioBuffer);
 
     } catch (err) {
