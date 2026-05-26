@@ -15,7 +15,10 @@
     <!-- ── 左侧边栏 ── -->
     <aside class="sidebar">
         <div class="sidebar-logo">
-            <span class="logo-title">Pop Box</span>
+            <div class="logo-row">
+                <img id="sidebar-char-avatar" class="sidebar-char-avatar" src="" alt="" style="display:none">
+                <span class="logo-title">Pop Box</span>
+            </div>
             <span class="logo-sub">Online · Living with you</span>
         </div>
 
@@ -98,6 +101,7 @@
                     <div class="char-identity-label">角色身份</div>
                     <h1 class="char-name" id="char-name">Skullpanda</h1>
                     <div class="char-type" id="char-type">[温暖者]</div>
+                    <select id="character-select" class="character-select" aria-label="选择当前角色"></select>
 
                     <hr class="divider">
 
@@ -206,10 +210,6 @@
                             <div class="record-field">
                                 <label class="record-field-label">地点</label>
                                 <input type="text" class="record-field-input" id="record-place" placeholder="去了哪里？">
-                            </div>
-                            <div class="record-field">
-                                <label class="record-field-label">回忆</label>
-                                <input type="text" class="record-field-input" id="record-quote" placeholder="留下一句话…">
                             </div>
                         </div>
                         <div class="record-modal-footer">

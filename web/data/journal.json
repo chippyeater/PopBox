@@ -1,0 +1,31 @@
+[
+  {
+    "id": "journal_1779788934899",
+    "date": "2026-05-26",
+    "day": "26",
+    "month": "MAY",
+    "place": "我学习的地方同济设创",
+    "imageUrl": "/journal-images/journal_1779788934899.jpg",
+    "journalState": "ready",
+    "quote": "这学堂气派，窗明几净。弘时若在此苦读，定能得圣心，本宫便放心了。",
+    "mood": [
+      "望子",
+      "安心"
+    ],
+    "duration": "1m",
+    "createdAt": 1779788934902
+  },
+  {
+    "id": "journal_1779785304234",
+    "date": "2026-05-26",
+    "day": "26",
+    "month": "MAY",
+    "place": "参观别的盲盒",
+    "imageUrl": "/journal-images/journal_1779785304234.jpg",
+    "journalState": "ready",
+    "quote": "“小小的冠军举着大大的梦想，这份热血真让人心动呀。”",
+    "mood": "warm",
+    "duration": "1m",
+    "createdAt": 1779785304241
+  }
+]

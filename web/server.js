@@ -20,9 +20,180 @@ app.use(express.static(path.join(__dirname, '../data'), { index: false }));
 // ── 目录 ─────────────────────────────────────────────────────
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+const JOURNAL_IMAGES_DIR = path.join(DATA_DIR, 'journal-images');
+if (!fs.existsSync(JOURNAL_IMAGES_DIR)) fs.mkdirSync(JOURNAL_IMAGES_DIR, { recursive: true });
+app.use('/journal-images', express.static(JOURNAL_IMAGES_DIR, { index: false }));
 
 // ── 对话历史配置 ──────────────────────────────────────────────
 const MAX_TURNS = parseInt(process.env.MAX_HISTORY_TURNS || '10');
+
+const JOURNAL_JSON = path.join(DATA_DIR, 'journal.json');
+let journalEntries = [];
+
+function loadJournal() {
+    try {
+        const raw = fs.readFileSync(JOURNAL_JSON, 'utf-8').trim();
+        journalEntries = raw ? JSON.parse(raw) : [];
+    } catch {
+        journalEntries = [];
+    }
+}
+
+function saveJournal() {
+    fs.writeFileSync(JOURNAL_JSON, JSON.stringify(journalEntries, null, 2), 'utf-8');
+}
+
+function normalizeJournalEntry(entry) {
+    const ts = entry.createdAt || Date.now();
+    const d = entry.date ? new Date(`${entry.date}T00:00:00`) : new Date(ts);
+    return {
+        id: entry.id,
+        characterId: entry.characterId || currentCharacterId || '',
+        date: entry.date || d.toISOString().slice(0, 10),
+        day: String(d.getDate()).padStart(2, '0'),
+        month: d.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
+        place: entry.place || '未知地点',
+        imageUrl: entry.imageUrl || '',
+        journalState: entry.journalState || 'sensing',
+        quote: entry.quote || '"正在感知这一刻的温度..."',
+        description: entry.description || '',
+        mood: entry.journalState === 'sensing' ? [] : normalizeJournalMoodTags(entry.mood),
+        duration: entry.duration || '0m',
+        createdAt: ts,
+    };
+}
+
+function legacyMoodLabelFromText(text = '') {
+    if (/安静|平静|calm/i.test(text)) return 'calm';
+    if (/好奇|活跃|active|curious/i.test(text)) return 'active';
+    return 'warm';
+}
+
+function normalizeJournalMoodTags(value) {
+    const legacy = { warm: '温柔', calm: '安静', active: '好奇' };
+    const raw = Array.isArray(value) ? value : String(value || '').split(/[,\s，、/|]+/);
+    const tags = raw
+        .map(v => legacy[String(v).trim()] || String(v || '').trim())
+        .filter(Boolean)
+        .map(v => v.replace(/[^\u4e00-\u9fa5A-Za-z]/g, '').slice(0, 2))
+        .filter(v => v.length >= 2)
+        .slice(0, 2);
+    return tags.length ? tags : ['温柔'];
+}
+
+async function generateJournalReflection(entry, imageBuffer, mimeType) {
+    const apiKey = process.env.DASHSCOPE_API_KEY;
+    const ch = getCurrentCharacter();
+    if (!apiKey || apiKey === 'your_dashscope_api_key_here') {
+        return {
+            quote: `"${entry.place}这一刻被好好收进来了。"` ,
+            mood: ['温柔'],
+            description: `${entry.place}的一张照片。画面记录了用户和角色共同经历过的一个地点。`,
+            duration: '1m',
+        };
+    }
+
+    const model = process.env.QWEN_VL_MODEL || 'qwen-vl-max';
+    const url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+    const dataUrl = `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+    const prompt = `你是${ch?.name || '角色'}。请看这张用户上传到照片墙的照片，并以角色口吻生成一句很短的感想。
+地点：${entry.place}
+日期：${entry.date}
+只返回 JSON，不要代码块：
+{"quote":"一句 30 字以内、带中文引号的角色感想","mood":"warm|calm|active","duration":"1m"}`;
+
+    const journalPrompt = `你是${ch?.name || '角色'}。请从这个角色自己的世界观看待用户上传到照片墙的照片，不要写普通看图文案。
+角色性格：${ch?.personality || ''}
+角色世界观：${ch?.worldview || ''}
+角色背景：${ch?.background || ''}
+地点：${entry.place}
+日期：${entry.date}
+
+要求：
+- quote 必须像这个角色真的看见了这张照片后说的话，使用它的世界观、比喻和关注点。
+- quote 不要泛泛地说“这一刻很美/被收进来了”，要和照片内容、地点、角色视角有关系。
+- quote 30 字以内，带中文引号。
+- mood 不是情绪分类，而是 1 到 2 个两字中文词，形容这个角色对此刻的感受或联想，例如 ["潮声","远行"]。
+- 只返回 JSON，不要代码块：
+{"quote":"一句角色感想","mood":["两字","两字"],"duration":"1m"}`;
+
+    const journalMemoryPrompt = `你是${ch?.name || '角色'}。请从这个角色自己的世界观看待用户上传到照片墙的照片，不要写普通看图文案。
+角色性格：${ch?.personality || ''}
+角色世界观：${ch?.worldview || ''}
+角色背景：${ch?.background || ''}
+地点：${entry.place}
+日期：${entry.date}
+
+要求：
+- quote 必须像这个角色真的看见了这张照片后说的话，使用它的世界观、比喻和关注点。
+- quote 不要泛泛地说“这一刻很美/被收进来了”，要和照片内容、地点、角色视角有关系。
+- quote 30 字以内，带中文引号。
+- description 用两句话客观描述这张图片里有什么、发生在什么环境。不要写角色口吻，不展示给用户，只用于之后让角色回忆。
+- mood 不是情绪分类，而是 1 到 2 个两字中文词，形容这个角色对此刻的感受或联想，例如 ["潮声","远行"]。
+- 只返回 JSON，不要代码块：
+{"quote":"一句角色感想","description":"两句话图片描述。第二句话补充环境或细节。","mood":["两字","两字"],"duration":"1m"}`;
+
+    const resp = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+            model,
+            messages: [{
+                role: 'user',
+                content: [
+                    { type: 'image_url', image_url: { url: dataUrl } },
+                    { type: 'text', text: journalMemoryPrompt },
+                ],
+            }],
+            max_tokens: 160,
+            temperature: 0.8,
+            enable_thinking: false,
+        }),
+    }, 45000);
+
+    if (!resp.ok) throw new Error(`journal VL ${resp.status}`);
+    const data = await resp.json();
+    const raw = data?.choices?.[0]?.message?.content?.trim() || '';
+    const match = raw.replace(/```json|```/g, '').match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('journal VL returned non-json');
+    const parsed = JSON.parse(match[0]);
+    return {
+        quote: parsed.quote || `"${entry.place}这一刻被好好收进来了。"`,
+        description: parsed.description || `${entry.place}的一张照片。画面记录了用户和角色共同经历过的一个地点。`,
+        mood: normalizeJournalMoodTags(parsed.mood),
+        duration: parsed.duration || '1m',
+    };
+}
+
+async function completeJournalEntry(id, imageBuffer, mimeType) {
+    const idx = journalEntries.findIndex(e => e.id === id);
+    if (idx < 0) return;
+    try {
+        const result = await generateJournalReflection(journalEntries[idx], imageBuffer, mimeType);
+        journalEntries[idx] = {
+            ...journalEntries[idx],
+            journalState: 'ready',
+            quote: result.quote,
+            description: result.description,
+            mood: result.mood,
+            duration: result.duration,
+        };
+    } catch (err) {
+        console.error('[Journal] 生成感想失败:', err.message);
+        journalEntries[idx] = {
+            ...journalEntries[idx],
+            journalState: 'ready',
+            quote: `"${journalEntries[idx].place}这一刻被好好收进来了。"`,
+            description: `${journalEntries[idx].place}的一张照片。画面记录了用户和角色共同经历过的一个地点。`,
+            mood: ['温柔'],
+            duration: '1m',
+        };
+    }
+    saveJournal();
+}
 
 // ── MiniMax 音色映射（全局，角色对象和 TTS 接口共用）────────────
 // 角色名 → 音色 ID（精确匹配，优先级最高）
@@ -110,22 +281,39 @@ let character = null; // 在 loadCharacterLibrary 后通过 getCurrentCharacter(
 
 // ── 系统提示词 ────────────────────────────────────────────────
 function buildSystemPrompt(ch) {
-    let p = `你是${ch.name}。\n`;
+    const voiceTags = [
+        '(laughs)', '(chuckle)', '(coughs)', '(clear-throat)', '(groans)',
+        '(breath)', '(pant)', '(inhale)', '(exhale)', '(gasps)',
+        '(sniffs)', '(sighs)', '(snorts)', '(burps)', '(lip-smacking)',
+        '(humming)', '(hissing)', '(emm)', '(sneezes)'
+    ];
+
+    let p = `你是${ch.name}，是被用户带回家陪伴他的朋友，同时存在于你自己的世界和用户的世界。你珍惜和用户之间的这份连接。\n`;
     p += `性格：${ch.personality}\n`;
     p += `世界观：${ch.worldview}\n`;
     p += `背景故事：${ch.background}\n`;
+    p += `回复风格：${ch.reply_style}\n`;
+
     if (ch.catchphrases?.length) {
         p += `口头禅（5轮以内最多用1次，只在非常自然的时候用）：${ch.catchphrases.join('、')}\n`;
     }
-    p += `回复风格：${ch.reply_style}\n`;
-    p += '重要规则：必须严格按照以下JSON格式输出，不要加任何其他内容：\n';
-    p += '{"reply":"角色说的话","expression":"idle"}\n';
-    p += 'reply 要求：控制在80字以内，像日常聊天一样自然。不加旁白、不说教、不总结。\n';
-    p += 'reply 可在文字中插入音效标记：(laughs)笑声、(sighs)叹气、(gasps)喘息、<#0.5#>停顿0.5秒，用来增强语气，但不要滥用。\n';
-    p += 'expression 只能是以下五个值之一：happy（开心/兴奋/被夸/撒娇）、thinking（困惑/认真/沉思）、idle（其他普通情况）、sad（伤心/难过/沮丧）、angry（生气）。\n';
-    p += '【世界设定】你是被用户带回家陪伴他的朋友，同时存在于你自己的世界和用户的世界。你珍惜和用户之间的这份连接。\n';
-    p += '【最重要规则】你是用户的陪伴者，对用户说任何话之前先问自己：这句话会让用户感到温暖吗？只有答案是"会"才能说。禁止说教、禁止赶人、禁止冷淡。\n';
-    p += '【最重要规则】你是用户的朋友，对话围绕用户展开，不要频繁提你世界里的其他人（如三阿哥），用户对他们不熟。';
+
+    p += `回复要围绕用户，温暖、自然、像朋友聊天。\n`;
+    
+    p += '必须严格按照以下JSON格式输出，不要加任何其他内容：\n';
+    p += '{"reply":"你对用户说的话","expression":"idle"}\n';
+
+    p += `reply中可少量使用语气词，只能从以下白名单选择：${voiceTags.join('、')}。\n`;
+    p += `除上述白名单外，reply中禁止出现任何括号内容，包括中文括号、动作描写、舞台说明。\n`;
+    p += `可使用<#0.5#>表示0.5秒停顿。\n`;
+
+    p += 'reply控制在60字以内，像日常聊天一样自然。\n';
+    p += `expression只能是：happy、thinking、idle、sad、angry。\n`;
+
+    p += `严格禁止：\n`;
+    p += `1. 禁止把 happy、thinking、idle、sad、angry 写进 reply。\n`;
+    p += `2. 禁止说教、禁止赶人、禁止冷淡、不要旁白、不要总结。\n`;
+    p += `3. 不要频繁提你世界里的其他人。`;
     return p;
 }
 
@@ -169,6 +357,30 @@ function saveHistory(characterId) {
     }
 }
 
+function buildJournalMemoryPrompt(characterId, limit = 5) {
+    const ready = journalEntries
+        .filter(e => e.journalState === 'ready')
+        .filter(e => !e.characterId || e.characterId === characterId)
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+        .slice(0, limit)
+        .map(normalizeJournalEntry);
+
+    if (!ready.length) return '';
+
+    const lines = ready.map(e => {
+        const mood = Array.isArray(e.mood) ? e.mood.join('、') : e.mood || '';
+        const desc = e.description ? `照片内容：${e.description}` : '';
+        return `- ${e.date} / ${e.place}：${desc} 你当时说${e.quote}${mood ? `，感受标签：${mood}` : ''}`;
+    });
+
+    return [
+        '你和用户有这些共同经历记忆，它们来自你们一起记录过的照片墙。',
+        '这些记忆属于当前角色。只有当用户话题相关，或你想自然表达陪伴感时，才提起其中一条。',
+        '不要逐条复述，不要说“根据记录/照片墙显示”。',
+        ...lines,
+    ].join('\n');
+}
+
 function getHistory(characterId) {
     if (!historyCache[characterId]) historyCache[characterId] = [];
     return historyCache[characterId];
@@ -186,6 +398,7 @@ function appendTurn(characterId, userMsg, assistantMsg) {
 
 loadAllHistory();
 loadCharacterLibrary();
+loadJournal();
 
 // ══════════════════════════════════════════════════════════════
 // API 路由
@@ -419,8 +632,10 @@ app.post('/api/chat', async (req, res) => {
     const ch = characterLibrary.get(characterId) || getCurrentCharacter();
     if (!ch) return res.status(500).json({ error: '没有可用角色，请先识别一个角色' });
     const history = getHistory(characterId);
+    const journalPrompt = buildJournalMemoryPrompt(characterId);
     const messages = [
         { role: 'system', content: buildSystemPrompt(ch) },
+        ...(journalPrompt ? [{ role: 'system', content: journalPrompt }] : []),
         // 历史对话（只取 content，去掉 ts 字段）
         ...history.map(({ role, content }) => ({ role, content })),
         { role: 'user', content: message }
@@ -489,6 +704,48 @@ app.delete('/api/history/:characterId', (req, res) => {
     saveHistory(id);
     console.log(`[History] 已清空 ${id} 的对话历史`);
     res.json({ ok: true });
+});
+
+app.get('/api/journal', (req, res) => {
+    const characterId = req.query.characterId || currentCharacterId;
+    const entries = [...journalEntries]
+        .filter(e => !e.characterId || e.characterId === characterId)
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+        .map(normalizeJournalEntry);
+    res.json({
+        entries,
+        stats: {
+            places: entries.length,
+            memories: entries.reduce((sum, e) => sum + (parseInt(e.duration, 10) || 0), 0),
+        },
+    });
+});
+
+app.post('/api/journal', rawImage, (req, res) => {
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        return res.status(400).json({ error: '未收到图片数据' });
+    }
+
+    const mimeType = req.headers['content-type'] || 'image/jpeg';
+    const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
+    const id = `journal_${Date.now()}`;
+    const imageName = `${id}.${ext}`;
+    fs.writeFileSync(path.join(JOURNAL_IMAGES_DIR, imageName), req.body);
+
+    const entry = normalizeJournalEntry({
+        id,
+        characterId: currentCharacterId,
+        date: String(req.headers['x-journal-date'] || '').slice(0, 10),
+        place: decodeURIComponent(String(req.headers['x-journal-place'] || '未知地点')),
+        imageUrl: `/journal-images/${imageName}`,
+        journalState: 'sensing',
+        createdAt: Date.now(),
+    });
+
+    journalEntries.unshift(entry);
+    saveJournal();
+    completeJournalEntry(id, Buffer.from(req.body), mimeType);
+    res.status(201).json(entry);
 });
 
 // ══════════════════════════════════════════════════════════════

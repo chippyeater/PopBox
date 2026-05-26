@@ -167,11 +167,12 @@ void DisplayManager::drawSplitLayout(const String& name,
     _drawAvatar(ax, ay, AVATAR_L_W, AVATAR_L_H,
                 _resolveAvatarPath(avatarPath, expression));
 
-    // 名字在左半底部居中
-    M5.Display.setFont(FONT_L);
+    // 名字紧贴头像下方居中
+    M5.Display.setFont(FONT_M);
     int nameW = M5.Display.textWidth(name.c_str());
     int nameX = (160 - nameW) / 2;
-    _drawNameAt(max(0, nameX), NAME_Y, name);
+    int nameY = SPRITE_Y + AVATAR_L_H + 4;
+    _drawNameAt(max(0, nameX), nameY, name);
 
     // 右半：文字
     _lastRightText = text;
@@ -296,16 +297,17 @@ void DisplayManager::_drawRightText(const String& text) {
 
     if (text.isEmpty()) return;
 
-    int maxLines = ch / 16;
+    const int lineH = 20;
+    int maxLines = ch / lineH;
     String lines[20];
     int lineCount = 0;
     _wrapText(text, RIGHT_W, lines, lineCount, maxLines);
 
-    M5.Display.setFont(FONT_S);
+    M5.Display.setFont(FONT_M);
     M5.Display.setTextColor(C_TEXT);
     M5.Display.setTextWrap(false);
     for (int i = 0; i < lineCount; i++) {
-        M5.Display.setCursor(RIGHT_X, cy + 4 + i * 16);
+        M5.Display.setCursor(RIGHT_X, cy + 4 + i * lineH);
         M5.Display.print(lines[i]);
     }
 }

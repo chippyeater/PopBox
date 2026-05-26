@@ -25,12 +25,15 @@ const app = (() => {
     });
     Object.assign(MOCK_JOURNAL[1], {
         journalState: 'awaiting-reply',
-        replyPlaceholder: '回应角色...',
     });
     Object.assign(MOCK_JOURNAL[2], {
         journalState: 'replied',
-        userReply: '我也记得那天，风里有一点咸味。',
     });
+
+    let journalEntries = [];
+    let journalPollTimer = null;
+    let currentCharacterId = '';
+    let characterList = [];
 
     // ── 页面路由 ──────────────────────────────────────────────
     let currentPage = 'home';
@@ -98,50 +101,77 @@ const app = (() => {
         return `--rot:${rot}deg;--hover-rot:${hoverRot}deg;transform:rotate(var(--rot))`;
     }
 
+    function escapeHTML(value = '') {
+        return String(value).replace(/[&<>"']/g, ch => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+        }[ch]));
+    }
+
+    function moodTagsFromEntry(entry) {
+        const legacy = { warm: '温柔', calm: '安静', active: '好奇' };
+        const raw = Array.isArray(entry.mood) ? entry.mood : String(entry.mood || '').split(/[,\s，、/|]+/);
+        return raw
+            .map(tag => legacy[String(tag).trim()] || String(tag || '').trim())
+            .filter(Boolean)
+            .map(tag => tag.slice(0, 2))
+            .slice(0, 2);
+    }
+
     function polaroidResponseHTML(entry) {
         const state = entry.journalState || 'awaiting-reply';
         const quote = entry.quote || '"正在感知这一刻的温度..."';
         if (state === 'sensing') {
-            return `<div class="polaroid-quote is-sensing-text">${quote}</div>`;
+            return `
+                <div class="polaroid-quote is-sensing-text">
+                    <img class="polaroid-generating-icon" src="generating.png" alt="">
+                    <span>${escapeHTML(quote)}</span>
+                </div>
+            `;
         }
 
-        const replyClass = state === 'replied' ? 'polaroid-reply is-replied' : 'polaroid-reply';
-        const replyText = state === 'replied'
-            ? (entry.userReply || '')
-            : (entry.replyPlaceholder || '回应角色...');
         return `
-            <div class="polaroid-quote">${quote}</div>
-            <div class="${replyClass}">${replyText}</div>
+            <div class="polaroid-quote">${escapeHTML(quote)}</div>
         `;
     }
 
     function polaroidHTML(entry, i) {
-        const moodClass = entry.mood === 'calm' ? 'mood-calm' : entry.mood === 'active' ? 'mood-active' : '';
-        const moodLabel = entry.mood === 'calm' ? '安静' : entry.mood === 'active' ? '好奇' : '温柔';
         const rot       = ROTATIONS[i % ROTATIONS.length];
-        const mon       = entry.month === 'MAY' ? '05' : '05';
-        const dateStr   = `2024.${mon}.${entry.day}`;
+        const dateStr   = entry.date ? entry.date.replace(/-/g, '.') : `2024.05.${entry.day || '01'}`;
         const tapeStyle = randomTapeStyle(entry.id);
         const metaRot   = seededAngle(entry.id, 11);
         const tagRotA   = seededAngle(entry.id, 12);
         const tagRotB   = seededAngle(entry.id, 13);
         const stateClass = entry.journalState === 'sensing' ? ' is-sensing' : '';
+        const moodTags = moodTagsFromEntry(entry);
+        const imageHTML = entry.imageUrl
+            ? `<img src="${escapeHTML(entry.imageUrl)}" draggable="false" style="width:100%;height:100%;object-fit:cover;display:block">`
+            : `<svg class="polaroid-img-icon" viewBox="0 0 40 40" fill="none" width="44" height="44">
+                    <rect x="4" y="8" width="32" height="24" rx="2" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="20" cy="20" r="7" stroke="currentColor" stroke-width="2"/>
+                    <path d="M14 8l2-4h8l2 4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                </svg>`;
+        const tagHTML = entry.journalState === 'sensing' || moodTags.length === 0
+            ? ''
+            : `
+                <div class="polaroid-tags">
+                    ${moodTags.map((tag, idx) => `
+                        <span class="polaroid-tag ${idx === 0 ? 'mood-active' : 'mood-calm'}" style="transform:rotate(${idx === 0 ? tagRotA : tagRotB}deg)">${escapeHTML(tag)}</span>
+                    `).join('')}
+                </div>
+            `;
         return `
         <div class="polaroid${stateClass}" style="${polaroidTransformStyle(rot)}">
             <div class="polaroid-tape" style="${tapeStyle}"></div>
             <div class="polaroid-img">
-                <svg class="polaroid-img-icon" viewBox="0 0 40 40" fill="none" width="44" height="44">
-                    <rect x="4" y="8" width="32" height="24" rx="2" stroke="currentColor" stroke-width="2"/>
-                    <circle cx="20" cy="20" r="7" stroke="currentColor" stroke-width="2"/>
-                    <path d="M14 8l2-4h8l2 4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                </svg>
+                ${imageHTML}
             </div>
             <div class="polaroid-body">
-                <div class="polaroid-meta-box" style="transform:rotate(${metaRot}deg)">${dateStr} / ${entry.place}</div>
-                <div class="polaroid-tags">
-                    <span class="polaroid-tag mood-active" style="transform:rotate(${tagRotA}deg)">好奇</span>
-                    <span class="polaroid-tag ${moodClass}" style="transform:rotate(${tagRotB}deg)">${moodLabel}</span>
-                </div>
+                <div class="polaroid-meta-box" style="transform:rotate(${metaRot}deg)">${escapeHTML(dateStr)} / ${escapeHTML(entry.place)}</div>
+                ${tagHTML}
             </div>
             <hr class="polaroid-divider">
             ${polaroidResponseHTML(entry)}
@@ -161,13 +191,13 @@ const app = (() => {
         });
     }
 
-    function renderJournal() {
+    function renderJournal(entries = journalEntries) {
         const wrap = document.getElementById('journal-canvas-wrap');
         const cvs  = document.getElementById('journal-canvas');
         if (!wrap || !cvs) return;
 
         // 渲染节点
-        cvs.innerHTML = MOCK_JOURNAL.map((entry, i) => {
+        cvs.innerHTML = entries.map((entry, i) => {
             const pos = INIT_POSITIONS[i] || { x: 60 + i * 260, y: 180 };
             return `<div class="canvas-node" data-idx="${i}"
                         style="left:${pos.x}px;top:${pos.y}px">
@@ -179,10 +209,99 @@ const app = (() => {
         // 更新统计数字
         const placeEl = document.getElementById('j-place-count');
         const memEl   = document.getElementById('j-memory-count');
-        if (placeEl) placeEl.textContent = MOCK_JOURNAL.length;
-        if (memEl)   memEl.textContent   = MOCK_JOURNAL.reduce((s, e) => s + parseInt(e.duration || 0), 0);
+        if (placeEl) placeEl.textContent = entries.length;
+        if (memEl)   memEl.textContent   = entries.reduce((s, e) => s + parseInt(e.duration || 0), 0);
 
         bindCanvasDrag(wrap, cvs);
+    }
+
+    async function loadJournal() {
+        try {
+            const qs = currentCharacterId ? `?characterId=${encodeURIComponent(currentCharacterId)}` : '';
+            const res = await fetch(`/api/journal${qs}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+            journalEntries = data.entries || [];
+            renderJournal(journalEntries);
+        } catch (e) {
+            console.warn('[Journal] 使用本地 mock:', e.message);
+            journalEntries = MOCK_JOURNAL;
+            renderJournal(journalEntries);
+        }
+    }
+
+    function startJournalPolling() {
+        if (journalPollTimer) return;
+        if (!journalEntries.some(e => e.journalState === 'sensing')) return;
+        journalPollTimer = setTimeout(async () => {
+            journalPollTimer = null;
+            await loadJournal();
+            startJournalPolling();
+        }, 2500);
+    }
+
+    function renderCharacterSelect(list, currentId) {
+        const select = document.getElementById('character-select');
+        if (!select) return;
+        select.innerHTML = list.map(ch =>
+            `<option value="${escapeHTML(ch.id)}">${escapeHTML(ch.name || ch.id)}</option>`
+        ).join('');
+        select.value = currentId || '';
+        select.onchange = async () => {
+            if (!select.value || select.value === currentCharacterId) return;
+            await switchCurrentCharacter(select.value);
+        };
+    }
+
+    function updateCharacterUI(cur) {
+        if (!cur) return;
+        currentCharacterId = cur.id || currentCharacterId;
+        document.getElementById('char-name').textContent = cur.name || '';
+        document.getElementById('char-type').textContent = `[${cur.series || '未知系列'}]`;
+        document.getElementById('photo-serial').textContent = `SP-01 / ${cur.name || ''}`;
+
+        const photo = document.getElementById('char-photo');
+        const placeholder = document.getElementById('char-photo-placeholder');
+        const sidebarAvatar = document.getElementById('sidebar-char-avatar');
+
+        [photo, sidebarAvatar].forEach(img => {
+            if (!img) return;
+            if (cur.avatar) {
+                img.onload = () => {
+                    img.style.display = 'block';
+                    if (img === photo && placeholder) placeholder.style.display = 'none';
+                };
+                img.onerror = () => {
+                    img.style.display = 'none';
+                    if (img === photo && placeholder) placeholder.style.display = '';
+                };
+                img.src = cur.avatar;
+            } else {
+                img.style.display = 'none';
+                if (img === photo && placeholder) placeholder.style.display = '';
+            }
+        });
+    }
+
+    async function loadCharacters() {
+        const res = await fetch('/api/characters');
+        const list = await res.json();
+        if (!res.ok) throw new Error(list.error || `HTTP ${res.status}`);
+        characterList = list;
+        const cur = list.find(c => c.isCurrent) || list[0];
+        if (cur) updateCharacterUI(cur);
+        renderCharacterSelect(list, cur?.id);
+    }
+
+    async function switchCurrentCharacter(id) {
+        const res = await fetch(`/api/characters/current/${encodeURIComponent(id)}`, { method: 'PUT' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        const cur = data.current || characterList.find(c => c.id === id);
+        updateCharacterUI(cur);
+        renderCharacterSelect(characterList, id);
+        await loadJournal();
+        startJournalPolling();
     }
 
     function applyCanvasTransform(cvs) {
@@ -190,6 +309,8 @@ const app = (() => {
     }
 
     function bindCanvasDrag(wrap, cvs) {
+        if (wrap.dataset.dragBound === '1') return;
+        wrap.dataset.dragBound = '1';
         let dragNode = null;
         let dragOffX = 0, dragOffY = 0;
         let panStart = null;
@@ -261,12 +382,15 @@ const app = (() => {
         document.getElementById('log-text').textContent    = MOCK.logText;
 
         bindNav();
-        renderJournal();
         window.addEventListener('resize', () => updatePolaroidTagLayout());
         bindSettings();
         bindRecordModal();
 
         try {
+            await loadCharacters();
+            await loadJournal();
+            startJournalPolling();
+            /*
             const res  = await fetch('/api/characters');
             const list = await res.json();
             const cur  = list.find(c => c.isCurrent) || list[0];
@@ -286,6 +410,7 @@ const app = (() => {
                 photo.onerror = () => { photo.style.display = 'none'; };
                 photo.src = cur.avatar;
             }
+            */
         } catch (e) {
             console.error('[Admin] 角色加载失败:', e.message);
         }
@@ -328,7 +453,7 @@ const app = (() => {
     }
 
     // ── 照片墙：记录地点弹窗 ────────────────────────────────
-    let pendingImg = null; // { dataUrl, width, height }
+    let pendingImg = null; // { file, dataUrl, width, height }
 
     function recordPlace() {
         const overlay = document.getElementById('record-modal-overlay');
@@ -339,7 +464,6 @@ const app = (() => {
         document.getElementById('record-upload-placeholder').style.display = '';
         document.getElementById('record-date').value = new Date().toISOString().slice(0, 10);
         document.getElementById('record-place').value = '';
-        document.getElementById('record-quote').value = '';
         pendingImg = null;
         overlay.style.display = 'flex';
     }
@@ -364,7 +488,7 @@ const app = (() => {
             reader.onload = ev => {
                 const img = new Image();
                 img.onload = () => {
-                    pendingImg = { dataUrl: ev.target.result, width: img.naturalWidth, height: img.naturalHeight };
+                    pendingImg = { file, dataUrl: ev.target.result, width: img.naturalWidth, height: img.naturalHeight };
                     preview.src = ev.target.result;
                     preview.style.display = 'block';
                     placeholder.style.display = 'none';
@@ -374,10 +498,36 @@ const app = (() => {
             reader.readAsDataURL(file);
         });
 
-        document.getElementById('record-confirm').onclick = () => {
+        document.getElementById('record-confirm').onclick = async () => {
             const dateVal  = document.getElementById('record-date').value;
+            const uploadPlaceVal = document.getElementById('record-place').value || '未知地点';
+            if (!pendingImg?.file) {
+                alert('请先上传照片');
+                return;
+            }
+
+            try {
+                const buffer = await pendingImg.file.arrayBuffer();
+                const res = await fetch('/api/journal', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': pendingImg.file.type || 'image/jpeg',
+                        'X-Journal-Date': dateVal || '',
+                        'X-Journal-Place': encodeURIComponent(uploadPlaceVal),
+                    },
+                    body: buffer,
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+                overlay.style.display = 'none';
+                await loadJournal();
+                startJournalPolling();
+                return;
+            } catch (e) {
+                alert('照片墙保存失败：' + e.message);
+                return;
+            }
             const placeVal = document.getElementById('record-place').value || '未知地点';
-            const quoteVal = document.getElementById('record-quote').value || '';
 
             // 卡片宽度固定 220px，图片区高度根据真实比例计算
             const CARD_W   = 220;
@@ -399,7 +549,6 @@ const app = (() => {
             const rot     = ROTATIONS[rotIdx];
             const tapeStyle = randomTapeStyle(seed);
             const metaRot = seededAngle(seed, 11);
-            const tagRot = seededAngle(seed, 12);
             const imgTag  = pendingImg
                 ? `<img src="${pendingImg.dataUrl}" draggable="false" style="width:100%;height:100%;object-fit:cover;display:block">`
                 : `<svg class="polaroid-img-icon" viewBox="0 0 40 40" fill="none" width="44" height="44">
@@ -419,12 +568,12 @@ const app = (() => {
                     </div>
                     <div class="polaroid-body">
                         <div class="polaroid-meta-box" style="transform:rotate(${metaRot}deg)">${dateStr} / ${placeVal}</div>
-                        <div class="polaroid-tags">
-                            <span class="polaroid-tag" style="transform:rotate(${tagRot}deg)">新</span>
-                        </div>
                     </div>
                     <hr class="polaroid-divider">
-                    <div class="polaroid-quote is-sensing-text">"正在感知这一刻的温度..."</div>
+                    <div class="polaroid-quote is-sensing-text">
+                        <img class="polaroid-generating-icon" src="generating.png" alt="">
+                        <span>"正在感知这一刻的温度..."</span>
+                    </div>
                 </div>`;
             cvs.appendChild(node);
             requestAnimationFrame(() => updatePolaroidTagLayout(node));

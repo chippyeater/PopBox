@@ -43,6 +43,21 @@ body {
     gap: 4px;
 }
 
+.logo-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sidebar-char-avatar {
+    width: 34px;
+    height: 34px;
+    border: 2px solid var(--black);
+    background: #D8D8EC;
+    object-fit: cover;
+    box-shadow: 2px 2px 0 var(--black);
+}
+
 .logo-title {
     font-size: 20px;
     font-weight: 800;
@@ -52,6 +67,7 @@ body {
 .logo-sub {
     font-size: 11px;
     color: #888;
+    margin-left: 44px;
 }
 
 .sidebar-nav {
@@ -306,6 +322,20 @@ body {
     font-weight: 700;
     color: #7AAF00;
     margin-top: 6px;
+}
+
+.character-select {
+    width: min(260px, 100%);
+    margin-top: 14px;
+    padding: 8px 10px;
+    border: var(--border);
+    background: var(--white);
+    color: var(--black);
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 3px 3px 0 var(--black);
+    cursor: pointer;
 }
 
 .divider {
@@ -1361,6 +1391,11 @@ body {
     animation: polaroid-sensing 1.35s ease-in-out infinite;
 }
 
+.polaroid.is-sensing .polaroid-meta-box,
+.polaroid.is-sensing .polaroid-tag {
+    animation: sensing-tag-text-pulse 1.35s ease-in-out infinite;
+}
+
 @keyframes polaroid-sensing {
     0%, 100% {
         background: var(--white);
@@ -1369,6 +1404,15 @@ body {
     50% {
         background: #FBFAEA;
         box-shadow: 6px 6px 0 var(--black);
+    }
+}
+
+@keyframes sensing-tag-text-pulse {
+    0%, 100% {
+        color: var(--black);
+    }
+    50% {
+        color: #A6A799;
     }
 }
 
@@ -1475,36 +1519,39 @@ body {
     color: #6F705F;
     font-weight: 700;
     -webkit-line-clamp: unset;
-}
-
-.polaroid-reply {
-    position: relative;
-    min-height: 58px;
-    margin: 8px 2px 12px;
-    padding: 13px 14px;
-    border: var(--border);
-    background: #F7F3F1;
-    color: #9A9A8E;
-    font-size: 12px;
-    font-weight: 800;
-    line-height: 1.45;
     display: flex;
     align-items: center;
+    gap: 6px;
+    animation: sensing-text-pulse 1.35s ease-in-out infinite;
 }
 
-.polaroid-reply::before {
-    content: "";
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    width: 34px;
-    height: 16px;
-    background: rgba(245, 237, 212, 0.82);
-    border: 1px solid #c8bc9a;
-    transform: translateX(-50%) rotate(-1deg);
+.polaroid-generating-icon {
+    width: 1.45em;
+    height: 1.45em;
+    object-fit: contain;
+    flex-shrink: 0;
+    opacity: 0.95;
+    animation: generating-icon-bounce 1.35s ease-in-out infinite;
 }
 
-.polaroid-reply.is-replied {
-    background: #E6F0D1;
-    color: var(--black);
+@keyframes sensing-text-pulse {
+    0%, 100% {
+        color: #6F705F;
+        opacity: 1;
+    }
+    50% {
+        color: #B9BAAA;
+        opacity: 0.56;
+    }
+}
+
+@keyframes generating-icon-bounce {
+    0%, 100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    50% {
+        transform: translateY(-3px);
+        opacity: 0.45;
+    }
 }
