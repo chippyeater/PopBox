@@ -136,7 +136,7 @@ bool TextToSpeech::speak(const String& text, const String& voice) {
     M5.Speaker.begin();
     M5.Speaker.setVolume(200);
 
-    if (!M5.Speaker.playWav(audio, received, 24000, 1, false)) {
+    if (!M5.Speaker.playWav(audio, received, 1, 0, false)) {
         Serial.println("[TTS] playWav 失败");
         M5.Speaker.end();
         free(audio);

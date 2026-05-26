@@ -19,6 +19,19 @@ const app = (() => {
         { id: 1, day: '18', month: 'MAY', title: '刚刚落脚', quote: '"第一次见面，有点不知道说什么好。"', mood: 'active', duration: '8m', place: '玄关', memory: '初次见面' },
     ];
 
+    Object.assign(MOCK_JOURNAL[0], {
+        journalState: 'sensing',
+        quote: '"正在感知这一刻的温度..."',
+    });
+    Object.assign(MOCK_JOURNAL[1], {
+        journalState: 'awaiting-reply',
+        replyPlaceholder: '回应角色...',
+    });
+    Object.assign(MOCK_JOURNAL[2], {
+        journalState: 'replied',
+        userReply: '我也记得那天，风里有一点咸味。',
+    });
+
     // ── 页面路由 ──────────────────────────────────────────────
     let currentPage = 'home';
 
@@ -50,13 +63,13 @@ const app = (() => {
 
     // 初始散布位置（相对画布左上角，单位px）
     const INIT_POSITIONS = [
-        { x: 40,  y: 40  },
-        { x: 310, y: 20  },
-        { x: 580, y: 60  },
-        { x: 850, y: 30  },
-        { x: 160, y: 340 },
-        { x: 440, y: 320 },
-        { x: 720, y: 300 },
+        { x: 40,  y: 180 },
+        { x: 310, y: 160 },
+        { x: 580, y: 200 },
+        { x: 850, y: 170 },
+        { x: 160, y: 480 },
+        { x: 440, y: 460 },
+        { x: 720, y: 440 },
     ];
 
     // 画布变换状态
@@ -75,6 +88,33 @@ const app = (() => {
         return              `right:-10px;top:${pct}%;width:18px;height:40px;transform:rotate(${rot + 90}deg)`;
     }
 
+    function seededAngle(seed, n, range = 2) {
+        const r = ((seed * 9301 + n * 49297) % 233280) / 233280;
+        return ((r * range * 2) - range).toFixed(1);
+    }
+
+    function polaroidTransformStyle(rot) {
+        const hoverRot = rot < 0 ? -1 : 1;
+        return `--rot:${rot}deg;--hover-rot:${hoverRot}deg;transform:rotate(var(--rot))`;
+    }
+
+    function polaroidResponseHTML(entry) {
+        const state = entry.journalState || 'awaiting-reply';
+        const quote = entry.quote || '"正在感知这一刻的温度..."';
+        if (state === 'sensing') {
+            return `<div class="polaroid-quote is-sensing-text">${quote}</div>`;
+        }
+
+        const replyClass = state === 'replied' ? 'polaroid-reply is-replied' : 'polaroid-reply';
+        const replyText = state === 'replied'
+            ? (entry.userReply || '')
+            : (entry.replyPlaceholder || '回应角色...');
+        return `
+            <div class="polaroid-quote">${quote}</div>
+            <div class="${replyClass}">${replyText}</div>
+        `;
+    }
+
     function polaroidHTML(entry, i) {
         const moodClass = entry.mood === 'calm' ? 'mood-calm' : entry.mood === 'active' ? 'mood-active' : '';
         const moodLabel = entry.mood === 'calm' ? '安静' : entry.mood === 'active' ? '好奇' : '温柔';
@@ -82,8 +122,12 @@ const app = (() => {
         const mon       = entry.month === 'MAY' ? '05' : '05';
         const dateStr   = `2024.${mon}.${entry.day}`;
         const tapeStyle = randomTapeStyle(entry.id);
+        const metaRot   = seededAngle(entry.id, 11);
+        const tagRotA   = seededAngle(entry.id, 12);
+        const tagRotB   = seededAngle(entry.id, 13);
+        const stateClass = entry.journalState === 'sensing' ? ' is-sensing' : '';
         return `
-        <div class="polaroid" style="transform:rotate(${rot}deg)">
+        <div class="polaroid${stateClass}" style="${polaroidTransformStyle(rot)}">
             <div class="polaroid-tape" style="${tapeStyle}"></div>
             <div class="polaroid-img">
                 <svg class="polaroid-img-icon" viewBox="0 0 40 40" fill="none" width="44" height="44">
@@ -93,14 +137,14 @@ const app = (() => {
                 </svg>
             </div>
             <div class="polaroid-body">
-                <div class="polaroid-meta-box">${dateStr} / ${entry.place}</div>
+                <div class="polaroid-meta-box" style="transform:rotate(${metaRot}deg)">${dateStr} / ${entry.place}</div>
                 <div class="polaroid-tags">
-                    <span class="polaroid-tag mood-active">好奇</span>
-                    <span class="polaroid-tag ${moodClass}">${moodLabel}</span>
+                    <span class="polaroid-tag mood-active" style="transform:rotate(${tagRotA}deg)">好奇</span>
+                    <span class="polaroid-tag ${moodClass}" style="transform:rotate(${tagRotB}deg)">${moodLabel}</span>
                 </div>
             </div>
             <hr class="polaroid-divider">
-            <div class="polaroid-quote">${entry.quote}</div>
+            ${polaroidResponseHTML(entry)}
         </div>`;
     }
 
@@ -124,7 +168,7 @@ const app = (() => {
 
         // 渲染节点
         cvs.innerHTML = MOCK_JOURNAL.map((entry, i) => {
-            const pos = INIT_POSITIONS[i] || { x: 60 + i * 260, y: 60 };
+            const pos = INIT_POSITIONS[i] || { x: 60 + i * 260, y: 180 };
             return `<div class="canvas-node" data-idx="${i}"
                         style="left:${pos.x}px;top:${pos.y}px">
                         ${polaroidHTML(entry, i)}
@@ -354,6 +398,8 @@ const app = (() => {
             const rotIdx  = cvs.children.length % ROTATIONS.length;
             const rot     = ROTATIONS[rotIdx];
             const tapeStyle = randomTapeStyle(seed);
+            const metaRot = seededAngle(seed, 11);
+            const tagRot = seededAngle(seed, 12);
             const imgTag  = pendingImg
                 ? `<img src="${pendingImg.dataUrl}" draggable="false" style="width:100%;height:100%;object-fit:cover;display:block">`
                 : `<svg class="polaroid-img-icon" viewBox="0 0 40 40" fill="none" width="44" height="44">
@@ -366,19 +412,19 @@ const app = (() => {
             node.className = 'canvas-node';
             node.style.cssText = `left:${pos.x}px;top:${pos.y}px;width:${CARD_W}px`;
             node.innerHTML = `
-                <div class="polaroid" style="transform:rotate(${rot}deg)">
+                <div class="polaroid is-sensing" style="${polaroidTransformStyle(rot)}">
                     <div class="polaroid-tape" style="${tapeStyle}"></div>
                     <div class="polaroid-img" style="aspect-ratio:${PHOTO_W}/${photoH};height:${photoH}px">
                         ${imgTag}
                     </div>
                     <div class="polaroid-body">
-                        <div class="polaroid-meta-box">${dateStr} / ${placeVal}</div>
+                        <div class="polaroid-meta-box" style="transform:rotate(${metaRot}deg)">${dateStr} / ${placeVal}</div>
                         <div class="polaroid-tags">
-                            <span class="polaroid-tag">新</span>
+                            <span class="polaroid-tag" style="transform:rotate(${tagRot}deg)">新</span>
                         </div>
                     </div>
                     <hr class="polaroid-divider">
-                    <div class="polaroid-quote">${quoteVal ? `"${quoteVal}"` : ''}</div>
+                    <div class="polaroid-quote is-sensing-text">"正在感知这一刻的温度..."</div>
                 </div>`;
             cvs.appendChild(node);
             requestAnimationFrame(() => updatePolaroidTagLayout(node));
@@ -404,7 +450,7 @@ const app = (() => {
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 const x = 60 + c * stepX;
-                const y = 60 + r * stepY;
+                const y = 180 + r * stepY;
                 const overlaps = nodes.some(n => {
                     const nx = parseFloat(n.style.left), ny = parseFloat(n.style.top);
                     const nw = n.offsetWidth || 220, nh = n.offsetHeight || 300;

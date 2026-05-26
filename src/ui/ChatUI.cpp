@@ -45,10 +45,13 @@ ChatUI::ChatUI(CharacterManager& charMgr, AudioRecorder& recorder,
 
 void ChatUI::begin() {
     _display.begin();
-    // 始终显示欢迎/入住界面，无论是否有角色
-    _display.drawNoCharacter();
-    _display.showBottomBar(true);
-    _state = AppState::NO_CHARACTER;
+    if (_charMgr.count() > 0) {
+        _enterCharacterSelect();
+    } else {
+        _display.drawNoCharacter();
+        _display.showBottomBar(true);
+        _state = AppState::NO_CHARACTER;
+    }
 }
 
 void ChatUI::update() {
