@@ -1,0 +1,426 @@
+const app = (() => {
+    // ── 假数据 ────────────────────────────────────────────────
+    const MOCK = {
+        daysLiving:       7,
+        connectionStatus: '已连接',
+        breathColor:      '琥珀色',
+        interactCount:    12,
+        logIndex:         1,
+        logText:          '"今天的光落在玻璃罩上的时候，我觉得这里好像也没有那么陌生。"',
+    };
+
+    const MOCK_JOURNAL = [
+        { id: 7, day: '24', month: 'MAY', title: '傍晚的窗边闲聊', quote: '"你今天有没有看见那片云，它长得很像一只猫。"', mood: 'warm', duration: '18m', place: '书房窗边', memory: '云朵与猫' },
+        { id: 6, day: '23', month: 'MAY', title: '关于喜欢的颜色', quote: '"我一直觉得琥珀色是一种很安静的颜色，它把光留住了。"', mood: 'calm', duration: '31m', place: '客厅', memory: '琥珀与光' },
+        { id: 5, day: '22', month: 'MAY', title: '讲了一个关于海的故事', quote: '"海是很大的，大到你站在岸边会有点不知所措。"', mood: 'warm', duration: '24m', place: '床头', memory: '海边的故事' },
+        { id: 4, day: '20', month: 'MAY', title: '问了很多奇怪的问题', quote: '"如果声音有颜色，你觉得你的声音是什么颜色的？"', mood: 'active', duration: '42m', place: '书桌旁', memory: '声音的颜色' },
+        { id: 3, day: '19', month: 'MAY', title: '安静地待了一会儿', quote: '"有时候不说话也挺好的，就是待着。"', mood: 'calm', duration: '11m', place: '阳台', memory: '沉默的午后' },
+        { id: 2, day: '18', month: 'MAY', title: '初次正式交谈', quote: '"这里的光和我想象的不太一样，但我喜欢。"', mood: 'warm', duration: '28m', place: '客厅', memory: '第一次交谈' },
+        { id: 1, day: '18', month: 'MAY', title: '刚刚落脚', quote: '"第一次见面，有点不知道说什么好。"', mood: 'active', duration: '8m', place: '玄关', memory: '初次见面' },
+    ];
+
+    // ── 页面路由 ──────────────────────────────────────────────
+    let currentPage = 'home';
+
+    function switchPage(page) {
+        document.querySelectorAll('.page-view').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+        const target = document.getElementById(`page-${page}`);
+        if (target) target.style.display = 'flex';
+
+        const navEl = document.querySelector(`[data-page="${page}"]`);
+        if (navEl) navEl.classList.add('active');
+
+        currentPage = page;
+    }
+
+    function bindNav() {
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', e => {
+                e.preventDefault();
+                switchPage(item.dataset.page);
+            });
+        });
+
+    }
+
+    // ── 出行日志：可拖拽画布 ─────────────────────────────────
+    const ROTATIONS = [-3, 1.5, -1, 2.5, -2, 1, -1.5];
+
+    // 初始散布位置（相对画布左上角，单位px）
+    const INIT_POSITIONS = [
+        { x: 40,  y: 40  },
+        { x: 310, y: 20  },
+        { x: 580, y: 60  },
+        { x: 850, y: 30  },
+        { x: 160, y: 340 },
+        { x: 440, y: 320 },
+        { x: 720, y: 300 },
+    ];
+
+    // 画布变换状态
+    const canvas = { panX: 0, panY: 0, scale: 1 };
+
+    // 沿宝丽来四边随机生成胶带的内联样式
+    function randomTapeStyle(seed) {
+        // 用 seed 做伪随机，保证同一张卡每次渲染位置一致
+        const r  = (n) => ((seed * 9301 + n * 49297) % 233280) / 233280;
+        const edge = Math.floor(r(1) * 4); // 0=上 1=下 2=左 3=右
+        const pct  = 15 + Math.floor(r(2) * 55); // 15%~70%
+        const rot  = -6 + Math.floor(r(3) * 12);  // -6°~+6°
+        if (edge === 0) return `top:-10px;left:${pct}%;transform:rotate(${rot}deg)`;
+        if (edge === 1) return `bottom:-10px;left:${pct}%;transform:rotate(${rot}deg)`;
+        if (edge === 2) return `left:-10px;top:${pct}%;width:18px;height:40px;transform:rotate(${rot + 90}deg)`;
+        return              `right:-10px;top:${pct}%;width:18px;height:40px;transform:rotate(${rot + 90}deg)`;
+    }
+
+    function polaroidHTML(entry, i) {
+        const moodClass = entry.mood === 'calm' ? 'mood-calm' : entry.mood === 'active' ? 'mood-active' : '';
+        const moodLabel = entry.mood === 'calm' ? '安静' : entry.mood === 'active' ? '好奇' : '温柔';
+        const rot       = ROTATIONS[i % ROTATIONS.length];
+        const mon       = entry.month === 'MAY' ? '05' : '05';
+        const dateStr   = `2024.${mon}.${entry.day}`;
+        const tapeStyle = randomTapeStyle(entry.id);
+        return `
+        <div class="polaroid" style="transform:rotate(${rot}deg)">
+            <div class="polaroid-tape" style="${tapeStyle}"></div>
+            <div class="polaroid-img">
+                <svg class="polaroid-img-icon" viewBox="0 0 40 40" fill="none" width="44" height="44">
+                    <rect x="4" y="8" width="32" height="24" rx="2" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="20" cy="20" r="7" stroke="currentColor" stroke-width="2"/>
+                    <path d="M14 8l2-4h8l2 4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div class="polaroid-body">
+                <div class="polaroid-meta-box">${dateStr} / ${entry.place}</div>
+                <div class="polaroid-tags">
+                    <span class="polaroid-tag mood-active">好奇</span>
+                    <span class="polaroid-tag ${moodClass}">${moodLabel}</span>
+                </div>
+            </div>
+            <hr class="polaroid-divider">
+            <div class="polaroid-quote">${entry.quote}</div>
+        </div>`;
+    }
+
+    function updatePolaroidTagLayout(root = document) {
+        root.querySelectorAll('.polaroid-body').forEach(body => {
+            const meta = body.querySelector('.polaroid-meta-box');
+            const tags = body.querySelector('.polaroid-tags');
+            if (!meta || !tags) return;
+
+            body.classList.remove('tags-stacked');
+            const gap = parseFloat(getComputedStyle(body).columnGap) || 0;
+            const needsStack = meta.offsetWidth + tags.scrollWidth + gap > body.clientWidth;
+            body.classList.toggle('tags-stacked', needsStack);
+        });
+    }
+
+    function renderJournal() {
+        const wrap = document.getElementById('journal-canvas-wrap');
+        const cvs  = document.getElementById('journal-canvas');
+        if (!wrap || !cvs) return;
+
+        // 渲染节点
+        cvs.innerHTML = MOCK_JOURNAL.map((entry, i) => {
+            const pos = INIT_POSITIONS[i] || { x: 60 + i * 260, y: 60 };
+            return `<div class="canvas-node" data-idx="${i}"
+                        style="left:${pos.x}px;top:${pos.y}px">
+                        ${polaroidHTML(entry, i)}
+                    </div>`;
+        }).join('');
+        requestAnimationFrame(() => updatePolaroidTagLayout(cvs));
+
+        // 更新统计数字
+        const placeEl = document.getElementById('j-place-count');
+        const memEl   = document.getElementById('j-memory-count');
+        if (placeEl) placeEl.textContent = MOCK_JOURNAL.length;
+        if (memEl)   memEl.textContent   = MOCK_JOURNAL.reduce((s, e) => s + parseInt(e.duration || 0), 0);
+
+        bindCanvasDrag(wrap, cvs);
+    }
+
+    function applyCanvasTransform(cvs) {
+        cvs.style.transform = `translate(${canvas.panX}px,${canvas.panY}px) scale(${canvas.scale})`;
+    }
+
+    function bindCanvasDrag(wrap, cvs) {
+        let dragNode = null;
+        let dragOffX = 0, dragOffY = 0;
+        let panStart = null;
+
+        wrap.addEventListener('mousedown', e => {
+            const node = e.target.closest('.canvas-node');
+            if (node) {
+                e.stopPropagation();
+                dragNode = node;
+                dragNode.classList.add('dragging');
+                // 把屏幕坐标转换为画布坐标系内的偏移
+                const rect = node.getBoundingClientRect();
+                dragOffX = (e.clientX - rect.left) / canvas.scale;
+                dragOffY = (e.clientY - rect.top)  / canvas.scale;
+            } else {
+                wrap.classList.add('panning');
+                panStart = { x: e.clientX - canvas.panX, y: e.clientY - canvas.panY };
+            }
+        });
+
+        wrap.addEventListener('dragstart', e => {
+            if (e.target.closest('.polaroid-img')) e.preventDefault();
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (dragNode) {
+                const wrapRect = wrap.getBoundingClientRect();
+                // 屏幕坐标 → 画布坐标
+                const x = (e.clientX - wrapRect.left - canvas.panX) / canvas.scale - dragOffX;
+                const y = (e.clientY - wrapRect.top  - canvas.panY) / canvas.scale - dragOffY;
+                dragNode.style.left = x + 'px';
+                dragNode.style.top  = y + 'px';
+            } else if (panStart) {
+                canvas.panX = e.clientX - panStart.x;
+                canvas.panY = e.clientY - panStart.y;
+                applyCanvasTransform(cvs);
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (dragNode) { dragNode.classList.remove('dragging'); dragNode = null; }
+            if (panStart)  { wrap.classList.remove('panning');      panStart = null; }
+        });
+
+        // 滚轮缩放（以鼠标为中心缩放）
+        wrap.addEventListener('wheel', e => {
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+            const newScale = Math.min(3, Math.max(0.25, canvas.scale * factor));
+            const wrapRect = wrap.getBoundingClientRect();
+            // 鼠标在画布坐标系中的位置
+            const mx = (e.clientX - wrapRect.left - canvas.panX) / canvas.scale;
+            const my = (e.clientY - wrapRect.top  - canvas.panY) / canvas.scale;
+            // 缩放后保持鼠标指向同一画布点
+            canvas.panX = e.clientX - wrapRect.left - mx * newScale;
+            canvas.panY = e.clientY - wrapRect.top  - my * newScale;
+            canvas.scale = newScale;
+            applyCanvasTransform(cvs);
+        }, { passive: false });
+    }
+
+    // ── 初始化 ────────────────────────────────────────────────
+    async function init() {
+        document.getElementById('days-text').textContent   = `共同生活第 ${MOCK.daysLiving} 天`;
+        document.getElementById('conn-status').textContent = MOCK.connectionStatus;
+        document.getElementById('breath-color').textContent = MOCK.breathColor;
+        document.getElementById('interact-count').textContent = MOCK.interactCount + '次';
+        document.getElementById('log-index').textContent   = String(MOCK.logIndex).padStart(3, '0');
+        document.getElementById('log-text').textContent    = MOCK.logText;
+
+        bindNav();
+        renderJournal();
+        window.addEventListener('resize', () => updatePolaroidTagLayout());
+        bindSettings();
+        bindRecordModal();
+
+        try {
+            const res  = await fetch('/api/characters');
+            const list = await res.json();
+            const cur  = list.find(c => c.isCurrent) || list[0];
+            if (!cur) return;
+
+            document.getElementById('char-name').textContent  = cur.name;
+            document.getElementById('char-type').textContent  = `[${cur.series || '未知系列'}]`;
+            document.getElementById('photo-serial').textContent = `SP-01 / ${cur.name}`;
+
+            const photo       = document.getElementById('char-photo');
+            const placeholder = document.getElementById('char-photo-placeholder');
+            if (cur.avatar) {
+                photo.onload = () => {
+                    photo.style.display = 'block';
+                    placeholder.style.display = 'none';
+                };
+                photo.onerror = () => { photo.style.display = 'none'; };
+                photo.src = cur.avatar;
+            }
+        } catch (e) {
+            console.error('[Admin] 角色加载失败:', e.message);
+        }
+    }
+
+    // ── 设置页交互 ───────────────────────────────────────────
+    function bindSettings() {
+        // 语气偏好
+        document.querySelectorAll('.tone-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.tone-card').forEach(c => c.classList.remove('tone-card--selected'));
+                card.classList.add('tone-card--selected');
+            });
+        });
+        // 互动频率
+        document.querySelectorAll('.freq-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.freq-item').forEach(i => i.classList.remove('freq-item--selected'));
+                item.classList.add('freq-item--selected');
+            });
+        });
+        // 互动边界
+        document.querySelectorAll('.boundary-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.boundary-item').forEach(i => {
+                    i.classList.remove('boundary-item--selected');
+                    i.querySelector('.boundary-radio').classList.remove('boundary-radio--checked');
+                });
+                item.classList.add('boundary-item--selected');
+                item.querySelector('.boundary-radio').classList.add('boundary-radio--checked');
+            });
+        });
+        // 世界观强度
+        document.querySelectorAll('.worldview-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.worldview-btn').forEach(b => b.classList.remove('worldview-btn--selected'));
+                btn.classList.add('worldview-btn--selected');
+            });
+        });
+    }
+
+    // ── 照片墙：记录地点弹窗 ────────────────────────────────
+    let pendingImg = null; // { dataUrl, width, height }
+
+    function recordPlace() {
+        const overlay = document.getElementById('record-modal-overlay');
+        if (!overlay) return;
+        // 重置表单
+        document.getElementById('record-img-input').value = '';
+        document.getElementById('record-preview').style.display = 'none';
+        document.getElementById('record-upload-placeholder').style.display = '';
+        document.getElementById('record-date').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('record-place').value = '';
+        document.getElementById('record-quote').value = '';
+        pendingImg = null;
+        overlay.style.display = 'flex';
+    }
+
+    function bindRecordModal() {
+        const overlay  = document.getElementById('record-modal-overlay');
+        const imgInput = document.getElementById('record-img-input');
+        const preview  = document.getElementById('record-preview');
+        const placeholder = document.getElementById('record-upload-placeholder');
+
+        document.getElementById('record-modal-close').onclick = () => {
+            overlay.style.display = 'none';
+        };
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) overlay.style.display = 'none';
+        });
+
+        imgInput.addEventListener('change', () => {
+            const file = imgInput.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const img = new Image();
+                img.onload = () => {
+                    pendingImg = { dataUrl: ev.target.result, width: img.naturalWidth, height: img.naturalHeight };
+                    preview.src = ev.target.result;
+                    preview.style.display = 'block';
+                    placeholder.style.display = 'none';
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('record-confirm').onclick = () => {
+            const dateVal  = document.getElementById('record-date').value;
+            const placeVal = document.getElementById('record-place').value || '未知地点';
+            const quoteVal = document.getElementById('record-quote').value || '';
+
+            // 卡片宽度固定 220px，图片区高度根据真实比例计算
+            const CARD_W   = 220;
+            const PHOTO_W  = CARD_W - 20;
+            const imgAspect = pendingImg ? pendingImg.height / pendingImg.width : 0.75;
+            const photoH   = Math.round(PHOTO_W * imgAspect);
+
+            const dateStr  = dateVal ? dateVal.replace(/-/g, '.') : '未知日期';
+
+            // 找画布空白位置
+            const wrap    = document.getElementById('journal-canvas-wrap');
+            const cvs     = document.getElementById('journal-canvas');
+            const pos     = findEmptySpot(cvs, CARD_W, photoH + 90);
+
+            // 生成新节点
+            const id      = Date.now();
+            const seed    = id % 9999;
+            const rotIdx  = cvs.children.length % ROTATIONS.length;
+            const rot     = ROTATIONS[rotIdx];
+            const tapeStyle = randomTapeStyle(seed);
+            const imgTag  = pendingImg
+                ? `<img src="${pendingImg.dataUrl}" draggable="false" style="width:100%;height:100%;object-fit:cover;display:block">`
+                : `<svg class="polaroid-img-icon" viewBox="0 0 40 40" fill="none" width="44" height="44">
+                       <rect x="4" y="8" width="32" height="24" rx="2" stroke="currentColor" stroke-width="2"/>
+                       <circle cx="20" cy="20" r="7" stroke="currentColor" stroke-width="2"/>
+                       <path d="M14 8l2-4h8l2 4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                   </svg>`;
+
+            const node = document.createElement('div');
+            node.className = 'canvas-node';
+            node.style.cssText = `left:${pos.x}px;top:${pos.y}px;width:${CARD_W}px`;
+            node.innerHTML = `
+                <div class="polaroid" style="transform:rotate(${rot}deg)">
+                    <div class="polaroid-tape" style="${tapeStyle}"></div>
+                    <div class="polaroid-img" style="aspect-ratio:${PHOTO_W}/${photoH};height:${photoH}px">
+                        ${imgTag}
+                    </div>
+                    <div class="polaroid-body">
+                        <div class="polaroid-meta-box">${dateStr} / ${placeVal}</div>
+                        <div class="polaroid-tags">
+                            <span class="polaroid-tag">新</span>
+                        </div>
+                    </div>
+                    <hr class="polaroid-divider">
+                    <div class="polaroid-quote">${quoteVal ? `"${quoteVal}"` : ''}</div>
+                </div>`;
+            cvs.appendChild(node);
+            requestAnimationFrame(() => updatePolaroidTagLayout(node));
+
+            // 画布平移到新卡片中心
+            const wrapRect = wrap.getBoundingClientRect();
+            canvas.panX = wrapRect.width  / 2 - (pos.x + CARD_W / 2) * canvas.scale;
+            canvas.panY = wrapRect.height / 2 - (pos.y + (photoH + 90) / 2) * canvas.scale;
+            cvs.style.transition = 'transform 0.5s cubic-bezier(.4,0,.2,1)';
+            applyCanvasTransform(cvs);
+            setTimeout(() => { cvs.style.transition = ''; }, 550);
+
+            overlay.style.display = 'none';
+        };
+    }
+
+    // 在画布上找一块不与现有节点重叠的空位
+    function findEmptySpot(cvs, w, h) {
+        const nodes = Array.from(cvs.querySelectorAll('.canvas-node'));
+        const margin = 30;
+        const cols = 5, rows = 4;
+        const stepX = w + margin + 60, stepY = h + margin + 40;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const x = 60 + c * stepX;
+                const y = 60 + r * stepY;
+                const overlaps = nodes.some(n => {
+                    const nx = parseFloat(n.style.left), ny = parseFloat(n.style.top);
+                    const nw = n.offsetWidth || 220, nh = n.offsetHeight || 300;
+                    return !(x + w + margin < nx || x > nx + nw + margin ||
+                             y + h + margin < ny || y > ny + nh + margin);
+                });
+                if (!overlaps) return { x, y };
+            }
+        }
+        // 找不到空位则随机偏移放到右下
+        return { x: 60 + nodes.length * 40, y: 60 + nodes.length * 30 };
+    }
+
+    function postNote()      { alert('小纸条功能建设中～'); }
+    function savePrefs()     { alert('偏好已保存～'); }
+
+    init();
+    return { postNote, recordPlace, savePrefs, switchPage, bindRecordModal };
+})();

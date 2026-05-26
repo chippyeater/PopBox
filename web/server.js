@@ -13,7 +13,8 @@ const PORT = process.env.PORT || 3000;
 // 注意：精确匹配路径，避免影响子路径（如 /api/recognize/upload）
 const rawImage = express.raw({ type: ['image/jpeg', 'image/*', 'application/octet-stream'], limit: '8mb' });
 app.use(express.json({ limit: '1mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use('/cores3', express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public-admin')));
 app.use(express.static(path.join(__dirname, '../data'), { index: false }));
 
 // ── 目录 ─────────────────────────────────────────────────────

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pop Box</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="layout">
+
+    <!-- ── 左侧边栏 ── -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <span class="logo-title">Pop Box</span>
+            <span class="logo-sub">Online · Living with you</span>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-page="home">
+                <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+                    <path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M7 18v-6h6v6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                </svg>
+                生命仓
+            </a>
+            <a href="#" class="nav-item" data-page="notes">
+                <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+                    <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/>
+                    <line x1="6" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    <line x1="6" y1="10" x2="11" y2="10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    <line x1="6" y1="13" x2="12" y2="13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                小纸条
+            </a>
+            <a href="#" class="nav-item" data-page="journal">
+                <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+                    <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.6"/>
+                    <path d="M10 6v4l3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+                出行日志
+            </a>
+            <a href="#" class="nav-item" data-page="settings">
+                <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+                    <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.6"/>
+                    <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                相处方式
+            </a>
+        </nav>
+    </aside>
+
+    <!-- ── 主内容 ── -->
+    <main class="main">
+
+        <!-- 右上角天数 -->
+        <div class="days-badge">
+            <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
+                <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/>
+                <path d="M8 4.5V8l2.5 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+            <span id="days-text">共同生活第 7 天</span>
+        </div>
+
+        <!-- ── 生命仓页面 ── -->
+        <div class="page-view" id="page-home">
+            <div class="main-card">
+                <span class="sticker sticker-entered">[已入住]</span>
+                <span class="sticker sticker-adapting" id="status-tag">正在适应你的房间</span>
+
+                <div class="photo-col">
+                    <div class="photo-frame">
+                        <div class="photo-img-wrap">
+                            <img id="char-photo" class="char-photo" src="" alt="角色照片"
+                                 style="display:none"
+                                 onerror="this.style.display='none'">
+                            <div id="char-photo-placeholder" class="char-photo-placeholder">暂无照片</div>
+                        </div>
+                        <div class="photo-caption">
+                            <span id="photo-serial" class="photo-serial">SP-01 / 温暖者</span>
+                            <svg class="qr-icon" viewBox="0 0 20 20" fill="none">
+                                <rect x="2" y="2" width="6" height="6" stroke="currentColor" stroke-width="1.4"/>
+                                <rect x="12" y="2" width="6" height="6" stroke="currentColor" stroke-width="1.4"/>
+                                <rect x="2" y="12" width="6" height="6" stroke="currentColor" stroke-width="1.4"/>
+                                <rect x="3.5" y="3.5" width="3" height="3" fill="currentColor"/>
+                                <rect x="13.5" y="3.5" width="3" height="3" fill="currentColor"/>
+                                <rect x="3.5" y="13.5" width="3" height="3" fill="currentColor"/>
+                                <path d="M12 12h2v2h-2zM14 14h2v2h-2zM16 12h2v2h-2z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-col">
+                    <div class="char-identity-label">角色身份</div>
+                    <h1 class="char-name" id="char-name">Skullpanda</h1>
+                    <div class="char-type" id="char-type">[温暖者]</div>
+
+                    <hr class="divider">
+
+                    <div class="status-cards">
+                        <div class="status-card">
+                            <svg class="status-icon" viewBox="0 0 20 20" fill="none">
+                                <path d="M3 6c2-2.5 12-2.5 14 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <path d="M5.5 9c1.5-1.5 8-1.5 9 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <path d="M8 12c1-.8 4-.8 4 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <circle cx="10" cy="15" r="1" fill="currentColor"/>
+                            </svg>
+                            <div class="status-label">连接状态</div>
+                            <div class="status-value" id="conn-status">已连接</div>
+                        </div>
+                        <div class="status-card">
+                            <svg class="status-icon" viewBox="0 0 20 20" fill="none">
+                                <circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.5"/>
+                                <circle cx="10" cy="10" r="1.5" fill="currentColor"/>
+                            </svg>
+                            <div class="status-label">呼吸灯</div>
+                            <div class="status-value" id="breath-color">琥珀色</div>
+                        </div>
+                        <div class="status-card">
+                            <svg class="status-icon" viewBox="0 0 20 20" fill="none">
+                                <path d="M4 10c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <path d="M7 14l1.5-1.5L10 14l1.5-1.5L13 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <div class="status-label">日常互动</div>
+                            <div class="status-value status-value-large" id="interact-count">12次</div>
+                        </div>
+                    </div>
+
+                    <div class="voice-log">
+                        <div class="voice-log-label">语音日志 // <span id="log-index">001</span></div>
+                        <blockquote class="voice-log-text" id="log-text">
+                            "今天的光落在玻璃罩上的时候，我觉得这里好像也没有那么陌生。"
+                        </blockquote>
+                    </div>
+
+                    <div class="action-row">
+                        <button class="btn-primary" onclick="app.postNote()">
+                            发布小纸条 →
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── 出行日志页面 ── -->
+        <div class="page-view" id="page-journal" style="display:none">
+            <div class="journal-v2">
+
+                <!-- 上：顶部工具栏 -->
+                <div class="journal-topbar">
+                    <div class="journal-topbar-left">
+                        <div class="journal-wall-title">出行照片墙</div>
+                        <div class="journal-wall-sub">旅行日志 // 物理与数字的交集</div>
+                    </div>
+                    <div class="journal-topbar-center">
+                        <button class="btn-explore-data">
+                            <svg viewBox="0 0 20 20" fill="none" width="14" height="14">
+                                <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M15 15l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            探索数据
+                        </button>
+                        <div class="journal-stat-chip">地点&nbsp;<strong id="j-place-count">12</strong></div>
+                        <div class="journal-stat-chip">回忆&nbsp;<strong id="j-memory-count">84</strong></div>
+                    </div>
+                    <div class="journal-topbar-right">
+                        <button class="btn-record-place" onclick="app.recordPlace()">
+                            <svg viewBox="0 0 20 20" fill="none" width="15" height="15">
+                                <rect x="2" y="5" width="16" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                                <circle cx="10" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M7 5l1-2h4l1 2" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                            </svg>
+                            记录你们去过的地方
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 记录地点弹窗 -->
+                <div class="record-modal-overlay" id="record-modal-overlay" style="display:none">
+                    <div class="record-modal">
+                        <div class="record-modal-header">
+                            <span class="record-modal-title">记录去过的地方</span>
+                            <button class="record-modal-close" id="record-modal-close">✕</button>
+                        </div>
+                        <label class="record-upload-area" id="record-upload-area">
+                            <input type="file" id="record-img-input" accept="image/*" style="display:none">
+                            <div class="record-upload-placeholder" id="record-upload-placeholder">
+                                <svg viewBox="0 0 40 40" fill="none" width="36" height="36">
+                                    <rect x="4" y="8" width="32" height="24" rx="2" stroke="currentColor" stroke-width="2"/>
+                                    <circle cx="20" cy="20" r="6" stroke="currentColor" stroke-width="2"/>
+                                    <path d="M14 8l2-4h8l2 4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                </svg>
+                                <span>点击上传照片</span>
+                            </div>
+                            <img id="record-preview" style="display:none;width:100%;height:100%;object-fit:contain">
+                        </label>
+                        <div class="record-fields">
+                            <div class="record-field">
+                                <label class="record-field-label">日期</label>
+                                <input type="date" class="record-field-input" id="record-date">
+                            </div>
+                            <div class="record-field">
+                                <label class="record-field-label">地点</label>
+                                <input type="text" class="record-field-input" id="record-place" placeholder="去了哪里？">
+                            </div>
+                            <div class="record-field">
+                                <label class="record-field-label">回忆</label>
+                                <input type="text" class="record-field-input" id="record-quote" placeholder="留下一句话…">
+                            </div>
+                        </div>
+                        <div class="record-modal-footer">
+                            <button class="btn-post-note" id="record-confirm">贴上照片墙 →</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 下：可拖拽画布 -->
+                <div class="journal-canvas-wrap" id="journal-canvas-wrap">
+                    <div class="journal-canvas" id="journal-canvas">
+                        <!-- 由 JS 渲染可拖拽节点 -->
+                    </div>
+                    <div class="journal-canvas-hint">拖拽移动卡片 · 拖拽空白处平移画布</div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ── 小纸条页面 ── -->
+        <div class="page-view" id="page-notes" style="display:none">
+            <div class="notes-board">
+
+                <!-- 状态标签 -->
+                <div class="notes-status-chip" id="notes-status">状态：无聊中</div>
+
+                <!-- 胶带装饰 -->
+                <div class="note-tape-deco" style="left:62%;top:8%;transform:rotate(2deg)"></div>
+                <div class="note-tape-deco note-tape-deco--wide" style="left:74%;top:74%;transform:rotate(-4deg)"></div>
+
+                <!-- 角色消息贴纸 -->
+                <div class="note-sticky note-sticky--char" style="left:14%;top:9%;transform:rotate(-2.5deg)">
+                    <div class="note-tape-top"></div>
+                    <div class="note-sticky-header">
+                        <div class="note-char-avatar" id="note-avatar">
+                            <svg viewBox="0 0 20 20" fill="none" width="20" height="20">
+                                <circle cx="10" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M3 18c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <span class="note-sticky-time" id="note-time">10:42 PM</span>
+                    </div>
+                    <div class="note-sticky-text" id="note-char-text">你今天回来得很晚，外面的风很大吗？</div>
+                </div>
+
+                <!-- 记忆宝丽来 -->
+                <div class="note-memory-polaroid" style="left:10%;top:46%;transform:rotate(-1.5deg)">
+                    <div class="note-memory-photo">
+                        <svg viewBox="0 0 40 40" fill="none" width="32" height="32" style="opacity:0.35">
+                            <rect x="4" y="8" width="32" height="24" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <circle cx="20" cy="20" r="6" stroke="currentColor" stroke-width="2"/>
+                            <path d="M14 8l2-4h8l2 4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div class="note-memory-label">记忆_04</div>
+                </div>
+
+                <!-- 写小纸条面板 -->
+                <div class="note-write-panel" style="left:42%;top:28%;transform:rotate(1.5deg)">
+                    <div class="note-write-header">
+                        <span class="note-write-title">写张小纸条</span>
+                        <svg viewBox="0 0 20 20" fill="none" width="16" height="16" style="opacity:0.5">
+                            <path d="M10 2v4M10 2L8 4M10 2l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <rect x="7" y="6" width="6" height="12" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                        </svg>
+                    </div>
+                    <textarea class="note-write-textarea" placeholder="今天想让它知道什么？" rows="4"></textarea>
+                    <div class="note-write-footer">
+                        <div class="note-write-icons">
+                            <button class="note-icon-btn">
+                                <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+                                    <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/>
+                                    <path d="M7 11c.5 1.5 5.5 1.5 6 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                                    <circle cx="7.5" cy="8.5" r="1" fill="currentColor"/>
+                                    <circle cx="12.5" cy="8.5" r="1" fill="currentColor"/>
+                                </svg>
+                            </button>
+                            <button class="note-icon-btn">
+                                <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+                                    <rect x="3" y="4" width="14" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                                    <circle cx="7.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="1.3"/>
+                                    <path d="M3 14l4-4 3 3 2-2 5 5" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <button class="btn-post-note" onclick="app.postNote()">贴上去</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ── 相处方式页面 ── -->
+        <div class="page-view" id="page-settings" style="display:none">
+            <div class="settings-scroll">
+
+                <!-- 页头 -->
+                <div class="settings-header">
+                    <div class="settings-config-chip">配置</div>
+                    <h1 class="settings-title">入住偏好调整</h1>
+                    <p class="settings-subtitle">自定义您的伴侣以何种方式与您互动。转化为共享空间的基本规则。</p>
+                    <div class="settings-section-tag" style="right:0;top:0">声音与氛围</div>
+                </div>
+
+                <!-- 语气偏好 -->
+                <div class="settings-section">
+                    <div class="settings-section-title">
+                        <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                            <circle cx="10" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M3 18c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                        语气偏好
+                    </div>
+                    <div class="settings-tone-grid" id="tone-options">
+                        <label class="tone-card" data-value="calm">
+                            <input type="radio" name="tone" value="calm">
+                            <div class="tone-icon">
+                                <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                                    <path d="M4 10h12M7 6h6M7 14h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <div class="tone-name">安静</div>
+                            <div class="tone-desc">感静，回应简洁。只有在被问到时才说话。</div>
+                        </label>
+                        <label class="tone-card tone-card--selected" data-value="lively">
+                            <input type="radio" name="tone" value="lively" checked>
+                            <div class="tone-icon">
+                                <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                                    <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/>
+                                    <path d="M7 11.5c.8 1.2 5.2 1.2 6 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                                    <circle cx="7.5" cy="8.5" r="1" fill="currentColor"/>
+                                    <circle cx="12.5" cy="8.5" r="1" fill="currentColor"/>
+                                </svg>
+                            </div>
+                            <div class="tone-name">活泼</div>
+                            <div class="tone-desc">充满活力，经常使用表情符号，主动开启玩笑。</div>
+                        </label>
+                        <label class="tone-card" data-value="gentle">
+                            <input type="radio" name="tone" value="gentle">
+                            <div class="tone-icon">
+                                <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                                    <path d="M10 3C6 3 3 6 3 10s3 7 7 7 7-3 7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                    <path d="M14 3l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <div class="tone-name">温柔</div>
+                            <div class="tone-desc">支持性强，温暖，富有同理心的语调。</div>
+                        </label>
+                        <label class="tone-card" data-value="mysterious">
+                            <input type="radio" name="tone" value="mysterious">
+                            <div class="tone-icon">
+                                <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                                    <path d="M10 3a7 7 0 100 14A7 7 0 0010 3z" stroke="currentColor" stroke-width="1.5"/>
+                                    <path d="M10 8v1.5M10 13v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <div class="tone-name">神秘</div>
+                            <div class="tone-desc">隐秘，富有诗意，留有想象空间。</div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 互动频率 + 互动边界 -->
+                <div class="settings-two-col">
+
+                    <div class="settings-section settings-section--card">
+                        <div class="settings-section-title">
+                            <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                                <path d="M2 10h2l2-5 3 10 3-8 2 3h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            互动频率
+                        </div>
+                        <div class="settings-section-sub">连接的脉动节奏。</div>
+                        <div class="freq-options" id="freq-options">
+                            <label class="freq-item" data-value="low">
+                                <input type="radio" name="freq" value="low">
+                                <div class="freq-wave">
+                                    <svg viewBox="0 0 60 24" fill="none" width="60" height="24">
+                                        <path d="M2 12h56" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                    </svg>
+                                </div>
+                                <span class="freq-label">低（放松）</span>
+                            </label>
+                            <label class="freq-item freq-item--selected" data-value="normal">
+                                <input type="radio" name="freq" value="normal" checked>
+                                <div class="freq-wave">
+                                    <svg viewBox="0 0 60 24" fill="none" width="60" height="24">
+                                        <path d="M2 12h10l6-8 6 16 6-8h28" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <span class="freq-label">正常（稳定）</span>
+                            </label>
+                            <label class="freq-item" data-value="high">
+                                <input type="radio" name="freq" value="high">
+                                <div class="freq-wave">
+                                    <svg viewBox="0 0 60 24" fill="none" width="60" height="24">
+                                        <path d="M2 12l4-8 4 16 4-12 4 8 4-10 4 12 4-8 4 6 4-4 4 8 4-8 4 4 4-4 4 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <span class="freq-label">高（粘人）</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="settings-section settings-section--card">
+                        <div class="settings-section-title">
+                            <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                                <rect x="2" y="2" width="7" height="7" stroke="currentColor" stroke-width="1.5"/>
+                                <rect x="11" y="2" width="7" height="7" stroke="currentColor" stroke-width="1.5"/>
+                                <rect x="2" y="11" width="7" height="7" stroke="currentColor" stroke-width="1.5"/>
+                                <rect x="11" y="11" width="7" height="7" stroke="currentColor" stroke-width="1.5"/>
+                            </svg>
+                            互动边界
+                        </div>
+                        <div class="boundary-options" id="boundary-options">
+                            <label class="boundary-item" data-value="call-only">
+                                <input type="radio" name="boundary" value="call-only">
+                                <div class="boundary-radio"></div>
+                                <div class="boundary-text">
+                                    <div class="boundary-name">仅在我呼叫时</div>
+                                    <div class="boundary-desc">严格被动。不会打断您的专注。</div>
+                                </div>
+                            </label>
+                            <label class="boundary-item boundary-item--selected" data-value="occasional">
+                                <input type="radio" name="boundary" value="occasional" checked>
+                                <div class="boundary-radio boundary-radio--checked"></div>
+                                <div class="boundary-text">
+                                    <div class="boundary-name">偶尔的问候</div>
+                                    <div class="boundary-desc">可能会说早上好或分享简短的想法。</div>
+                                </div>
+                            </label>
+                            <label class="boundary-item" data-value="free">
+                                <input type="radio" name="boundary" value="free">
+                                <div class="boundary-radio"></div>
+                                <div class="boundary-text">
+                                    <div class="boundary-name">自由表达感情</div>
+                                    <div class="boundary-desc">表现得像室友。随时分享随意的感受。</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- 世界观强度 -->
+                <div class="settings-section settings-section--salmon">
+                    <div class="settings-section-title">
+                        <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                            <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 6v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            <circle cx="10" cy="14" r="0.8" fill="currentColor"/>
+                        </svg>
+                        世界观强度
+                    </div>
+                    <div class="settings-section-sub">在日常对话中，角色应多深地遵循其特定的传说和背景设定？</div>
+                    <div class="worldview-seg" id="worldview-options">
+                        <label class="worldview-btn" data-value="light"><input type="radio" name="worldview" value="light">轻度</label>
+                        <label class="worldview-btn worldview-btn--selected" data-value="medium"><input type="radio" name="worldview" value="medium" checked><span class="worldview-dot"></span>中度</label>
+                        <label class="worldview-btn" data-value="deep"><input type="radio" name="worldview" value="deep">沉浸</label>
+                    </div>
+                </div>
+
+                <!-- 分隔线 + 保存按钮 -->
+                <div class="settings-footer">
+                    <hr class="settings-dashed-hr">
+                    <div class="settings-save-row">
+                        <button class="btn-save-prefs" onclick="app.savePrefs()">
+                            <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+                                <rect x="3" y="3" width="14" height="14" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                                <rect x="6" y="3" width="8" height="5" stroke="currentColor" stroke-width="1.3"/>
+                                <rect x="5" y="11" width="10" height="5" rx="0.5" stroke="currentColor" stroke-width="1.3"/>
+                            </svg>
+                            保存偏好
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
