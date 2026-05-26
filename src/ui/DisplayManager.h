@@ -8,13 +8,28 @@
 // DisplayManager — 屏幕布局渲染
 //
 // 按状态渲染不同布局：
-//   NO_CHARACTER → 全屏"正在等待人物入住"
-//   RECOGNIZING  → 识别中文字 + 进度条
-//   GREETING     → 左半角色头像+名字 / 右半招呼语
-//   CHATTING     → 左半角色头像+名字 / 右半角色回复
-//   IDLE         → 全屏角色头像+名字居中
-//   PHYSICAL     → 由外部调 Special 动效
+//   NO_CHARACTER     → 全屏"正在等待人物入住"
+//   CHARACTER_SELECT → 角色选择卡片（最多3人一排）
+//   RECOGNIZING      → 识别中文字 + 进度条
+//   GREETING         → 左半角色头像+名字 / 右半招呼语
+//   CHATTING         → 左半角色头像+名字 / 右半角色回复
+//   IDLE             → 全屏角色头像+名字居中
+//   PHYSICAL         → 由外部调 Special 动效
 // ─────────────────────────────────────────────────────────────
+
+// 角色选择卡片布局常量（DisplayManager 与 ChatUI 共享）
+static constexpr int CARD_W    = 95;
+static constexpr int CARD_H    = 108;
+static constexpr int CARD_GAP  = 12;
+static constexpr int CARD_Y    = 50;
+static constexpr int AVATAR_S  = 66;
+
+// IDLE 状态"换角色"按钮
+static constexpr int SWITCH_BTN_X = 4;
+static constexpr int SWITCH_BTN_Y = 4;
+static constexpr int SWITCH_BTN_W = 76;
+static constexpr int SWITCH_BTN_H = 22;
+
 class DisplayManager {
 public:
     void begin();
@@ -23,6 +38,9 @@ public:
     void drawNoCharacter();
     void drawIdle(const String& name, const String& avatarPath,
                   const String& expression = "");
+
+    // 角色选择：展示角色卡片（姓名 + 头像）
+    void drawCharacterSelect(const String names[], const String avatarPaths[], int count);
 
     // 识别中：文字 + 进度条动画
     void drawRecognizing(int step);
@@ -47,7 +65,9 @@ public:
 private:
     void _drawRightText(const String& text);
     void _drawAvatar(int32_t x, int32_t y, int32_t w, int32_t h,
-                     const String& avatarPath);
+                     const String& avatarPath, float scale = 1.0f);
+    void _drawAvatarTransparent(int32_t x, int32_t y, int32_t w, int32_t h,
+                                const String& avatarPath, float scale = 1.0f);
     void _drawNameAt(int32_t x, int32_t y, const String& name);
     void _drawButton(int32_t x, int32_t y, int32_t w, int32_t h,
                      uint32_t col, uint32_t shadowCol, const char* label,

@@ -4,3 +4,6 @@ src/config.h
 web/.env
 web/node_modules/
 web/data/history_*.json
+web/data/debug_*
+*.pyc
+__pycache__/

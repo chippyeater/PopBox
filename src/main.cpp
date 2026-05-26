@@ -83,7 +83,7 @@ void setup() {
         return;
     }
 
-    // 初始化麦克风（语音唤醒需要）
+    // 初始化麦克风（对话录音需要）
     recorder.begin();
 
     // 相机延迟初始化：CoreS3 相机 I2C 初始化失败会污染 I2C 总线，
@@ -96,6 +96,16 @@ void setup() {
     Serial.println("[PopBox] 启动完成 ✓");
 }
 
+// ── 周期 WiFi 健康检查 ──────────────────────────────────────────
+static uint32_t lastWifiCheck = 0;
+
+static void checkWiFi() {
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.printf("[WiFi] 检测到断开, 尝试重连 %s ...\n", WIFI_SSID);
+        WiFi.reconnect();
+    }
+}
+
 // ── loop ──────────────────────────────────────────────────────
 
 void loop() {
@@ -104,5 +114,12 @@ void loop() {
         // chatUI 未初始化：显示错误时仍需 M5.update() 防止看门狗触发
         M5.update();
     }
+
+    // 每 5 秒检查一次 WiFi
+    if (millis() - lastWifiCheck > 5000) {
+        lastWifiCheck = millis();
+        checkWiFi();
+    }
+
     ::delay(10);
 }

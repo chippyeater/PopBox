@@ -139,6 +139,21 @@ bool CharacterManager::switchToNext() {
     return true;
 }
 
+// ── 按索引选择角色 ─────────────────────────────────────────────
+const Character& CharacterManager::characterAt(int index) const {
+    return _cache[index];
+}
+
+bool CharacterManager::selectCharacter(int index) {
+    if (index < 0 || index >= (int)_cache.size()) return false;
+    _currentIndex = index;
+    _current      = _cache[_currentIndex];
+    _notifyBackend(_current.id);
+    Serial.printf("[Characters] 选择 → %s (%d/%d)\n",
+                  _current.name.c_str(), _currentIndex + 1, (int)_cache.size());
+    return true;
+}
+
 // ── 私有方法 ──────────────────────────────────────────────────
 
 bool CharacterManager::_parseCharacter(const String& json, Character& out) {
@@ -147,6 +162,7 @@ bool CharacterManager::_parseCharacter(const String& json, Character& out) {
     out.id          = doc["id"].as<String>();
     out.name        = doc["name"].as<String>();
     out.avatarPath  = doc["avatar"]      | String("/avatar.jpg");
+    out.voice       = doc["voice"]       | String("");
     out.personality = doc["personality"].as<String>();
     out.worldview   = doc["worldview"].as<String>();
     out.replyStyle  = doc["reply_style"].as<String>();
@@ -175,6 +191,7 @@ void CharacterManager::_saveOfflineCache() {
         obj["id"]          = ch.id;
         obj["name"]        = ch.name;
         obj["avatar"]      = ch.avatarPath;
+        obj["voice"]       = ch.voice;
         obj["personality"] = ch.personality;
         obj["worldview"]   = ch.worldview;
         obj["background"]  = ch.memory.background;

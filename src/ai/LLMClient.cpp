@@ -1,15 +1,34 @@
 #include "LLMClient.h"
 #include "../config.h"
+#include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <WiFiClient.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
+// 检查 WiFi 状态并尝试重连
+static bool _ensureWiFi() {
+    if (WiFi.status() == WL_CONNECTED) return true;
+    Serial.printf("[LLM] WiFi 已断开（状态 %d），尝试重连 %s ...\n",
+                  (int)WiFi.status(), WIFI_SSID);
+    WiFi.reconnect();
+    for (int i = 0; i < 20; i++) {
+        ::delay(500);
+        if (WiFi.status() == WL_CONNECTED) {
+            Serial.printf("[LLM] WiFi 重连成功，IP: %s\n",
+                          WiFi.localIP().toString().c_str());
+            return true;
+        }
+    }
+    Serial.println("[LLM] WiFi 重连失败");
+    return false;
+}
+
 LLMResponse LLMClient::chat(const Character& character, const String& userMessage) {
     LLMResponse resp;
     if (!character.isValid() || userMessage.isEmpty()) return resp;
+    if (!_ensureWiFi()) return resp;
 
-    // 向后端发送消息，后端负责维护历史和调用 Qwen
     String url = String(BACKEND_URL) + "/api/chat";
 
     JsonDocument req;
