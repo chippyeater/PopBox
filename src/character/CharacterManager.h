@@ -40,8 +40,18 @@ public:
     int              count()        const { return (int)_cache.size(); }
     int              currentIndex() const { return _currentIndex; }
 
+    // ── 双角色（群聊）支持 ──────────────────────────────────────
+    // 设置群聊双角色模式并通知后端
+    bool setDualMode(int idxA, int idxB);
+    // 获取第二个角色（必须先调用 setDualMode 或 dual setup）
+    const Character& secondary() const { return _secondary; }
+    bool hasSecondary() const { return _secondary.isValid(); }
+    int  secondaryIndex() const { return _secondaryIndex; }
+
 private:
     Character              _current;
+    Character              _secondary;          // 群聊第二角色
+    int                    _secondaryIndex = -1; // -1 = 未设置
     std::vector<Character> _cache;
     int                    _currentIndex = 0;
 
@@ -49,4 +59,5 @@ private:
     void _saveOfflineCache();
     void _loadOfflineCache();
     bool _notifyBackend(const String& characterId);  // PUT /api/characters/current/:id
+    bool _notifyDualBackend(const String& id1, const String& id2); // PUT /api/characters/dual/:id1/:id2
 };

@@ -278,6 +278,21 @@ body {
   flex-shrink: 0;
 }
 
+/* 群聊双角色气泡区分 */
+.msg-char-a {
+  border-color: #FF6B9D;
+  background: #1f1118;
+  box-shadow: 3px 3px 0px #FF6B9D44;
+}
+.msg-char-a .msg-label { color: #FF6B9D; }
+
+.msg-char-b {
+  border-color: #7B68EE;
+  background: #12101f;
+  box-shadow: 3px 3px 0px #7B68EE44;
+}
+.msg-char-b .msg-label { color: #7B68EE; }
+
 /* 思考中气泡 */
 .msg-thinking {
   align-self: flex-start;
@@ -464,6 +479,14 @@ body {
 }
 .char-panel-count { font-size: 11px; color: var(--muted); font-weight: 700; }
 
+.char-panel-group-btn {
+  font-size: 10px; font-weight: 900; letter-spacing: 1px;
+  padding: 3px 8px; border: 1.5px solid var(--neon); background: #1a2000;
+  color: var(--neon); cursor: pointer; font-family: inherit;
+  transition: 0.1s;
+}
+.char-panel-group-btn:hover { background: var(--neon); color: #000; }
+
 .char-cards {
   display: flex;
   flex-wrap: wrap;
@@ -543,4 +566,40 @@ body {
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.1; }
+}
+
+/* ── 角色数量选择模态框 ── */
+.count-modal {
+  position: fixed; inset: 0; z-index: 200;
+}
+.count-modal-bg {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.6);
+}
+.count-modal-box {
+  position: relative; z-index: 1;
+  width: 300px; margin: 25vh auto 0;
+  background: var(--panel); border: 2px solid var(--neon);
+  padding: 28px 20px; text-align: center;
+  box-shadow: 6px 6px 0 rgba(0,0,0,0.5);
+}
+.count-modal-title {
+  font-size: 20px; font-weight: 900; line-height: 1.5;
+  color: var(--neon); margin-bottom: 24px;
+}
+.count-modal-btns { display: flex; gap: 16px; justify-content: center; }
+.count-btn {
+  flex: 1; max-width: 110px; padding: 16px 8px;
+  border: 2px solid #000; cursor: pointer; font-family: inherit;
+  text-align: center; transition: 0.08s;
+  background: var(--purple); color: #fff;
+  box-shadow: 4px 4px 0 #5010A0;
+}
+.count-btn:active { transform: translate(3px,3px); box-shadow: none; }
+.count-btn.c2 { background: var(--neon); color: #000; box-shadow: 4px 4px 0 #88AA00; }
+.count-num { display: block; font-size: 36px; font-weight: 900; line-height: 1; }
+.count-label { display: block; font-size: 11px; margin-top: 6px; opacity: 0.8; }
+.count-modal-close {
+  position: absolute; top: 8px; right: 12px;
+  cursor: pointer; font-size: 18px; color: var(--muted);
 }

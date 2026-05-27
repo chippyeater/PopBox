@@ -250,3 +250,32 @@ bool CharacterManager::_notifyBackend(const String& characterId) {
     http.end();
     return code == 200;
 }
+
+// ── 双角色（群聊）模式 ──────────────────────────────────────────
+
+bool CharacterManager::setDualMode(int idxA, int idxB) {
+    if (idxA < 0 || idxA >= (int)_cache.size()) return false;
+    if (idxB < 0 || idxB >= (int)_cache.size()) return false;
+    if (idxA == idxB) return false;
+
+    _currentIndex   = idxA;
+    _current        = _cache[idxA];
+    _secondaryIndex = idxB;
+    _secondary      = _cache[idxB];
+
+    bool ok = _notifyDualBackend(_current.id, _secondary.id);
+    Serial.printf("[Characters] 群聊模式: %s + %s (后端%s)\n",
+                  _current.name.c_str(), _secondary.name.c_str(),
+                  ok ? "同步成功" : "同步失败");
+    return true;
+}
+
+bool CharacterManager::_notifyDualBackend(const String& id1, const String& id2) {
+    String url = String(BACKEND_URL) + "/api/characters/dual/" + id1 + "/" + id2;
+    HTTPClient http;
+    http.begin(url);
+    http.setTimeout(5000);
+    int code = http.sendRequest("PUT", "");
+    http.end();
+    return code == 200;
+}

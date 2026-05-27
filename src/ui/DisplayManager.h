@@ -34,8 +34,9 @@ class DisplayManager {
 public:
     void begin();
 
-    // 全屏状态：无人入住 / 待机
+    // 全屏状态：无人入住 / 角色数量选择 / 待机
     void drawNoCharacter();
+    void drawCountSelection(int existingCount);
     void drawIdle(const String& name, const String& avatarPath,
                   const String& expression = "");
 
@@ -48,6 +49,12 @@ public:
     // 左右分栏：打招呼 / 交流（avatarPath 为 /avatar.jpg 等）
     void drawSplitLayout(const String& name, const String& avatarPath,
                          const String& text, const String& expression = "");
+
+    // 群聊布局：全屏显示对话文本，不显示头像
+    void drawGroupLayout(const String& nameA, const String& nameB,
+                         const String& conversationText);
+    // 更新群聊文字（追加一行新的角色回复，保留上下文）
+    void appendGroupText(const String& speakerName, const String& text);
 
     // 更新右侧文字（不刷新左半）
     void updateRightText(const String& text);
@@ -75,6 +82,7 @@ private:
     void _wrapText(const String& text, int32_t maxWidth,
                    String* lines, int& lineCount, int maxLines);
     String _resolveAvatarPath(const String& basePath, const String& expression);
+    void _drawGroupText(const String& text);  // 群聊文本区域绘制
 
     String   _lastRightText;
     AppState _lastState = AppState::NO_CHARACTER;

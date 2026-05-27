@@ -93,9 +93,15 @@ void ChatUI::update() {
     // GREETING → CHATTING（表情从 happy → idle）
     if (_state == AppState::GREETING
         && millis() - _idleStartMs > GREETING_DURATION_MS) {
-        const auto& ch = _charMgr.current();
-        _lastExpression = "idle";
-        _display.drawSplitLayout(ch.name, ch.avatarPath, _lastReplyText, _lastExpression);
+        if (_isGroupChat) {
+            const auto& a = _charMgr.current();
+            const auto& b = _charMgr.secondary();
+            _display.drawGroupLayout(a.name, b.name, _lastReplyText);
+        } else {
+            const auto& ch = _charMgr.current();
+            _lastExpression = "idle";
+            _display.drawSplitLayout(ch.name, ch.avatarPath, _lastReplyText, _lastExpression);
+        }
         _display.showBottomBar(false);
         _state = AppState::CHATTING;
         _idleStartMs = millis();
@@ -105,6 +111,9 @@ void ChatUI::update() {
     // CHATTING → IDLE 超时
     if (_state == AppState::CHATTING
         && millis() - _idleStartMs > IDLE_TIMEOUT_MS) {
+        if (_isGroupChat) {
+            _isGroupChat = false;
+        }
         const auto& ch = _charMgr.current();
         _lastExpression = "idle";
         _display.drawIdle(ch.name, ch.avatarPath, _lastExpression);
@@ -131,6 +140,12 @@ void ChatUI::_handleTouch() {
     if (M5.Touch.getCount() == 0) return;
     auto t = M5.Touch.getDetail(0);
     if (!t.wasPressed()) return;
+
+    // ── 角色数量选择（点左半＝1人，右半＝2人）──
+    if (_state == AppState::CHARACTER_COUNT) {
+        _onCountSelect(t.x < SCREEN_W / 2 ? 1 : 2);
+        return;
+    }
 
     // ── 识别按钮（NO_CHARACTER / CHARACTER_SELECT 均可触发）──
     if (_isTouchOnRecognizeButton(t.x, t.y)) {
@@ -190,6 +205,9 @@ void ChatUI::_onMicButtonTap() {
 
     // 单击回到待机
     if (_state == AppState::CHATTING) {
+        if (_isGroupChat) {
+            _isGroupChat = false;
+        }
         const auto& ch = _charMgr.current();
         _lastExpression = "idle";
         _display.drawIdle(ch.name, ch.avatarPath, _lastExpression);
@@ -214,6 +232,15 @@ void ChatUI::_onMicButtonTap() {
 void ChatUI::_onRecognizeTap() {
     if (_state != AppState::NO_CHARACTER
         && _state != AppState::CHARACTER_SELECT) return;
+    _display.drawCountSelection(_charMgr.count());
+    _state = AppState::CHARACTER_COUNT;
+    _idleStartMs = millis();
+}
+
+void ChatUI::_onCountSelect(int count) {
+    _pendingCharCount = count;
+    _capturingSecond = false;
+    if (count == 1) _isGroupChat = false;
     _runRecognition();
 }
 
@@ -221,6 +248,11 @@ void ChatUI::_onRecognizeTap() {
 
 void ChatUI::_processAndReply() {
     _display.hideBottomBar();
+
+    if (_isGroupChat) {
+        _processGroupReply();
+        return;
+    }
 
     const auto& ch = _charMgr.current();
     _lastExpression = "idle";
@@ -266,9 +298,106 @@ void ChatUI::_processAndReply() {
     _recorder.startListening();  // 连续对话：继续监听下一句
 }
 
+// ── 群聊对话流程 ──────────────────────────────────────────────────
+
+void ChatUI::_processGroupReply() {
+    const auto& charA = _charMgr.current();
+    const auto& charB = _charMgr.secondary();
+    if (!charB.isValid()) {
+        // 没有第二角色，降级到单聊
+        _isGroupChat = false;
+        _processAndReply();
+        return;
+    }
+
+    _display.drawGroupLayout(charA.name, charB.name, "……");
+    _display.showBottomBar(false);
+
+    size_t samples = _recorder.getSampleCount();
+    Serial.printf("[ChatUI] 群聊 STT: %zu 采样 (%.1f 秒)\n",
+                  samples, (float)samples / AUDIO_SAMPLE_RATE);
+
+    String userText = _stt.recognize(_recorder.getBuffer(), samples);
+    _recorder.clearBuffer();
+
+    if (userText.isEmpty()) {
+        String errMsg = "[系统]没听清楚，再说一遍？";
+        _lastReplyText = errMsg;
+        _display.drawGroupLayout(charA.name, charB.name, errMsg);
+        _setState(AppState::CHATTING);
+        _recorder.startListening();
+        return;
+    }
+
+    // 显示用户说的话
+    _display.appendGroupText("我", userText);
+
+    // 调用群聊 API
+    auto replies = _llm.groupChat(charA, charB, userText);
+
+    if (replies.empty()) {
+        String fallback = "[系统]网络开小差了…";
+        _display.appendGroupText("系统", "网络开小差了…");
+        _setState(AppState::CHATTING);
+        _recorder.startListening();
+        return;
+    }
+
+    // 顺序播放每个角色的 TTS，同时更新显示
+    _recorder.pauseMic();
+    _lastReplyText = "";
+    for (size_t i = 0; i < replies.size(); i++) {
+        const auto& reply = replies[i];
+        String clean = stripTtsMarkers(reply.reply);
+        _lastReplyText += "[" + reply.name + "]" + reply.reply;
+        if (i < replies.size() - 1) _lastReplyText += "\n";
+
+        // 更新显示
+        _display.appendGroupText(reply.name, clean);
+
+        // TTS 播放
+        String voiceId;
+        if (reply.characterId == charA.id) voiceId = charA.voice;
+        else if (reply.characterId == charB.id) voiceId = charB.voice;
+        if (voiceId.length() > 0) {
+            _tts.speak(reply.reply, voiceId);
+        }
+    }
+    _recorder.resumeMic();
+
+    _setState(AppState::CHATTING);
+    _recorder.startListening();
+}
+
+// ── 群聊问候 ──────────────────────────────────────────────────────
+
+void ChatUI::_showGroupGreeting() {
+    const auto& a = _charMgr.current();
+    const auto& b = _charMgr.secondary();
+    _lastReplyText = "大家好呀～\n" + a.name + " 和 " + b.name + " 来啦！";
+    _lastExpression = "happy";
+    _display.drawGroupLayout(a.name, b.name, _lastReplyText);
+    _display.showBottomBar(false);
+    _recorder.pauseMic();
+    _tts.speak(_lastReplyText, a.voice);
+    _recorder.resumeMic();
+    _setState(AppState::GREETING);
+}
+
 // ── 双击屏幕唤醒 ──────────────────────────────────────────────────
 
 void ChatUI::_onDoubleTapWake() {
+    if (_isGroupChat) {
+        const auto& a = _charMgr.current();
+        const auto& b = _charMgr.secondary();
+        _lastReplyText = "好久不见～\n" + a.name + " 和 " + b.name + " 都在等你呢！";
+        _display.drawGroupLayout(a.name, b.name, _lastReplyText);
+        _display.showBottomBar(false);
+        _state = AppState::CHATTING;
+        _idleStartMs = millis();
+        _recorder.startListening();
+        return;
+    }
     const auto& ch = _charMgr.current();
     _lastReplyText = "你好呀～我是" + ch.name + "！\n今天想聊点什么呢？";
     _lastExpression = "happy";
@@ -342,7 +471,102 @@ void ChatUI::_runRecognition() {
         return;
     }
 
+    // 双人模式：拍完第一个继续拍第二个
+    if (_pendingCharCount == 2 && !_capturingSecond) {
+        _capturingSecond = true;
+        _runSecondRecognition();
+        return;
+    }
+
     _showGreeting();
+}
+
+void ChatUI::_runSecondRecognition() {
+    // 显示提示，让用户准备拍第二位角色
+    _display.drawNoCharacter();
+    M5.Display.setFont(FONT_L);
+    M5.Display.setTextColor(C_NEON);
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(14, 90);
+    M5.Display.println("第一位已入住！");
+    M5.Display.setCursor(14, 115);
+    M5.Display.println("请拍摄第二位角色");
+    M5.Display.setTextSize(1);
+    _display.showBottomBar(true);
+
+    // 重新初始化相机
+    if (!_camera.begin()) {
+        _pendingCharCount = 0; _capturingSecond = false;
+        _display.drawNoCharacter();
+        _display.showBottomBar(true);
+        _state = AppState::NO_CHARACTER;
+        return;
+    }
+
+    if (!_waitForCaptureTap()) {
+        _camera.end();
+        _restoreM5();
+        _pendingCharCount = 0; _capturingSecond = false;
+        _display.drawNoCharacter();
+        _display.showBottomBar(true);
+        _state = AppState::NO_CHARACTER;
+        return;
+    }
+
+    CameraFrame frame = _camera.capture();
+    if (!frame.valid) {
+        frame.release();
+        _camera.end();
+        _restoreM5();
+        _pendingCharCount = 0; _capturingSecond = false;
+        _display.drawNoCharacter();
+        _display.showBottomBar(true);
+        _state = AppState::NO_CHARACTER;
+        return;
+    }
+
+    size_t imgLen = frame.len;
+    uint8_t* imgBuf = (uint8_t*)malloc(imgLen);
+    if (imgBuf) memcpy(imgBuf, frame.data, imgLen);
+    frame.release();
+    _camera.end();
+    _restoreM5();
+
+    if (!imgBuf) {
+        _pendingCharCount = 0; _capturingSecond = false;
+        _display.drawNoCharacter();
+        _display.showBottomBar(true);
+        _state = AppState::NO_CHARACTER;
+        return;
+    }
+
+    // 识别中动画
+    _display.drawRecognizing(0);
+    for (int i = 0; i < 80; i++) {
+        _display.drawRecognizing(i);
+        delay(30);
+    }
+
+    bool ok = _charMgr.loadFromRecognition(imgBuf, imgLen);
+    free(imgBuf);
+
+    if (!ok) {
+        _pendingCharCount = 0; _capturingSecond = false;
+        _display.drawNoCharacter();
+        _display.showBottomBar(true);
+        _state = AppState::NO_CHARACTER;
+        return;
+    }
+
+    // 重置双人状态标识
+    _pendingCharCount = 0;
+    _capturingSecond  = false;
+
+    // 自动设置双角色群聊模式（第一个和第二个角色）
+    _charMgr.setDualMode(0, 1);
+    _isGroupChat = true;
+
+    _showGroupGreeting();
 }
 
 void ChatUI::_showGreeting() {
@@ -409,6 +633,7 @@ void ChatUI::_enterCharacterSelect() {
 }
 
 void ChatUI::_onCharacterSelect(int index) {
+    _isGroupChat = false;
     _charMgr.selectCharacter(index);
     const auto& ch = _charMgr.current();
     _lastExpression = "idle";

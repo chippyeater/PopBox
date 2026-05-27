@@ -6,6 +6,7 @@
 enum class AppState {
     NO_CHARACTER,       // 无人入住：全屏"等待人物入住" → 点击进入选择
     CHARACTER_SELECT,   // 角色选择：展示所有角色卡片
+    CHARACTER_COUNT,    // 角色数量选择：选择1人或2人入住
     RECOGNIZING,        // 识别中：文字 + 进度条
     GREETING,           // 打招呼：左半精灵+名字 / 右半招呼语
     CHATTING,           // 交流中：左半精灵+名字 / 右半角色说话

@@ -74,6 +74,67 @@ LLMResponse LLMClient::chat(const Character& character, const String& userMessag
     return resp;
 }
 
+// ── 双角色群聊 ────────────────────────────────────────────────
+std::vector<GroupReply> LLMClient::groupChat(const Character& charA,
+                                              const Character& charB,
+                                              const String& userMessage) {
+    std::vector<GroupReply> replies;
+    if (!charA.isValid() || !charB.isValid() || userMessage.isEmpty()) return replies;
+    if (!_ensureWiFi()) return replies;
+
+    String url = String(BACKEND_URL) + "/api/group-chat";
+
+    JsonDocument req;
+    req["message"] = userMessage;
+    String body;
+    serializeJson(req, body);
+
+    HTTPClient http;
+    http.begin(url);
+    http.addHeader("Content-Type", "application/json");
+    http.setTimeout(25000);
+
+    int code = http.POST(body);
+    if (code != 200) {
+        Serial.printf("[LLM] GroupChat 后端返回错误: %d\n", code);
+        http.end();
+        return replies;
+    }
+
+    JsonDocument res;
+    DeserializationError err = deserializeJson(res, http.getStream());
+    http.end();
+
+    if (err) {
+        Serial.printf("[LLM] GroupChat JSON解析失败: %s\n", err.c_str());
+        return replies;
+    }
+
+    JsonArray arr = res["replies"].as<JsonArray>();
+    for (JsonObject r : arr) {
+        GroupReply gr;
+        gr.characterId = r["characterId"].as<String>();
+        gr.name        = r["name"].as<String>();
+        gr.reply       = r["reply"].as<String>();
+        gr.reply.trim();
+        gr.expression  = r["expression"].as<String>();
+        gr.expression.toLowerCase();
+        if (gr.expression != "happy" && gr.expression != "thinking" &&
+            gr.expression != "sad"   && gr.expression != "angry") {
+            gr.expression = "idle";
+        }
+        if (gr.reply.length() > 0) {
+            replies.push_back(gr);
+        }
+    }
+
+    Serial.printf("[LLM] GroupChat 收到 %d 条回复\n", (int)replies.size());
+    for (const auto& r : replies) {
+        Serial.printf("  [%s] %s [%s]\n", r.name.c_str(), r.reply.c_str(), r.expression.c_str());
+    }
+    return replies;
+}
+
 String LLMClient::_buildRequestBody(const Character&, const String&) {
     return ""; // 已由后端负责，此方法不再使用
 }
