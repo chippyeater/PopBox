@@ -1,6 +1,9 @@
 #include "DisplayManager.h"
 #include <SPIFFS.h>
 
+// 前置声明
+static int32_t utf8Next(const String& s, int32_t i);
+
 // ── 白色主题配色 ──────────────────────────────────────────────
 static const uint32_t C_BG      = 0xFFFFFF;
 static const uint32_t C_NEON    = 0xFF6B35;  // 暖橙
@@ -46,6 +49,35 @@ void DisplayManager::drawNoCharacter() {
     M5.Display.print(msg);
     M5.Display.setTextSize(1);
     _lastState = AppState::NO_CHARACTER;
+}
+
+// ── 数量选择 ────────────────────────────────────────────────────
+void DisplayManager::drawCountSelection(int existingCount) {
+    M5.Display.fillScreen(C_BG);
+
+    // 标题
+    M5.Display.setFont(FONT_L);
+    M5.Display.setTextColor(C_TEXT);
+    M5.Display.setCursor(14, 26);
+    M5.Display.println("请选择入住这个盒子的");
+    M5.Display.setCursor(14, 48);
+    M5.Display.println("角色数量");
+
+    // 两个大按钮
+    static constexpr int BW = 100, BH = 80, GAP = 20, BY = 80;
+    int x1 = (SCREEN_W - BW * 2 - GAP) / 2;
+    int x2 = x1 + BW + GAP;
+
+    _drawButton(x1, BY, BW, BH, C_PURPLE, C_SHAD_P, "1 人");
+    _drawButton(x2, BY, BW, BH, C_NEON, C_SHAD_Y, "2 人");
+
+    // 底部当前角色数
+    M5.Display.setFont(FONT_S);
+    M5.Display.setTextColor(C_MUTED);
+    M5.Display.setCursor(10, SCREEN_H - 24);
+    M5.Display.printf("当前角色: %d 个", existingCount);
+
+    _lastState = AppState::CHARACTER_COUNT;
 }
 
 // ── 全屏待机 ────────────────────────────────────────────────────
@@ -183,6 +215,100 @@ void DisplayManager::drawSplitLayout(const String& name,
 void DisplayManager::updateRightText(const String& text) {
     _lastRightText = text;
     _drawRightText(text);
+}
+
+// ── 群聊布局 ────────────────────────────────────────────────────
+static String _groupConv;  // 累积的群聊全文
+
+void DisplayManager::drawGroupLayout(const String& nameA, const String& nameB,
+                                      const String& conversationText) {
+    M5.Display.fillScreen(C_BG);
+
+    // 顶部标题栏
+    M5.Display.setFont(FONT_M);
+    M5.Display.setTextColor(C_NEON);
+    String header = nameA + " + " + nameB;
+    int hw = M5.Display.textWidth(header.c_str());
+    M5.Display.setCursor((SCREEN_W - hw) / 2, 8);
+    M5.Display.print(header);
+
+    // 群聊角标
+    M5.Display.setFont(FONT_S);
+    M5.Display.setTextColor(C_MUTED);
+    M5.Display.setCursor(SCREEN_W - 48, 8);
+    M5.Display.print("[群聊]");
+
+    // 分隔线
+    M5.Display.fillRect(0, 28, SCREEN_W, 1, C_BORDER);
+
+    _groupConv = conversationText;
+    _drawGroupText(conversationText);
+}
+
+void DisplayManager::appendGroupText(const String& speakerName, const String& text) {
+    if (_groupConv.length() > 0) _groupConv += "\n";
+    _groupConv += "[" + speakerName + "]" + text;
+    _drawGroupText(_groupConv);
+}
+
+void DisplayManager::_drawGroupText(const String& text) {
+    const int areaX = 10;
+    const int areaY = 34;
+    const int areaW = SCREEN_W - 20;
+    const int areaH = BTN_Y - areaY - 4;
+
+    M5.Display.fillRect(0, areaY, SCREEN_W, areaH, C_BG);
+    if (text.isEmpty()) return;
+
+    const int lineH = 20;
+    int maxLines = areaH / lineH;
+
+    // 拆成行
+    String allLines[30];
+    int totalLines = 0;
+    int pos = 0;
+    while (pos < (int)text.length() && totalLines < 30) {
+        int next = text.indexOf('\n', pos);
+        if (next < 0) next = text.length();
+        String line = text.substring(pos, next);
+        int lpos = 0;
+        while (lpos < (int)line.length() && totalLines < 30) {
+            int best = lpos;
+            for (int cp = lpos; cp <= (int)line.length(); cp = utf8Next(line, cp)) {
+                if (M5.Display.textWidth(line.substring(lpos, cp).c_str()) > areaW) break;
+                best = cp;
+            }
+            if (best == lpos) best = utf8Next(line, lpos);
+            allLines[totalLines++] = line.substring(lpos, best);
+            lpos = best;
+        }
+        pos = next + 1;
+    }
+
+    int startLine = totalLines > maxLines ? totalLines - maxLines : 0;
+    int displayCount = totalLines - startLine;
+
+    M5.Display.setFont(FONT_M);
+    M5.Display.setTextWrap(false);
+    for (int i = 0; i < displayCount; i++) {
+        const String& ln = allLines[startLine + i];
+        int y = areaY + i * lineH;
+        if (ln.length() > 0 && ln[0] == '[') {
+            int close = ln.indexOf(']');
+            if (close > 0) {
+                M5.Display.setTextColor(C_NEON);
+                M5.Display.setCursor(areaX, y + 2);
+                M5.Display.print(ln.substring(0, close + 1));
+                M5.Display.setTextColor(C_TEXT);
+                M5.Display.setCursor(areaX + M5.Display.textWidth(ln.substring(0, close + 1).c_str()), y + 2);
+                M5.Display.print(ln.substring(close + 1));
+                continue;
+            }
+        }
+        M5.Display.setTextColor(C_TEXT);
+        M5.Display.setCursor(areaX, y + 2);
+        M5.Display.print(ln);
+    }
 }
 
 // ══════════════════════════════════════════════════════════════════

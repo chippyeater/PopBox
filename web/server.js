@@ -274,6 +274,7 @@ const CHARACTERS_JSON = path.join(__dirname, '../data/characters.json');
 
 const characterLibrary = new Map();  // id → character object
 let   currentCharacterId = null;
+let   secondaryCharacterId = null;
 
 function getCurrentCharacter() {
     if (currentCharacterId && characterLibrary.has(currentCharacterId))
@@ -302,6 +303,7 @@ function saveCharacterToLibrary(charObj) {
 function setCurrentCharacter(id) {
     if (!characterLibrary.has(id)) return false;
     currentCharacterId = id;
+    secondaryCharacterId = null;  // 切换到单人模式时清除双角色
     persistCharactersJson();
     try { fs.writeFileSync(path.join(DATA_DIR, 'current.json'), JSON.stringify({ id }, null, 2), 'utf-8'); } catch {}
     console.log(`[Characters] 当前角色 → ${characterLibrary.get(id).name}`);
@@ -394,6 +396,52 @@ function buildNoteSystemPrompt(ch) {
     p += `必须严格按照以下JSON格式输出，不要加任何其他内容：\n`;
     p += `{"reply":"你回给用户的小纸条"}\n`;
     p += `严格禁止：不要返回 expression、emotion、mood、tone 等字段；不要动作描写；不要括号说明；不要说教。`;
+    return p;
+}
+
+// ── 双角色群聊系统提示词 ────────────────────────────────────────
+function buildGroupSystemPrompt(charA, charB) {
+    const voiceTags = [
+        '(laughs)', '(chuckle)', '(coughs)', '(clear-throat)', '(groans)',
+        '(breath)', '(pant)', '(inhale)', '(exhale)', '(gasps)',
+        '(sniffs)', '(sighs)', '(snorts)', '(burps)', '(lip-smacking)',
+        '(humming)', '(hissing)', '(emm)', '(sneezes)'
+    ];
+
+    let p = '你是一个群聊模拟器，用户正和两个朋友一起聊天。你同时扮演以下两个角色。\n\n';
+    p += `=== 角色A ===\n`;
+    p += `姓名：${charA.name}\n`;
+    p += `性格：${charA.personality}\n`;
+    p += `世界观：${charA.worldview}\n`;
+    p += `背景故事：${charA.background}\n`;
+    p += `回复风格：${charA.reply_style}\n`;
+    if (charA.catchphrases?.length) {
+        p += `口头禅（5轮以内最多用1次，只在非常自然的时候用）：${charA.catchphrases.join('、')}\n`;
+    }
+    p += `\n=== 角色B ===\n`;
+    p += `姓名：${charB.name}\n`;
+    p += `性格：${charB.personality}\n`;
+    p += `世界观：${charB.worldview}\n`;
+    p += `背景故事：${charB.background}\n`;
+    p += `回复风格：${charB.reply_style}\n`;
+    if (charB.catchphrases?.length) {
+        p += `口头禅（5轮以内最多用1次，只在非常自然的时候用）：${charB.catchphrases.join('、')}\n`;
+    }
+    p += `\n=== 群聊规则 ===\n`;
+    p += `1. 每次回复生成 2~4 条消息，让对话自然流动\n`;
+    p += `2. 角色之间可以互相回应、讨论、吐槽、追问，像真正的朋友聊天一样\n`;
+    p += `3. 每个角色的回复要严格符合其性格和世界观\n`;
+    p += `4. 回复围绕用户的话题展开，让用户感到被两个朋友陪伴\n`;
+    p += `5. 每个角色的回复控制在 60 字以内\n`;
+    p += `6. 不要让回复每次都结构相同——有时一个角色多说两句，另一个少说，有时两个人互相争论\n`;
+    p += `7. 不要用角色名称前缀包装回复内容（如"${charA.name}："或"${charB.name}："）\n`;
+    p += `\nreply中可少量使用语气词，只能从以下白名单选择：${voiceTags.join('、')}。\n`;
+    p += `除上述白名单外，reply中禁止出现任何括号内容。\n`;
+    p += `可使用<#0.5#>表示0.5秒停顿。\n`;
+    p += `expression只能是：happy、thinking、idle、sad、angry。\n`;
+    p += `\n请严格按照以下 JSON 格式回复（replies 数组长度 2~4，不要固定为 2 条）：\n`;
+    p += `{"replies":[{"characterId":"${charA.id}","name":"${charA.name}","reply":"回复内容","expression":"idle"},{"characterId":"${charB.id}","name":"${charB.name}","reply":"回复内容","expression":"idle"}]}\n`;
+    p += `如果角色间自然地继续聊下去，可以生成 3~4 条；如果用户说的话接不下去，2 条也可以。`;
     return p;
 }
 
@@ -585,7 +633,63 @@ function appendTurn(characterId, userMsg, assistantMsg) {
     saveHistory(characterId);
 }
 
+// ── 群聊对话历史管理 ────────────────────────────────────────────
+const groupHistoryCache = {};
+
+function groupHistoryFile(idA, idB) {
+    const ids = [idA, idB].sort();
+    return path.join(DATA_DIR, `history_group_${ids[0]}_${ids[1]}.json`);
+}
+
+function getGroupHistory(idA, idB) {
+    const ids = [idA, idB].sort();
+    const key = `${ids[0]}_${ids[1]}`;
+    if (!groupHistoryCache[key]) {
+        try {
+            const raw = fs.readFileSync(groupHistoryFile(idA, idB), 'utf-8').trim();
+            groupHistoryCache[key] = raw ? JSON.parse(raw) : [];
+        } catch { groupHistoryCache[key] = []; }
+    }
+    return groupHistoryCache[key];
+}
+
+function saveGroupHistory(idA, idB) {
+    const ids = [idA, idB].sort();
+    const key = `${ids[0]}_${ids[1]}`;
+    try {
+        fs.writeFileSync(groupHistoryFile(idA, idB), JSON.stringify(groupHistoryCache[key] || [], null, 2), 'utf-8');
+    } catch (e) { console.error('[GroupHistory] 保存失败:', e.message); }
+}
+
+function appendGroupTurn(idA, idB, userMsg, replies) {
+    const ids = [idA, idB].sort();
+    const key = `${ids[0]}_${ids[1]}`;
+    const hist = getGroupHistory(idA, idB);
+    hist.push({ role: 'user', content: userMsg, ts: Date.now() });
+    for (const r of replies) {
+        hist.push({ role: 'assistant', characterId: r.characterId, characterName: r.name, content: r.reply, ts: Date.now() });
+    }
+    // 保留 MAX_TURNS 轮对话（1 user + N assistant 为一轮）
+    while (hist.length > MAX_TURNS * 4) hist.splice(0, 4);
+    saveGroupHistory(idA, idB);
+}
+
+// 群聊历史加载（启动时扫描）
+function loadAllGroupHistory() {
+    try {
+        const files = fs.readdirSync(DATA_DIR)
+            .filter(f => f.startsWith('history_group_') && f.endsWith('.json'));
+        for (const f of files) {
+            const key = f.replace('history_group_', '').replace('.json', '');
+            const raw = fs.readFileSync(path.join(DATA_DIR, f), 'utf-8').trim();
+            if (raw) groupHistoryCache[key] = JSON.parse(raw);
+            console.log(`[History] 已加载群聊 ${key}：${groupHistoryCache[key]?.length || 0} 条消息`);
+        }
+    } catch (e) { console.warn('[History] 加载群聊历史失败:', e.message); }
+}
+
 loadAllHistory();
+loadAllGroupHistory();
 loadCharacterLibrary();
 loadJournal(currentCharacterId);
 loadNotes();
@@ -616,6 +720,38 @@ app.put('/api/characters/current/:id', (req, res) => {
         return res.status(404).json({ error: `角色 ${id} 不存在` });
     }
     res.json({ ok: true, current: getCurrentCharacter() });
+});
+
+// ── PUT /api/characters/dual/:id1/:id2（设置双角色模式）───────
+app.put('/api/characters/dual/:id1/:id2', (req, res) => {
+    const { id1, id2 } = req.params;
+    if (!characterLibrary.has(id1)) return res.status(404).json({ error: `角色 ${id1} 不存在` });
+    if (!characterLibrary.has(id2)) return res.status(404).json({ error: `角色 ${id2} 不存在` });
+    if (id1 === id2) return res.status(400).json({ error: '不能选择相同的两个角色' });
+    currentCharacterId = id1;
+    secondaryCharacterId = id2;
+    persistCharactersJson();
+    res.json({ ok: true, characters: [characterLibrary.get(id1), characterLibrary.get(id2)] });
+});
+
+// ── GET /api/characters/dual（获取当前双角色配置）───────────────
+app.get('/api/characters/dual', (req, res) => {
+    if (!secondaryCharacterId) {
+        return res.json({ dualMode: false });
+    }
+    const charA = characterLibrary.get(currentCharacterId);
+    const charB = characterLibrary.get(secondaryCharacterId);
+    if (!charA || !charB) {
+        secondaryCharacterId = null;
+        return res.json({ dualMode: false });
+    }
+    res.json({ dualMode: true, characters: [charA, charB] });
+});
+
+// ── DELETE /api/characters/dual（切换回单人模式）───────────────
+app.delete('/api/characters/dual', (req, res) => {
+    secondaryCharacterId = null;
+    res.json({ ok: true, message: '已切换回单人模式' });
 });
 
 // ── DELETE /api/characters/:id（删除角色）────────────────────
@@ -880,6 +1016,205 @@ app.post('/api/chat', async (req, res) => {
         console.error('[LLM] 请求失败:', err.message);
         res.status(500).json({ error: '网络请求失败' });
     }
+});
+
+// ── POST /api/group-chat ─────────────────────────────────────────
+// Body: { message: string }
+// 双角色群聊：一次 LLM 调用同时生成两个角色的回复
+app.post('/api/group-chat', async (req, res) => {
+    let { message } = req.body;
+    const isHeartbeat = message === '__heartbeat__';
+    if (isHeartbeat) {
+        message = '（用户暂时没说话，你们俩继续聊吧，不用等TA）';
+    } else if (!message?.trim()) {
+        return res.status(400).json({ error: '消息不能为空' });
+    }
+    if (!secondaryCharacterId) {
+        return res.status(400).json({ error: '未设置双角色模式' });
+    }
+
+    const apiKey = process.env.DASHSCOPE_API_KEY;
+    if (!apiKey || apiKey === 'your_dashscope_api_key_here') {
+        return res.status(500).json({ error: 'DashScope API Key 未配置' });
+    }
+
+    const charA = characterLibrary.get(currentCharacterId);
+    const charB = characterLibrary.get(secondaryCharacterId);
+    if (!charA || !charB) {
+        secondaryCharacterId = null;
+        return res.status(500).json({ error: '角色数据异常，请重新设置双角色模式' });
+    }
+
+    const history = getGroupHistory(charA.id, charB.id);
+    // 将所有历史折叠进 system prompt，避免 assistant 角色消息格式被 LLM 模仿
+    const historyContext = history.map(msg => {
+        if (msg.role === 'user') return `用户：${msg.content}`;
+        return `${msg.characterName}：${msg.content}`;
+    }).join('\n');
+    const systemWithHistory = buildGroupSystemPrompt(charA, charB)
+        + (historyContext ? `\n\n=== 对话历史 ===\n${historyContext}` : '');
+    const messages = [
+        { role: 'system', content: systemWithHistory },
+        { role: 'user', content: message }
+    ];
+
+    const model = process.env.QWEN_CHAT_MODEL || 'qwen-turbo';
+    const url   = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+    const VALID_EXPRESSIONS = ['idle', 'happy', 'thinking', 'sad', 'angry'];
+
+    try {
+        const promptChars = messages.reduce((n, m) => n + m.content.length, 0);
+        console.log(`[GroupChat] 发送消息数: ${messages.length}，prompt 总字符: ${promptChars}`);
+        const t0 = Date.now();
+        const response = await fetchWithTimeout(url, {
+            method:  'POST',
+            headers: {
+                'Content-Type':  'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({ model, messages, max_tokens: 400, temperature: 0.85, enable_thinking: false })
+        }, 20000);
+        console.log(`[GroupChat] API 响应: ${Date.now() - t0}ms`);
+
+        if (!response.ok) {
+            const t = await response.text();
+            console.error('[GroupChat] LLM 错误:', t);
+            return res.status(502).json({ error: `Qwen 返回错误: ${response.status}` });
+        }
+
+        const data = await response.json();
+        console.log(`[GroupChat] JSON 解析完成: ${Date.now() - t0}ms`);
+        const raw = data?.choices?.[0]?.message?.content?.trim() || '';
+
+        // 解析 JSON，容错处理
+        let replies = [];
+        try {
+            const jsonStr = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.replies && Array.isArray(parsed.replies)) {
+                replies = parsed.replies.map(r => ({
+                    characterId: r.characterId,
+                    name: r.name || (r.characterId === charA.id ? charA.name : charB.name),
+                    reply: r.reply || '',
+                    expression: VALID_EXPRESSIONS.includes(r.expression) ? r.expression : 'idle'
+                })).filter(r => r.reply && (r.characterId === charA.id || r.characterId === charB.id));
+            }
+        } catch (e) {
+            console.error('[GroupChat] JSON 解析失败:', e.message, '| raw:', raw.slice(0, 120));
+            // 尝试从 Name：content 格式回退提取
+            const lineRe = new RegExp(`(${charA.name}|${charB.name})[：:]\\s*(.+?)(?=\\n(?:${charA.name}|${charB.name})[：:]|$)`, 'gs');
+            let m;
+            const fallbackReplies = [];
+            while ((m = lineRe.exec(raw)) !== null) {
+                const name = m[1];
+                const text = m[2].trim();
+                const id = name === charA.name ? charA.id : charB.id;
+                if (text && !fallbackReplies.some(r => r.characterId === id)) {
+                    fallbackReplies.push({ characterId: id, name, reply: text, expression: 'idle' });
+                }
+            }
+            if (fallbackReplies.length >= 2) {
+                replies = fallbackReplies;
+                console.log('[GroupChat] 使用正则回退解析成功:', fallbackReplies.length, '条');
+            }
+        }
+
+        // 保底：解析失败时生成角色相关的默认回复
+        if (replies.length < 2) {
+            const defaultReplies = [
+                { characterId: charA.id, name: charA.name, reply: charA.catchphrases?.[0] || '嗯。', expression: 'idle' },
+                { characterId: charB.id, name: charB.name, reply: charB.catchphrases?.[0] || '嗯。', expression: 'idle' }
+            ];
+            replies = defaultReplies;
+        }
+
+        // ── 自动延续：角色们是否自然想继续聊？ ────────────────
+        let continuationReplies = [];
+        try {
+            // 延续上下文同样不使用 assistant 角色，全部折叠进 system
+            const contContext = history.map(msg => {
+                if (msg.role === 'user') return `用户：${msg.content}`;
+                return `${msg.characterName}：${msg.content}`;
+            }).join('\n');
+            const contPrompt = buildGroupSystemPrompt(charA, charB)
+                + (contContext ? `\n\n=== 对话历史 ===\n${contContext}` : '')
+                + `\n\n用户：${message}`
+                + `\n${replies.map(r => `${r.name}：${r.reply}`).join('\n')}`
+                + `\n\n刚才说完这些，你们俩自然地想不想继续聊点什么？如果话题已经结束就给我空数组 []，如果之间还有话想接，继续说 1~2 句。注意只能接对方的话，不要再提我。直接 JSON 回复：{"replies":[...]}`;
+            const continuationContext = [
+                { role: 'system', content: contPrompt }
+            ];
+            const contRes = await fetchWithTimeout(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({ model, messages: continuationContext, max_tokens: 200, temperature: 0.9, enable_thinking: false })
+            }, 15000);
+            if (contRes.ok) {
+                const contData = await contRes.json();
+                const contRaw = contData?.choices?.[0]?.message?.content?.trim() || '';
+                const contJsonStr = contRaw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+                const contParsed = JSON.parse(contJsonStr);
+                if (contParsed.replies && Array.isArray(contParsed.replies)) {
+                    const extra = contParsed.replies
+                        .map(r => ({
+                            characterId: r.characterId,
+                            name: r.name || (r.characterId === charA.id ? charA.name : charB.name),
+                            reply: r.reply || '',
+                            expression: VALID_EXPRESSIONS.includes(r.expression) ? r.expression : 'idle'
+                        }))
+                        .filter(r => r.reply && (r.characterId === charA.id || r.characterId === charB.id));
+                    if (extra.length > 0) {
+                        console.log(`[GroupChat] 自动延续 ${extra.length} 条`);
+                        continuationReplies = extra;
+                    }
+                }
+            }
+        } catch (e) {
+            console.log('[GroupChat] 自动延续跳过:', e.message);
+        }
+        // 如果自动延续成功，追加到主回复中
+        if (continuationReplies.length > 0) {
+            // 过滤掉可能的心跳消息回声
+            const cleaned = replies.filter(r => !r.reply.includes('用户暂时没说话'));
+            replies = [...cleaned, ...continuationReplies];
+        }
+
+        // 持久化群聊历史（包含主回复 + 延续）
+        appendGroupTurn(charA.id, charB.id, message, replies);
+
+        console.log(`[GroupChat] (${charA.name}+${charB.name}) 用户: ${message} | 回复数: ${replies.length} | 总耗时: ${Date.now() - t0}ms`);
+        res.json({ replies });
+
+    } catch (err) {
+        console.error('[GroupChat] 请求失败:', err.message);
+        res.status(500).json({ error: '网络请求失败' });
+    }
+});
+
+// ── GET /api/group-history/:id1/:id2 ────────────────────────────
+app.get('/api/group-history/:id1/:id2', (req, res) => {
+    res.json(getGroupHistory(req.params.id1, req.params.id2));
+});
+
+// ── GET /api/group-chat/prompt（调试：查看当前群聊 prompt）───────
+app.get('/api/group-chat/prompt', (req, res) => {
+    if (!secondaryCharacterId || !currentCharacterId) {
+        return res.status(400).json({ error: '未设置双角色模式' });
+    }
+    const charA = characterLibrary.get(currentCharacterId);
+    const charB = characterLibrary.get(secondaryCharacterId);
+    if (!charA || !charB) return res.status(500).json({ error: '角色数据异常' });
+    const history = getGroupHistory(charA.id, charB.id);
+    const historyContext = history.map(msg => {
+        if (msg.role === 'user') return `用户：${msg.content}`;
+        return `${msg.characterName}：${msg.content}`;
+    }).join('\n');
+    const systemWithHistory = buildGroupSystemPrompt(charA, charB)
+        + (historyContext ? `\n\n=== 对话历史 ===\n${historyContext}` : '');
+    res.json({ system: systemWithHistory, historyCount: history.length });
 });
 
 // ── GET /api/history/:characterId ────────────────────────────

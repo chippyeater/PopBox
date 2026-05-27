@@ -28,7 +28,7 @@
 
             <!-- 角色信息 -->
             <div class="char-info">
-                <div id="char-name" class="char-name">加载中</div>
+                <div id="char-name" class="char-name">—</div>
                 <div id="status-badge" class="status-badge idle">
                     <span class="status-dot"></span>
                     <span id="status-text">待机</span>
@@ -51,7 +51,7 @@
         <!-- 聊天历史区 -->
         <div class="chat-panel">
             <div id="chat-history" class="chat-history">
-                <div class="msg-system">点击下方按钮开始说话～</div>
+                <div class="msg-system">点击「识别角色」拍照入住角色<br>或从收藏夹选择一个角色开始聊天</div>
             </div>
             <div class="dot-grid"></div>
         </div>
@@ -98,7 +98,11 @@
     <div class="char-panel">
         <div class="char-panel-header">
             <span class="char-panel-title">// 角色收藏夹</span>
-            <span id="char-panel-count" class="char-panel-count">0 个角色</span>
+            <span style="display:flex;gap:6px;align-items:center">
+                <button id="group-chat-btn" class="char-panel-group-btn"
+                        onclick="app.startGroupChat()" style="display:none">群聊</button>
+                <span id="char-panel-count" class="char-panel-count">0 个角色</span>
+            </span>
         </div>
         <div id="char-cards" class="char-cards"></div>
     </div>
@@ -111,6 +115,25 @@
     <div id="recognition-result" class="recognition-result" style="display:none">
         <div class="result-title">// 识别完成</div>
         <div id="result-content"></div>
+    </div>
+
+    <!-- 角色数量选择 -->
+    <div id="count-modal" class="count-modal" style="display:none">
+        <div class="count-modal-bg" onclick="app.closeCountModal()"></div>
+        <div class="count-modal-box">
+            <div class="count-modal-title">请选择入住这个盒子的<br>角色数量</div>
+            <div class="count-modal-btns">
+                <button class="count-btn c1" onclick="app.onCountSelected(1)">
+                    <span class="count-num">1</span>
+                    <span class="count-label">单人入住</span>
+                </button>
+                <button class="count-btn c2" onclick="app.onCountSelected(2)">
+                    <span class="count-num">2</span>
+                    <span class="count-label">双人入住</span>
+                </button>
+            </div>
+            <div class="count-modal-close" onclick="app.closeCountModal()">✕</div>
+        </div>
     </div>
 
     <!-- 错误提示 -->

@@ -18,6 +18,7 @@ const app = (() => {
     const elImgUpload     = $('img-upload');
     const elRecResult     = $('recognition-result');
     const elResultContent = $('result-content');
+    const elCountModal    = $('count-modal');
     const elCharCards     = $('char-cards');
     const elCharCount     = $('char-panel-count');
 
@@ -31,6 +32,14 @@ const app = (() => {
     let charAvatarBase  = '';   // 当前角色头像基础路径
     let thinkingEl      = null;
     let currentAudio    = null;
+    let pendingCharCount = 0;    // 0=未选, 1或2=已选
+    let capturingSecond  = false; // 双人模式正在选第二张
+    let firstCharacterId   = null; // 双人模式第一张图的角色 ID
+    let firstCharacterData = null; // 双人模式第一个角色的完整数据
+    let isGroupChat        = false;
+    let groupCharacters    = [];
+    let ttsQueue           = [];
+    let isTtsPlaying       = false;
     const elAvatar = document.getElementById('avatar-img');
 
     // 和硬件 _resolveAvatarPath 逻辑相同：在扩展名前插入 _expression
@@ -59,6 +68,8 @@ const app = (() => {
     async function init() {
         await loadCharacters();
         initSpeechRecognition();
+        elCharName.textContent = '—';
+        elChatHistory.innerHTML = '<div class="msg-system">点击「识别角色」拍照入住角色<br>或从收藏夹选择一个角色开始聊天</div>';
     }
 
     async function loadCharacters() {
@@ -66,19 +77,7 @@ const app = (() => {
             const res  = await fetch('/api/characters');
             const list = await res.json();
             renderCharCards(list);
-            const cur = list.find(c => c.isCurrent) || list[0];
-            if (cur) {
-                elCharName.textContent = cur.name;
-                charName       = cur.name;
-                characterId    = cur.id;
-                charVoice      = cur.voice  || '';
-                charAvatarBase = cur.avatar || '';
-                setAvatarExpression('idle');
-            }
-        } catch {
-            elCharName.textContent = '小铃';
-            charName = '小铃';
-        }
+        } catch { }
     }
 
     function initSpeechRecognition() {
@@ -178,11 +177,11 @@ const app = (() => {
             .trim();
     }
 
-    function addCharMsg(text, ts) {
+    function addCharMsg(text, ts, nameOverride, extraClass) {
         removeThinker();
         const wrap = document.createElement('div');
-        wrap.className = 'msg-char';
-        wrap.appendChild(makeHeader(charName || '角色', ts));
+        wrap.className = `msg-char ${extraClass || ''}`;
+        wrap.appendChild(makeHeader(nameOverride || charName || '角色', ts));
         const body = document.createElement('div');
         body.textContent = stripTtsMarkers(text);
         wrap.appendChild(body);
@@ -269,6 +268,11 @@ const app = (() => {
             return;
         }
 
+        if (!characterId && !isGroupChat) {
+            showError('请先识别或选择一个角色');
+            return;
+        }
+
         if (state === 'idle' || state === 'reply') {
             setState('recording');
             recognition.start();
@@ -289,15 +293,76 @@ const app = (() => {
     }
 
     // ── 发送消息给后端 ───────────────────────────────────────
-    async function sendMessage(userText) {
+    let idleTimer = null;
+
+    async function sendMessage(userText, isHeartbeat) {
         if (!userText.trim()) {
             setState('idle');
             return;
         }
 
-        addUserMsg(userText);
+        if (!characterId && !isGroupChat) {
+            showError('请先选择或识别一个角色');
+            setState('idle');
+            return;
+        }
+
+        if (!isHeartbeat) {
+            addUserMsg(userText);
+        }
         setState('processing');
         showThinker();
+
+        if (isGroupChat) {
+            try {
+                const res  = await fetch('/api/group-chat', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ message: isHeartbeat ? '__heartbeat__' : userText })
+                });
+                const data = await res.json();
+
+                if (!res.ok || data.error) {
+                    showError(data.error || '服务器错误');
+                    removeThinker();
+                    setState('idle');
+                    return;
+                }
+
+                // 渲染两个角色的回复（不同颜色气泡）
+                const replies = data.replies || [];
+                for (const r of replies) {
+                    const charClass = groupCharacters.length >= 2 && r.characterId === groupCharacters[0].id
+                        ? 'msg-char-a' : 'msg-char-b';
+                    addCharMsg(r.reply, null, r.name, charClass);
+                }
+
+                setState('idle');
+
+                // 播放 TTS 序列
+                const queue = replies
+                    .map(r => {
+                        const gc = groupCharacters.find(c => c.id === r.characterId);
+                        return { text: r.reply, voice: gc?.voice || '' };
+                    })
+                    .filter(r => r.voice);
+                playTtsSequence(queue);
+
+                // 空闲心跳：45秒后角色们自动继续聊
+                clearTimeout(idleTimer);
+                idleTimer = setTimeout(() => {
+                    if (isGroupChat && state !== 'processing') {
+                        sendMessage('__heartbeat__', true);
+                    }
+                }, 45000);
+
+            } catch (err) {
+                showError('网络请求失败：' + err.message);
+                removeThinker();
+                setState('idle');
+            }
+            return;
+        }
 
         try {
             const res  = await fetch('/api/chat', {
@@ -335,12 +400,12 @@ const app = (() => {
     }
 
     // ── TTS：fetch 音频，返回准备好的 Audio 对象（不自动播放）──
-    async function fetchAudio(text) {
+    async function fetchAudio(text, voice) {
         if (currentAudio) { currentAudio.pause(); currentAudio = null; }
         const res = await fetch('/api/tts', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ text, voice: charVoice })
+            body:    JSON.stringify({ text, voice: voice || charVoice })
         });
         if (!res.ok) throw new Error(`TTS ${res.status}`);
         const blob  = await res.blob();
@@ -348,6 +413,130 @@ const app = (() => {
         currentAudio = audio;
         audio.onended = () => { currentAudio = null; };
         return audio;
+    }
+
+    // ── TTS 序列播放（群聊用）──────────────────────────────────
+    function playTtsSequence(queue) {
+        ttsQueue = queue.slice();
+        if (isTtsPlaying) return;
+        playNextTts();
+    }
+
+    function playNextTts() {
+        if (ttsQueue.length === 0) {
+            isTtsPlaying = false;
+            return;
+        }
+        isTtsPlaying = true;
+        const { text, voice } = ttsQueue.shift();
+        fetchAudio(text, voice).then(audio => {
+            if (audio) {
+                audio.onended = () => {
+                    currentAudio = null;
+                    playNextTts();
+                };
+                audio.play();
+            } else {
+                playNextTts();
+            }
+        }).catch(() => playNextTts());
+    }
+
+    // ── 群聊模式管理 ─────────────────────────────────────────────
+    async function startGroupChat() {
+        if (isGroupChat) {
+            exitGroupChat();
+            return;
+        }
+        try {
+            const res = await fetch('/api/characters');
+            const list = await res.json();
+            const primary = list.find(c => c.id === characterId) || list[0];
+            const secondary = list.find(c => c.id !== characterId) || list[1];
+            if (!primary || !secondary) {
+                showError('需要至少两个角色才能发起群聊');
+                return;
+            }
+            const dualRes = await fetch(`/api/characters/dual/${primary.id}/${secondary.id}`, { method: 'PUT' });
+            const dualData = await dualRes.json();
+            if (!dualRes.ok) return showError(dualData.error || '群聊设置失败');
+            await setupGroupChat();
+        } catch (e) {
+            showError('启动群聊失败: ' + e.message);
+        }
+    }
+
+    async function setupGroupChat() {
+        try {
+            const res = await fetch('/api/characters/dual');
+            const data = await res.json();
+            if (!data.dualMode) throw new Error('未设置双角色模式');
+            isGroupChat = true;
+            groupCharacters = data.characters.map(c => ({
+                id: c.id, name: c.name, voice: c.voice
+            }));
+            elCharName.textContent = `${groupCharacters[0].name} + ${groupCharacters[1].name}`;
+            elStatus.textContent = '群聊';
+            if (elBadge) {
+                elBadge.className = 'status-badge recognizing';
+            }
+            const groupBtn = document.getElementById('group-chat-btn');
+            if (groupBtn) groupBtn.textContent = '退出';
+            await loadAndRenderGroupHistory(groupCharacters[0].id, groupCharacters[1].id);
+        } catch (e) {
+            showError('进入群聊模式失败: ' + e.message);
+            isGroupChat = false;
+        }
+    }
+
+    function exitGroupChat() {
+        clearTimeout(idleTimer);
+        isGroupChat = false;
+        groupCharacters = [];
+        if (elBadge) elBadge.className = 'status-badge idle';
+        elStatus.textContent = '待机';
+        const groupBtn = document.getElementById('group-chat-btn');
+        if (groupBtn) groupBtn.textContent = '群聊';
+        // 重新加载当前单人角色
+        loadCharacters().then(() => {
+            loadAndRenderHistory(characterId, charName);
+        });
+    }
+
+    async function loadAndRenderGroupHistory(id1, id2) {
+        elChatHistory.innerHTML = '';
+        try {
+            const res = await fetch(`/api/group-history/${id1}/${id2}`);
+            const hist = await res.json();
+            if (!hist.length) {
+                elChatHistory.innerHTML = '<div class="msg-system">三人聊天开始了，打个招呼吧～</div>';
+                return;
+            }
+            for (const msg of hist) {
+                if (msg.role === 'user') {
+                    const el = document.createElement('div');
+                    el.className = 'msg-user';
+                    el.appendChild(makeHeader('YOU', msg.ts));
+                    const body = document.createElement('div');
+                    body.textContent = msg.content;
+                    el.appendChild(body);
+                    elChatHistory.appendChild(el);
+                } else {
+                    const wrap = document.createElement('div');
+                    const charClass = groupCharacters.length >= 2 && msg.characterId === groupCharacters[0].id
+                        ? 'msg-char-a' : 'msg-char-b';
+                    wrap.className = `msg-char ${charClass}`;
+                    wrap.appendChild(makeHeader(msg.characterName || '角色', msg.ts));
+                    const body = document.createElement('div');
+                    body.textContent = msg.content;
+                    wrap.appendChild(body);
+                    elChatHistory.appendChild(wrap);
+                }
+            }
+            scrollToBottom();
+        } catch (e) {
+            elChatHistory.innerHTML = '<div class="msg-system">群聊历史加载失败</div>';
+        }
     }
 
     // ── 错误提示 ─────────────────────────────────────────────
@@ -363,6 +552,9 @@ const app = (() => {
     function renderCharCards(list) {
         if (!elCharCards) return;
         elCharCount.textContent = `${list.length} 个角色`;
+        // 角色数 >= 2 时显示群聊按钮
+        const groupBtn = document.getElementById('group-chat-btn');
+        if (groupBtn) groupBtn.style.display = list.length >= 2 ? '' : 'none';
         elCharCards.innerHTML = list.map(ch => `
             <div class="char-card ${ch.isCurrent ? 'active' : ''}"
                  onclick="app.switchCharacter('${ch.id}')">
@@ -374,7 +566,7 @@ const app = (() => {
     }
 
     async function switchCharacter(id) {
-        if (id === characterId) return;
+        if (id === characterId && !isGroupChat) return;
         try {
             const res  = await fetch(`/api/characters/current/${id}`, { method: 'PUT' });
             const data = await res.json();
@@ -383,6 +575,7 @@ const app = (() => {
             charName       = data.current?.name   || '';
             charVoice      = data.current?.voice  || '';
             charAvatarBase = data.current?.avatar || '';
+            isGroupChat    = false;  // 切换到单人角色退出群聊
             elCharName.textContent = charName;
             setAvatarExpression('idle');
             setState('idle');
@@ -411,12 +604,34 @@ const app = (() => {
     // ── 识别角色 ─────────────────────────────────────────────
     function onRecognizeTap() {
         if (state === 'processing' || state === 'recognizing') return;
+        // 双人模式进行中：直接打开文件选择器继续拍第二位
+        if (capturingSecond) {
+            elImgUpload.click();
+            return;
+        }
+        elCountModal.style.display = 'block';
+    }
+
+    function closeCountModal() {
+        elCountModal.style.display = 'none';
+    }
+
+    function onCountSelected(count) {
+        elCountModal.style.display = 'none';
+        pendingCharCount = count;
+        capturingSecond = false;
+        if (count === 1) {
+            firstCharacterId = null;
+            firstCharacterData = null;
+        }
         elImgUpload.click();
     }
 
     async function onImageSelected(input) {
-        const file = input.files[0];
-        if (!file) return;
+        console.log('[Upload] onImageSelected called, files:', input?.files?.length);
+        const file = input.files && input.files[0];
+        if (!file) { console.warn('[Upload] no file'); return; }
+        console.log('[Upload] file:', file.name, file.type, file.size);
         input.value = '';
 
         setState('recognizing');
@@ -424,6 +639,7 @@ const app = (() => {
 
         try {
             const arrayBuffer = await file.arrayBuffer();
+            console.log('[Upload] read', arrayBuffer.length, 'bytes');
             const res = await fetch('/api/recognize/upload', {
                 method:  'POST',
                 headers: { 'Content-Type': file.type || 'image/jpeg' },
@@ -434,6 +650,8 @@ const app = (() => {
             if (!res.ok || data.error) {
                 showError(data.error || '识别失败');
                 setState('idle');
+                pendingCharCount = 0;
+                capturingSecond = false;
                 return;
             }
 
@@ -444,6 +662,37 @@ const app = (() => {
             elCharName.textContent = charName;
             setAvatarExpression('idle');
             setState('idle');
+
+            // 双人模式：拍完第一个需要拍第二个
+            if (pendingCharCount === 2 && !capturingSecond) {
+                firstCharacterId = data.id;
+                firstCharacterData = { ...data };
+                capturingSecond = true;
+                setState('idle');
+                addCharMsg(`✅ ${data.name} 已入住！请再点击「识别角色」选择第二位角色。`);
+                return;
+            }
+
+            // 双人模式：第二张拍完 → 自动进入群聊模式
+            if (firstCharacterId) {
+                try {
+                    await fetch(`/api/characters/dual/${firstCharacterId}/${data.id}`, { method: 'PUT' });
+                    // 展示两个角色的识别信息
+                    const combinedGreeting = `双人组合已就位！${firstCharacterData.name} 和 ${data.name} 一起来陪你聊天啦～`;
+                    addCharMsg(combinedGreeting);
+                    await setupGroupChat();
+                    setState('idle');
+                } catch (e) {
+                    showError('双人模式设置失败: ' + e.message);
+                    setState('idle');
+                }
+                firstCharacterId = null;
+                firstCharacterData = null;
+                pendingCharCount = 0;
+                capturingSecond = false;
+                return;
+            }
+
             const greeting = `${data.catchphrases?.[0] || ''}我是${charName}！很高兴认识你～`;
             addCharMsg(greeting);
             fetchAudio(greeting).then(audio => audio?.play()).catch(() => {});
@@ -462,11 +711,13 @@ const app = (() => {
             showError('识别请求失败：' + err.message);
             setState('idle');
         }
+        pendingCharCount = 0;
+        capturingSecond = false;
     }
 
     // ── 启动 ─────────────────────────────────────────────────
     init();
 
-    return { onMicTap, sendText, onRecognizeTap, onImageSelected,
-             switchCharacter, deleteCharacter };
+    return { onMicTap, sendText, onRecognizeTap, onCountSelected, closeCountModal, onImageSelected,
+             switchCharacter, deleteCharacter, exitGroupChat, startGroupChat };
 })();
