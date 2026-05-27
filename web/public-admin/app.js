@@ -32,6 +32,8 @@ const app = (() => {
 
     let journalEntries = [];
     let journalPollTimer = null;
+    let noteEntries = [];
+    let notePollTimer = null;
     let currentCharacterId = '';
     let characterList = [];
 
@@ -48,7 +50,12 @@ const app = (() => {
         const navEl = document.querySelector(`[data-page="${page}"]`);
         if (navEl) navEl.classList.add('active');
 
+        // days-badge 只在生命仓显示
+        const badge = document.getElementById('days-badge');
+        if (badge) badge.style.display = page === 'home' ? '' : 'none';
+
         currentPage = page;
+        if (page === 'notes') loadNotes();
     }
 
     function bindNav() {
@@ -61,7 +68,7 @@ const app = (() => {
 
     }
 
-    // ── 出行日志：可拖拽画布 ─────────────────────────────────
+    // ── 出行照片墙：可拖拽画布 ─────────────────────────────────
     const ROTATIONS = [-3, 1.5, -1, 2.5, -2, 1, -1.5];
 
     // 初始散布位置（相对画布左上角，单位px）
@@ -127,7 +134,7 @@ const app = (() => {
         if (state === 'sensing') {
             return `
                 <div class="polaroid-quote is-sensing-text">
-                    <img class="polaroid-generating-icon" src="generating.png" alt="">
+                    <img class="polaroid-generating-icon" src="/media/generating.png" alt="">
                     <span>${escapeHTML(quote)}</span>
                 </div>
             `;
@@ -213,6 +220,87 @@ const app = (() => {
         if (memEl)   memEl.textContent   = entries.reduce((s, e) => s + parseInt(e.duration || 0), 0);
 
         bindCanvasDrag(wrap, cvs);
+    }
+
+    function noteTime(ts) {
+        const d = new Date(ts || Date.now());
+        return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+
+    function noteAvatarHTML(note) {
+        if (note.from !== 'character') return '你';
+        const ch = characterList.find(c => c.id === note.characterId) || characterList.find(c => c.id === currentCharacterId);
+        if (ch?.avatar) return `<img src="${escapeHTML(ch.avatar)}" alt="">`;
+        return escapeHTML((ch?.name || '?').slice(0, 1));
+    }
+
+    function notePositionStyle(note, i) {
+        const positions = [
+            { left: 8, top: 12 },
+            { left: 38, top: 16 },
+            { left: 14, top: 48 },
+            { left: 50, top: 52 },
+            { left: 24, top: 30 },
+        ];
+        const p = positions[i % positions.length];
+        const seed = String(note.id || i).split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+        const rot = seededAngle(seed, 19, 3);
+        return `left:${p.left}%;top:${p.top}%;transform:rotate(${rot}deg)`;
+    }
+
+    function renderNotes(entries = noteEntries) {
+        const list = document.getElementById('notes-list');
+        const empty = document.getElementById('notes-empty');
+        const status = document.getElementById('notes-status');
+        if (!list) return;
+
+        const sorted = [...entries].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        list.innerHTML = sorted.map((note, i) => {
+            const isChar = note.from === 'character';
+            const isGenerating = note.state === 'generating';
+            return `
+                <div class="note-sticky ${isChar ? 'note-sticky--char' : 'note-sticky--user'} ${isGenerating ? 'note-sticky--generating' : ''}"
+                     style="${notePositionStyle(note, i)}">
+                    <div class="note-tape-top"></div>
+                    <div class="note-sticky-header">
+                        <div class="note-char-avatar">${noteAvatarHTML(note)}</div>
+                        <span class="note-sticky-time">${noteTime(note.createdAt)}</span>
+                    </div>
+                    <div class="note-sticky-text">${escapeHTML(note.text)}</div>
+                </div>
+            `;
+        }).join('');
+
+        if (empty) empty.style.display = sorted.length ? 'none' : 'block';
+        if (status) {
+            const generating = sorted.some(n => n.state === 'generating');
+            status.textContent = generating ? '状态：正在回纸条' : `状态：${sorted.length} 张小纸条`;
+        }
+        startNotePolling();
+    }
+
+    async function loadNotes() {
+        if (!currentCharacterId) return;
+        try {
+            const res = await fetch(`/api/notes?characterId=${encodeURIComponent(currentCharacterId)}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+            noteEntries = data.notes || [];
+            renderNotes(noteEntries);
+        } catch (e) {
+            console.error('[Notes] 加载失败:', e.message);
+            noteEntries = [];
+            renderNotes(noteEntries);
+        }
+    }
+
+    function startNotePolling() {
+        if (notePollTimer) return;
+        if (!noteEntries.some(n => n.state === 'generating')) return;
+        notePollTimer = setTimeout(async () => {
+            notePollTimer = null;
+            await loadNotes();
+        }, 1600);
     }
 
     async function loadJournal() {
@@ -301,6 +389,7 @@ const app = (() => {
         updateCharacterUI(cur);
         renderCharacterSelect(characterList, id);
         await loadJournal();
+        await loadNotes();
         startJournalPolling();
     }
 
@@ -385,10 +474,12 @@ const app = (() => {
         window.addEventListener('resize', () => updatePolaroidTagLayout());
         bindSettings();
         bindRecordModal();
+        loadStory();
 
         try {
             await loadCharacters();
             await loadJournal();
+            await loadNotes();
             startJournalPolling();
             /*
             const res  = await fetch('/api/characters');
@@ -505,6 +596,10 @@ const app = (() => {
                 alert('请先上传照片');
                 return;
             }
+            if (!currentCharacterId) {
+                alert('请先选择当前角色');
+                return;
+            }
 
             try {
                 const buffer = await pendingImg.file.arrayBuffer();
@@ -512,6 +607,7 @@ const app = (() => {
                     method: 'POST',
                     headers: {
                         'Content-Type': pendingImg.file.type || 'image/jpeg',
+                        'X-Journal-Character-Id': currentCharacterId,
                         'X-Journal-Date': dateVal || '',
                         'X-Journal-Place': encodeURIComponent(uploadPlaceVal),
                     },
@@ -571,7 +667,7 @@ const app = (() => {
                     </div>
                     <hr class="polaroid-divider">
                     <div class="polaroid-quote is-sensing-text">
-                        <img class="polaroid-generating-icon" src="generating.png" alt="">
+                        <img class="polaroid-generating-icon" src="/media/generating.png" alt="">
                         <span>"正在感知这一刻的温度..."</span>
                     </div>
                 </div>`;
@@ -613,8 +709,251 @@ const app = (() => {
         return { x: 60 + nodes.length * 40, y: 60 + nodes.length * 30 };
     }
 
-    function postNote()      { alert('小纸条功能建设中～'); }
+    async function postNote() {
+        const input = document.getElementById('note-input');
+        const btn = document.getElementById('note-submit');
+        const text = (input?.value || '').trim();
+
+        if (!text) {
+            alert('先写一点内容再贴上去');
+            return;
+        }
+        if (!currentCharacterId) {
+            alert('请先选择当前角色');
+            return;
+        }
+
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '贴上中...';
+        }
+
+        try {
+            const res = await fetch('/api/notes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ characterId: currentCharacterId, text }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+            if (input) input.value = '';
+            await loadNotes();
+            startNotePolling();
+        } catch (e) {
+            alert('小纸条发送失败：' + e.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '贴上去';
+            }
+        }
+    }
     function savePrefs()     { alert('偏好已保存～'); }
+
+    // ── 今日同游 ──────────────────────────────────────────────────
+
+    const CHAR_AVATARS    = { duchamp: '杜', qifei: '妃', zsiga: 'Z', goodluck: 'GL' };
+    const CHAR_CSS_CLASS  = { duchamp: 'char-duchamp', qifei: 'char-qifei', zsiga: 'char-zsiga' };
+    const ECHO_CSS_CLASS  = { qifei: 'echo-card--qifei', zsiga: 'echo-card--zsiga', duchamp: 'echo-card--duchamp' };
+    const STATUS_LABEL    = { upcoming: '未开始', ongoing: '进行中', done: '已完成' };
+    const STATUS_DOT_COLOR = { upcoming: '#AAA', ongoing: '#7BC14A', done: '#FF6B35' };
+
+    // 稳定伪随机角度 [-range, range]，用 charId+index 做 seed
+    function stableAngle(seed, range = 2) {
+        const r = ((seed * 9301 + 49297) % 233280) / 233280;
+        return +((r * range * 2 - range).toFixed(1));
+    }
+
+    // ── JSON → 时间线条目映射 ──────────────────────────────────────
+    //
+    // Beat 类型映射规则：
+    //   narration                    → 旁白块（左列，连续旁白合并）
+    //   action（无 character_id）     → 旁白块（同上）
+    //   dialogue                     → 角色卡（左右交替）
+    //   action（有 character_id）     → 角色卡，isAction:true → 斜体文字
+    //   inner_monologue              → 角色卡，isInner:true → 虚线边框 + 淡背景
+    //
+    // 场景边界 → 菱形标记 + 场景标题；ending → 星形标记
+    function mapStoryToTimeline(story) {
+        const items = [];
+
+        function pushConnector() {
+            items.push({ type: 'connector' });
+        }
+
+        function processBeat(beat) {
+            const isNarrator = !beat.character_id ||
+                               beat.type === 'narration' ||
+                               (beat.type === 'action' && !beat.character_id);
+
+            if (isNarrator) {
+                // 连续旁白合并为一个块
+                const last = items[items.length - 1];
+                if (last && last.type === 'narration') {
+                    last.text += '\n' + beat.text;
+                    return;
+                }
+                items.push({ type: 'narration', text: beat.text, label: '旁白 (Narration)' });
+            } else {
+                pushConnector();
+                items.push({
+                    type:    'char',
+                    charId:  beat.character_id,
+                    name:    beat.speaker,
+                    sub:     beat.emotion || '',
+                    text:    beat.text,
+                    isInner: beat.type === 'inner_monologue',
+                    isAction: beat.type === 'action',
+                });
+            }
+        }
+
+        story.scenes.forEach((scene, i) => {
+            if (i > 0) pushConnector();
+            // 场景分隔：菱形标记，场景标题显示在左侧
+            items.push({ type: 'marker', variant: 'diamond', label: scene.scene_title });
+            pushConnector();
+            scene.beats.forEach(processBeat);
+        });
+
+        // ending 作为尾章
+        if (story.ending) {
+            pushConnector();
+            items.push({ type: 'marker', variant: 'star', label: story.ending.scene_title });
+            pushConnector();
+            story.ending.beats.forEach(processBeat);
+        }
+
+        return items;
+    }
+
+    // 从 JSON 提取渲染所需的扁平数据结构
+    function storyToRenderData(story) {
+        const lc = story.log_card || {};
+        const mt = lc.memory_token || {};
+        return {
+            title:    story.title,
+            episode:  '#' + (story.story_id || '').replace(/\D+/g, '').slice(-3) || '001',
+            status:   'ongoing',
+            token: {
+                color: '#AECF3A',
+                label: mt.name        || '关键物品',
+                quote: mt.description || '',
+            },
+            timeline: mapStoryToTimeline(story),
+            echoes: (lc.character_comments || []).map(c => ({
+                charId: c.character_id,
+                name:   c.speaker,
+                text:   c.text,
+            })),
+        };
+    }
+
+    // ── 渲染函数 ──────────────────────────────────────────────────
+
+    function buildCardHTML(item) {
+        const seed    = (item.charId || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+        const rot     = stableAngle(seed, 2);
+        const initial = CHAR_AVATARS[item.charId] || (item.name || '?')[0];
+        const baseCls = CHAR_CSS_CLASS[item.charId] || '';
+        const innerCls = item.isInner  ? ' char-inner'  : '';
+        const actCls   = item.isAction ? ' char-action-beat' : '';
+        const textCls  = item.isAction ? 'char-card-text char-card-text--action' : 'char-card-text';
+        return `<div class="timeline-char-card ${baseCls}${innerCls}${actCls}" style="transform:rotate(${rot}deg)">
+            <div class="char-card-header">
+                <div class="char-card-avatar">${escapeHTML(initial)}</div>
+                <div>
+                    <div class="char-card-name">${escapeHTML(item.name || '')}</div>
+                    ${item.sub ? `<div class="char-card-sub">${escapeHTML(item.sub)}</div>` : ''}
+                </div>
+            </div>
+            <div class="${textCls}">${escapeHTML(item.text || '')}</div>
+        </div>`;
+    }
+
+    // 三栏行：left | spine | right
+    function tlRow(leftHTML, spineHTML, rightHTML) {
+        return `<div class="tl-row">
+            <div class="tl-left">${leftHTML}</div>
+            <div class="tl-spine">${spineHTML}</div>
+            <div class="tl-right">${rightHTML}</div>
+        </div>`;
+    }
+
+    function renderStory(s) {
+        document.getElementById('story-title').textContent        = s.title;
+        document.getElementById('story-episode').textContent      = s.episode;
+        document.getElementById('story-status-text').textContent  = STATUS_LABEL[s.status] || s.status;
+        document.querySelector('.story-status-dot').style.background = STATUS_DOT_COLOR[s.status] || '#AAA';
+
+        const tokenIcon = document.getElementById('story-token-icon');
+        tokenIcon.style.background = s.token.color;
+        document.getElementById('story-token-quote').textContent = s.token.quote;
+        document.getElementById('story-token-btn').textContent   = '▷ ' + s.token.label;
+
+        // 时间线 — 三栏渲染，角色卡左右交替
+        let charSide = 'right';
+        const tl = document.getElementById('story-timeline');
+        tl.innerHTML = s.timeline.map(item => {
+            if (item.type === 'connector') {
+                return tlRow('', '<div class="tl-line"></div>', '');
+            }
+            if (item.type === 'marker') {
+                const markerHTML =
+                    item.variant === 'diamond' ? '<div class="tl-marker--diamond"></div>' :
+                    item.variant === 'star'    ? '<span class="tl-marker--star">✦</span>' :
+                                                '<div class="tl-marker--circle"></div>';
+                // 场景标题显示在标记左侧
+                const labelHTML = item.label
+                    ? `<div class="tl-scene-label">${escapeHTML(item.label)}</div>` : '';
+                return tlRow(labelHTML,
+                    `<div class="tl-line" style="min-height:6px"></div>${markerHTML}<div class="tl-line" style="min-height:6px"></div>`,
+                    '');
+            }
+            if (item.type === 'narration') {
+                const narHTML = `<div class="timeline-narration">
+                    <div class="narration-label">${escapeHTML(item.label || '旁白')}</div>
+                    ${escapeHTML(item.text).replace(/\n/g, '<br>')}
+                </div>`;
+                return tlRow(narHTML, '<div class="tl-line"></div>', '');
+            }
+            if (item.type === 'char') {
+                const side = charSide;
+                charSide = side === 'left' ? 'right' : 'left';
+                const card = buildCardHTML(item);
+                return side === 'right'
+                    ? tlRow('', '<div class="tl-line"></div>', card)
+                    : tlRow(card, '<div class="tl-line"></div>', '');
+            }
+            return '';
+        }).join('');
+
+        // 今日回响 — 横排便签
+        const ec = document.getElementById('echoes-cards');
+        ec.innerHTML = s.echoes.map((e, i) => {
+            const seed = (e.charId || '').split('').reduce((a, c) => a + c.charCodeAt(0), i * 13);
+            const rot  = stableAngle(seed, 2.5);
+            const cls  = ECHO_CSS_CLASS[e.charId] || 'echo-card--default';
+            return `<div class="echo-card ${cls}" style="transform:rotate(${rot}deg)">
+                <div class="echo-card-quote">${escapeHTML(e.text)}</div>
+                <div class="echo-card-attr">${escapeHTML(e.name)}</div>
+            </div>`;
+        }).join('');
+    }
+
+    // ── 从服务器加载故事 JSON ────────────────────────────────────
+    // data/stories/ 目录由 server.js 第 18 行静态托管，路径为 /stories/:id.json
+    async function loadStory(storyId = 'story1') {
+        try {
+            const res = await fetch(`/stories/${storyId}.json`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const story = await res.json();
+            renderStory(storyToRenderData(story));
+        } catch (e) {
+            console.error('[Story] 加载失败:', e);
+            document.getElementById('story-title').textContent = '故事加载失败';
+        }
+    }
 
     init();
     return { postNote, recordPlace, savePrefs, switchPage, bindRecordModal };

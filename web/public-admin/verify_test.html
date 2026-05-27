@@ -1,0 +1,2890 @@
+<!DOCTYPE html><html><head><meta charset='UTF-8'>
+<style>*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --lime:   #C8E600;
+    --black:  #1A1A1A;
+    --bg:     #EDEAE4;
+    --white:  #FFFFFF;
+    --beige:  #F5EDD4;
+    --border: 2px solid #1A1A1A;
+    --shadow: 4px 4px 0 #1A1A1A;
+    --font:   'Inter', system-ui, sans-serif;
+}
+
+body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--black);
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* ── 整体布局 ── */
+.layout {
+    display: flex;
+    height: 100vh;
+}
+
+/* ── 侧边栏 ── */
+.sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: var(--white);
+    border-right: var(--border);
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-logo {
+    padding: 24px 20px 20px;
+    border-bottom: var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.logo-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sidebar-char-avatar {
+    width: 34px;
+    height: 34px;
+    border: 2px solid var(--black);
+    background: #D8D8EC;
+    object-fit: cover;
+    box-shadow: 2px 2px 0 var(--black);
+}
+
+.logo-title {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.logo-sub {
+    font-size: 11px;
+    color: #888;
+    margin-left: 44px;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 20px 16px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--black);
+    text-decoration: none;
+    position: relative;
+    border: 2px solid transparent;
+    z-index: 0;
+    margin-top: 0;
+    transition: margin-top 0.25s ease, color 0.2s ease;
+}
+
+.nav-item:hover:not(.active) {
+    color: #261A00;
+    margin-top: 8px;
+}
+
+.nav-item:hover:not(.active) .nav-icon {
+    color: #261A00;
+    transition: color 0.2s ease;
+}
+
+.nav-item:hover:not(.active)::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--beige);
+    border: var(--border);
+    transform: rotate(-1deg);
+    z-index: -1;
+    animation: fadeInBg 0.2s ease forwards;
+}
+
+@keyframes fadeInBg {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.nav-item.active {
+    font-weight: 700;
+    border-color: transparent;
+    background: transparent;
+    color: #5F7400;
+}
+
+.nav-item.active .nav-icon {
+    color: #5F7400;
+}
+
+.nav-item.active::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--lime);
+    border: var(--border);
+    transform: rotate(1.5deg);
+    z-index: -1;
+    box-shadow: var(--shadow);
+}
+
+.nav-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+
+/* ── 主内容 ── */
+.main {
+    flex: 1;
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.days-badge {
+    position: absolute;
+    top: 24px;
+    right: 32px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--lime);
+    border: var(--border);
+    border-radius: 12px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: var(--shadow);
+    z-index: 10;
+    transform: rotate(4deg);
+}
+
+/* ── 主卡片 ── */
+.main-card {
+    margin-top: 20px;
+    background: var(--white);
+    border: var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex: 1;
+    max-height: calc(100vh - 108px);
+    overflow: visible; /* 允许贴纸超出 */
+    position: relative;
+}
+
+/* ── 贴纸标签（卡在 photo-col 左边缘，超出卡片） ── */
+.sticker {
+    position: absolute;
+    font-size: 12px;
+    font-weight: 700;
+    border: var(--border);
+    padding: 5px 12px;
+    z-index: 20;
+    box-shadow: 2px 2px 0 var(--black);
+    /* 左边缘，超出卡片约 10px */
+    left: -10px;
+}
+
+.sticker-entered {
+    top: 52px;
+    background: #FFDF9E;
+    transform: rotate(-6deg);
+}
+
+.sticker-adapting {
+    top: 96px;
+    background: #FDAA90;
+    transform: rotate(3deg);
+}
+
+/* ── 照片栏（整体倾斜 1°，hover 回正 + 图片放大） ── */
+.photo-col {
+    width: 340px;
+    min-width: 280px;
+    border-right: var(--border);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px 0 0 10px;
+    overflow: visible;
+}
+
+.photo-frame {
+    flex: 1;
+    border: none;
+    outline: 2px solid var(--black);
+    display: flex;
+    flex-direction: column;
+    background: #F2EFE9;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transform: rotate(-1deg);
+    transform-origin: center center;
+    transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+}
+
+.photo-img-wrap {
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.photo-col:hover .photo-frame {
+    transform: rotate(0deg);
+}
+
+.char-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    display: block;
+}
+
+.char-photo-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #bbb;
+    font-size: 13px;
+}
+
+.photo-caption {
+    padding: 11px 14px;
+    border-top: 2px solid var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--white);
+    flex-shrink: 0;
+}
+
+.photo-serial {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.qr-icon {
+    width: 20px;
+    height: 20px;
+    opacity: 0.35;
+}
+
+/* ── 信息栏 ── */
+.info-col {
+    flex: 1;
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    min-width: 0;
+}
+
+.char-identity-label {
+    font-size: 11px;
+    color: #888;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.char-name {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    line-height: 1.05;
+}
+
+.char-type {
+    font-size: 26px;
+    font-weight: 700;
+    color: #7AAF00;
+    margin-top: 6px;
+}
+
+.character-select {
+    width: min(260px, 100%);
+    margin-top: 14px;
+    padding: 8px 10px;
+    border: var(--border);
+    background: var(--white);
+    color: var(--black);
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 3px 3px 0 var(--black);
+    cursor: pointer;
+}
+
+.divider {
+    border: none;
+    border-top: var(--border);
+    margin: 22px 0;
+}
+
+/* ── 状态卡片（无阴影） ── */
+.status-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.status-card {
+    border: var(--border);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    background: #FDF8F6;
+    box-shadow: var(--shadow);
+}
+
+.status-icon {
+    width: 18px;
+    height: 18px;
+    color: #888;
+}
+
+.status-label {
+    font-size: 11px;
+    color: #888;
+    font-weight: 500;
+}
+
+.status-value {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.status-value-large {
+    font-size: 24px;
+    font-weight: 800;
+}
+
+/* ── 语音日志 ── */
+.voice-log {
+    background: var(--beige);
+    border: var(--border);
+    padding: 20px 20px 16px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+    position: relative;
+}
+
+/* 黑底白字标签卡在框左上角边缘 */
+.voice-log-label {
+    position: absolute;
+    top: -13px;
+    left: 14px;
+    background: var(--black);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.35);
+    transform: rotate(-4deg);
+    transform-origin: left center;
+}
+
+.voice-log-text {
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.75;
+    color: var(--black);
+}
+
+/* ── 操作行 ── */
+.action-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: auto;
+    padding-top: 8px;
+}
+
+.btn-primary {
+    background: var(--lime);
+    border: var(--border);
+    padding: 12px 26px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font);
+    box-shadow: var(--shadow);
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.btn-primary:hover  { transform: translate(-1px,-1px); box-shadow: 5px 5px 0 var(--black); }
+.btn-primary:active { transform: translate(2px,2px);   box-shadow: 2px 2px 0 var(--black); }
+
+/* ── 页面视图容器 ── */
+.page-view {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    margin-top: 20px;
+    max-height: calc(100vh - 108px);
+}
+
+.page-view .main-card {
+    margin-top: 0;
+    max-height: 100%;
+}
+
+/* ── 出行日志 v2（撑满 main，topbar 浮层）── */
+#page-journal {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    max-height: none;
+    overflow: hidden;
+}
+
+.journal-v2 {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* 顶部工具栏：浮在画布上方 */
+.journal-topbar {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    right: 18px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    min-height: 126px;
+    padding: 22px 28px 20px;
+    border: var(--border);
+    box-shadow: 6px 6px 0 var(--black);
+    background: #F7F3F1;
+    z-index: 10;
+    overflow: visible;
+}
+
+.journal-topbar::before {
+    content: "";
+    position: absolute;
+    top: -14px;
+    left: 70px;
+    width: 108px;
+    height: 22px;
+    background: #F7F3F1;
+    border: var(--border);
+    transform: rotate(-2deg);
+}
+
+.journal-topbar::after {
+    content: "";
+    position: absolute;
+    top: -5px;
+    left: 174px;
+    width: 10px;
+    height: 10px;
+    background: var(--black);
+}
+
+.journal-topbar-left {
+    flex: 1 1 270px;
+    min-width: 240px;
+}
+
+.journal-wall-title {
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 1.1;
+}
+
+.journal-wall-sub {
+    font-size: 15px;
+    color: #4b4f3d;
+    margin-top: 5px;
+    font-weight: 800;
+}
+
+.journal-topbar-center {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex: 0 0 auto;
+    padding-left: 0;
+    border: var(--border);
+    box-shadow: var(--shadow);
+    background: var(--white);
+}
+
+.btn-explore-data {
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 800;
+    min-height: 50px;
+    padding: 0 20px;
+    background: var(--lime);
+    border: 0;
+    border-right: var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: none;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.btn-explore-data:hover { background: #d7ff00; }
+
+.btn-explore-data svg {
+    width: 20px;
+    height: 20px;
+}
+
+.journal-stat-chip {
+    min-height: 50px;
+    min-width: 104px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 0;
+    border-right: var(--border);
+    padding: 0 20px;
+    background: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #6d7265;
+}
+
+.journal-stat-chip:last-child { border-right: 0; }
+
+.journal-stat-chip strong {
+    color: var(--black);
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+    margin-left: 0;
+}
+
+.journal-topbar-right {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* 画布区域：占满全部 */
+.journal-canvas-wrap {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: var(--white);
+    cursor: grab;
+    z-index: 1;
+}
+
+.journal-canvas-wrap.panning {
+    cursor: grabbing;
+}
+
+.journal-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform-origin: 0 0;
+}
+
+/* 画布提示 */
+.journal-canvas-hint {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    font-size: 11px;
+    color: #aaa;
+    font-weight: 500;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+/* 画布上的宝丽来节点 */
+.canvas-node {
+    position: absolute;
+    width: 220px;
+    cursor: grab;
+    user-select: none;
+    transition: box-shadow 0.15s;
+}
+
+.canvas-node:active,
+.canvas-node.dragging {
+    cursor: grabbing;
+    z-index: 100;
+}
+
+.canvas-node.dragging .polaroid {
+    box-shadow: 8px 8px 0 var(--black);
+}
+
+/* ── 相处方式设置页 ── */
+.settings-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 40px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.settings-header {
+    position: relative;
+    padding-bottom: 8px;
+}
+
+.settings-config-chip {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    background: #3a4a00;
+    color: var(--white);
+    padding: 3px 10px;
+    margin-bottom: 8px;
+}
+
+.settings-title {
+    font-size: 48px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1.05;
+    border: var(--border);
+    display: inline-block;
+    padding: 4px 16px 4px 10px;
+    background: var(--white);
+    box-shadow: var(--shadow);
+    margin-bottom: 18px;
+}
+
+.settings-subtitle {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.7;
+    border-left: 4px solid #7AAF00;
+    padding-left: 14px;
+    max-width: 560px;
+}
+
+.settings-section-tag {
+    position: absolute;
+    font-size: 11px;
+    font-weight: 700;
+    border: var(--border);
+    padding: 4px 12px;
+    background: var(--beige);
+    box-shadow: 2px 2px 0 var(--black);
+    transform: rotate(1.5deg);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.settings-section--card {
+    background: var(--white);
+    border: var(--border);
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+
+.settings-section--salmon {
+    background: #FDAA90;
+    border: var(--border);
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+
+.settings-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+}
+
+.settings-section-sub {
+    font-size: 12px;
+    color: #666;
+    margin-top: -8px;
+}
+
+/* 语气偏好卡片 */
+.settings-tone-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.tone-card {
+    border: var(--border);
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: pointer;
+    background: var(--white);
+    transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.tone-card input { display: none; }
+
+.tone-card:hover {
+    box-shadow: var(--shadow);
+    transform: translate(-1px,-1px);
+}
+
+.tone-card--selected {
+    background: var(--black);
+    color: var(--white);
+}
+
+.tone-icon {
+    width: 36px;
+    height: 36px;
+    border: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--beige);
+}
+
+.tone-card--selected .tone-icon {
+    background: #333;
+    border-color: #666;
+}
+
+.tone-name {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.tone-desc {
+    font-size: 11px;
+    color: #888;
+    line-height: 1.55;
+}
+
+.tone-card--selected .tone-desc { color: #bbb; }
+
+/* 互动频率 + 边界两列 */
+.settings-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* 互动频率选项 */
+.freq-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.freq-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border: var(--border);
+    padding: 10px 14px;
+    cursor: pointer;
+    background: var(--white);
+    transition: background 0.15s;
+}
+
+.freq-item input { display: none; }
+
+.freq-item--selected {
+    background: var(--lime);
+    box-shadow: var(--shadow);
+}
+
+.freq-wave { flex-shrink: 0; }
+
+.freq-label {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* 互动边界选项 */
+.boundary-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.boundary-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    border: var(--border);
+    padding: 12px 16px;
+    cursor: pointer;
+    background: var(--white);
+    transition: background 0.15s;
+}
+
+.boundary-item input { display: none; }
+
+.boundary-item--selected {
+    background: var(--lime);
+    box-shadow: var(--shadow);
+}
+
+.boundary-radio {
+    width: 16px;
+    height: 16px;
+    border: var(--border);
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 2px;
+    background: var(--white);
+}
+
+.boundary-radio--checked {
+    background: var(--black);
+    border-color: var(--black);
+    box-shadow: inset 0 0 0 3px var(--lime);
+}
+
+.boundary-name {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.boundary-desc {
+    font-size: 11px;
+    color: #666;
+    margin-top: 2px;
+    line-height: 1.5;
+}
+
+.boundary-item--selected .boundary-desc { color: #4a5500; }
+
+/* 世界观强度分段 */
+.worldview-seg {
+    display: flex;
+    gap: 0;
+    border: var(--border);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+.worldview-btn {
+    flex: 1;
+    padding: 14px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--font);
+    cursor: pointer;
+    background: var(--white);
+    border: none;
+    border-right: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background 0.15s;
+}
+
+.worldview-btn:last-child { border-right: none; }
+.worldview-btn input { display: none; }
+
+.worldview-btn--selected {
+    background: var(--black);
+    color: var(--white);
+}
+
+.worldview-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--lime);
+    flex-shrink: 0;
+}
+
+/* 底部保存 */
+.settings-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.settings-dashed-hr {
+    border: none;
+    border-top: 2px dashed #bbb;
+}
+
+.settings-save-row {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-save-prefs {
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 800;
+    padding: 14px 32px;
+    background: var(--lime);
+    border: var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: var(--shadow);
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.btn-save-prefs:hover  { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--black); }
+.btn-save-prefs:active { transform: translate(2px,2px);   box-shadow: 2px 2px 0 var(--black); }
+
+/* ── 记录地点弹窗 ── */
+.record-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(26,26,26,0.45);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.record-modal {
+    background: var(--white);
+    border: var(--border);
+    box-shadow: 6px 6px 0 var(--black);
+    width: 420px;
+    max-width: 90%;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.record-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: var(--border);
+}
+
+.record-modal-title {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+}
+
+.record-modal-close {
+    background: none;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    color: #888;
+    padding: 2px 6px;
+    font-family: var(--font);
+}
+
+.record-modal-close:hover { color: var(--black); }
+
+.record-upload-area {
+    display: block;
+    margin: 20px 20px 0;
+    border: 2px dashed var(--black);
+    height: 200px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    background: var(--beige);
+    transition: background 0.15s;
+}
+
+.record-upload-area:hover { background: #EDE6D0; }
+
+.record-upload-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #aaa;
+    font-size: 13px;
+    font-weight: 500;
+    pointer-events: none;
+}
+
+.record-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 16px 20px 0;
+}
+
+.record-field {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #e0dbd2;
+    padding: 10px 0;
+}
+
+.record-field:last-child { border-bottom: none; }
+
+.record-field-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #888;
+    width: 28px;
+    flex-shrink: 0;
+    letter-spacing: 0.3px;
+}
+
+.record-field-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--black);
+    background: transparent;
+}
+
+.record-field-input::placeholder { color: #ccc; font-weight: 400; }
+
+.record-modal-footer {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: flex-end;
+    border-top: var(--border);
+    margin-top: 16px;
+}
+
+/* ── 小纸条公告板 ── */
+.notes-board {
+    flex: 1;
+    position: relative;
+    background: var(--bg);
+    border: var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.notes-status-chip {
+    position: absolute;
+    top: 28px;
+    left: 28px;
+    font-size: 12px;
+    font-weight: 700;
+    border: var(--border);
+    padding: 5px 14px;
+    background: var(--beige);
+    box-shadow: 2px 2px 0 var(--black);
+    transform: rotate(-1deg);
+    letter-spacing: 0.3px;
+}
+
+/* 胶带装饰块 */
+.note-tape-deco {
+    position: absolute;
+    width: 52px;
+    height: 18px;
+    background: #d8d8d8;
+    opacity: 0.55;
+    z-index: 1;
+}
+
+.note-tape-deco--wide {
+    width: 72px;
+    height: 20px;
+}
+
+/* 角色消息便利贴 */
+.note-sticky {
+    position: absolute;
+    width: 280px;
+    background: var(--lime);
+    border: var(--border);
+    box-shadow: var(--shadow);
+    padding: 20px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 3;
+}
+
+.note-sticky--char {
+    background: var(--lime);
+}
+
+.note-tape-top {
+    position: absolute;
+    top: -11px;
+    left: 50%;
+    transform: translateX(-50%) rotate(1deg);
+    width: 44px;
+    height: 18px;
+    background: #c8c8c8;
+    opacity: 0.6;
+    z-index: 4;
+}
+
+.note-sticky-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.note-char-avatar {
+    width: 30px;
+    height: 30px;
+    border: var(--border);
+    border-radius: 50%;
+    background: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.note-char-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+}
+
+.note-sticky-time {
+    font-size: 12px;
+    font-weight: 600;
+    color: #3a3a00;
+}
+
+.note-sticky-text {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.65;
+    color: var(--black);
+}
+
+/* 记忆宝丽来 */
+.note-memory-polaroid {
+    position: absolute;
+    width: 190px;
+    background: var(--white);
+    border: var(--border);
+    box-shadow: var(--shadow);
+    z-index: 2;
+}
+
+.note-memory-photo {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #3a2e20;
+    border-bottom: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b08050;
+}
+
+.note-memory-label {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--lime);
+    border-top: none;
+    letter-spacing: 0.5px;
+}
+
+/* 写小纸条面板 */
+.note-write-panel {
+    position: absolute;
+    width: 360px;
+    background: var(--white);
+    border: var(--border);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    z-index: 4;
+}
+
+.note-write-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.note-write-title {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.note-write-textarea {
+    width: 100%;
+    border: var(--border);
+    background: var(--beige);
+    padding: 12px;
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--black);
+    resize: none;
+    line-height: 2;
+    background-image: repeating-linear-gradient(
+        transparent,
+        transparent calc(2em - 1px),
+        #d8d2c4 calc(2em - 1px),
+        #d8d2c4 2em
+    );
+    background-size: 100% 2em;
+    outline: none;
+}
+
+.note-write-textarea::placeholder { color: #aaa; }
+
+.note-write-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.note-write-icons {
+    display: flex;
+    gap: 6px;
+}
+
+.note-icon-btn {
+    width: 32px;
+    height: 32px;
+    border: var(--border);
+    background: var(--white);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, box-shadow 0.1s;
+}
+
+.note-icon-btn:hover {
+    background: var(--beige);
+    box-shadow: 2px 2px 0 var(--black);
+}
+
+.btn-post-note {
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 9px 22px;
+    background: #FDAA90;
+    border: var(--border);
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.btn-post-note:hover  { transform: translate(-1px,-1px); box-shadow: 5px 5px 0 var(--black); }
+.btn-post-note:active { transform: translate(2px,2px);   box-shadow: 2px 2px 0 var(--black); }
+
+.btn-record-place {
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 800;
+    min-height: 58px;
+    max-width: 330px;
+    padding: 0 24px;
+    background: var(--lime);
+    border: var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--shadow);
+    transition: transform 0.1s, box-shadow 0.1s;
+    white-space: nowrap;
+}
+
+.btn-record-place:hover  { transform: translate(-1px,-1px); box-shadow: 5px 5px 0 var(--black); }
+.btn-record-place:active { transform: translate(2px,2px);   box-shadow: 2px 2px 0 var(--black); }
+
+.btn-record-place svg {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+/* 照片墙容器 */
+.journal-wall {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 28px 20px;
+    align-content: start;
+}
+
+/* 宝丽来卡片 */
+.polaroid {
+    background: var(--white);
+    border: var(--border);
+    box-shadow: var(--shadow);
+    padding: 10px 10px 0;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.2s cubic-bezier(.4,0,.2,1), box-shadow 0.2s;
+}
+
+.polaroid:hover {
+    transform: rotate(var(--hover-rot, 1deg)) translate(-2px,-3px) !important;
+    box-shadow: 6px 6px 0 var(--black);
+    z-index: 10;
+}
+
+.polaroid.is-sensing {
+    animation: polaroid-sensing 1.35s ease-in-out infinite;
+}
+
+.polaroid.is-sensing .polaroid-meta-box,
+.polaroid.is-sensing .polaroid-tag {
+    animation: sensing-tag-text-pulse 1.35s ease-in-out infinite;
+}
+
+@keyframes polaroid-sensing {
+    0%, 100% {
+        background: var(--white);
+        box-shadow: var(--shadow);
+    }
+    50% {
+        background: #FBFAEA;
+        box-shadow: 6px 6px 0 var(--black);
+    }
+}
+
+@keyframes sensing-tag-text-pulse {
+    0%, 100% {
+        color: var(--black);
+    }
+    50% {
+        color: #A6A799;
+    }
+}
+
+/* 胶带装饰（位置由 JS 内联样式控制） */
+.polaroid-tape {
+    position: absolute;
+    width: 40px;
+    height: 18px;
+    background: #F5EDD4;
+    border: 1px solid #c8bc9a;
+    opacity: 0.9;
+    z-index: 2;
+}
+
+/* 照片区 */
+.polaroid-img {
+    width: 100%;
+    aspect-ratio: 4 / 3.2;
+    background: #D8D8EC;
+    border: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.polaroid-img img {
+    -webkit-user-drag: none;
+    user-select: none;
+}
+
+.polaroid-img-icon {
+    color: #7878C8;
+    opacity: 0.6;
+}
+
+/* 底部信息区 */
+.polaroid-body {
+    padding: 10px 2px 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.polaroid-meta-box {
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid var(--black);
+    background: #EBE7E5;
+    padding: 3px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.polaroid-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.polaroid-body.tags-stacked .polaroid-tags {
+    flex-basis: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+}
+
+.polaroid-tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border: 1px solid var(--black);
+    background: var(--lime);
+}
+
+.polaroid-tag.mood-calm   { background: #FDAA90; }
+.polaroid-tag.mood-active { background: #FFDF9E; }
+
+/* 虚线分隔 */
+.polaroid-divider {
+    margin: 8px 2px 0;
+    border: none;
+    border-top: 1.5px dashed #bbb;
+}
+
+/* 语录 */
+.polaroid-quote {
+    padding: 8px 2px 12px;
+    font-size: 11px;
+    color: #333;
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.polaroid-quote.is-sensing-text {
+    color: #6F705F;
+    font-weight: 700;
+    -webkit-line-clamp: unset;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: sensing-text-pulse 1.35s ease-in-out infinite;
+}
+
+.polaroid-generating-icon {
+    width: 1.45em;
+    height: 1.45em;
+    object-fit: contain;
+    flex-shrink: 0;
+    opacity: 0.95;
+    animation: generating-icon-bounce 1.35s ease-in-out infinite;
+}
+
+@keyframes sensing-text-pulse {
+    0%, 100% {
+        color: #6F705F;
+        opacity: 1;
+    }
+    50% {
+        color: #B9BAAA;
+        opacity: 0.56;
+    }
+}
+
+@keyframes generating-icon-bounce {
+    0%, 100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    50% {
+        transform: translateY(-3px);
+        opacity: 0.45;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   今日同游
+   ══════════════════════════════════════════════════════════════ */
+
+/* 用负 margin 抵消 .main 的 padding，保持正常文档流 */
+#page-story {
+    margin: -28px -32px;
+    margin-top: -28px;
+    width: calc(100% + 64px);
+    max-height: calc(100vh);
+    overflow: hidden;
+    flex-direction: column;
+}
+
+.story-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    /* 点状手账背景 */
+    background-image: radial-gradient(circle, #C8C3BB 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-color: #EDEAE4;
+}
+
+/* 页头 */
+.story-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 28px 32px 16px;
+    flex-shrink: 0;
+    background: transparent;
+}
+
+.story-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.story-title {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+}
+
+.story-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--white);
+    border: var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 2px 2px 0 var(--black);
+    flex-shrink: 0;
+    margin-top: 4px;
+}
+
+.story-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #7BC14A;
+    animation: dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+}
+
+/* 滚动区 */
+.story-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 4px 32px 0;
+}
+
+.story-scroll::-webkit-scrollbar { width: 4px; }
+.story-scroll::-webkit-scrollbar-track { background: transparent; }
+.story-scroll::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+
+/* 起始之引卡片 */
+.starting-token-card {
+    background: var(--lime);
+    border: var(--border);
+    border-radius: 0;
+    padding: 24px 24px 20px;
+    box-shadow: var(--shadow);
+    margin: 16px auto 40px;   /* 上留 16px 给角标腾空间 */
+    position: relative;
+    max-width: 480px;
+    width: 100%;
+}
+
+/* 右上角小标签，骑在边框上 */
+.starting-token-corner-tag {
+    position: absolute;
+    top: -12px;
+    right: 16px;
+    background: var(--black);
+    color: #E8C96A;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    white-space: nowrap;
+}
+
+.starting-token-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.starting-token-icon {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border: 2px solid var(--black);
+    border-radius: 4px;
+}
+
+.starting-token-quote {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #2A3000;
+    font-style: italic;
+}
+
+.starting-token-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--black);
+    color: #E8C96A;
+    border: none;
+    border-radius: 0;
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: var(--font);
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+}
+
+.starting-token-btn:hover { opacity: 0.85; }
+
+/* ── 三栏时间线：左内容 | 中轴 | 右内容 ── */
+.story-timeline {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 32px;
+}
+
+/* 每一行：左列 + 中轴 + 右列 */
+.tl-row {
+    display: flex;
+    align-items: stretch;
+    min-height: 0;
+}
+
+.tl-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    justify-content: flex-end;
+    padding-right: 16px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.tl-right {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    justify-content: flex-start;
+    padding-left: 16px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+/* 中轴：竖线 + 节点 */
+.tl-spine {
+    width: 40px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.tl-line {
+    width: 0;
+    flex: 1;
+    min-height: 12px;
+    border-left: 2px dashed #B8B3AA;
+}
+
+/* 路标节点 */
+.tl-marker--circle {
+    width: 12px;
+    height: 12px;
+    background: #1A1A1A;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.tl-marker--diamond {
+    width: 12px;
+    height: 12px;
+    background: #1A1A1A;
+    transform: rotate(45deg);
+    flex-shrink: 0;
+}
+
+.tl-marker--star {
+    font-size: 16px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+/* 旁白 */
+.timeline-narration {
+    max-width: 100%;
+    padding: 8px 12px;
+    border: 1.5px dashed #B8B3AA;
+    background: transparent;
+    font-size: 12px;
+    color: #888;
+    font-style: italic;
+    line-height: 1.7;
+}
+
+.narration-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #BBB;
+    margin-bottom: 4px;
+    font-style: normal;
+}
+
+/* ── 角色卡片基础 ── */
+.timeline-char-card {
+    width: 100%;
+    max-width: 340px;
+    padding: 14px 16px;
+    position: relative;
+}
+
+.char-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.char-card-avatar {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.char-card-name {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.char-card-sub {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: #888;
+    text-transform: uppercase;
+}
+
+.char-card-text {
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--black);
+}
+
+.char-card-action {
+    font-size: 11px;
+    color: #999;
+    font-style: italic;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(0,0,0,0.12);
+}
+
+/* 杜尚：线条简约，无圆角，黑白冷静 */
+.char-duchamp {
+    background: #FAFAFA;
+    border: 2px solid #1A1A1A;
+    border-radius: 0;
+    box-shadow: 4px 4px 0 #1A1A1A;
+}
+
+.char-duchamp .char-card-avatar {
+    border: 2px solid #1A1A1A;
+    border-radius: 0;
+    background: #1A1A1A;
+    color: #FFF;
+}
+
+.char-duchamp .char-card-name { font-family: 'Courier New', monospace; letter-spacing: 0.08em; }
+
+/* 齐妃：淡粉圆角温柔 */
+.char-qifei {
+    background: #FFE8ED;
+    border: 2px solid #E8A0B0;
+    border-radius: 12px;
+    box-shadow: 3px 3px 0 #E8A0B0;
+}
+
+.char-qifei .char-card-avatar {
+    border: 2px solid #E8A0B0;
+    border-radius: 50%;
+    background: #FFD0DA;
+    color: #B05070;
+}
+
+.char-qifei .char-card-name { color: #C06080; }
+
+/* Zsiga：无圆角无阴影，鲜亮绿色点缀 */
+.char-zsiga {
+    background: #FFFFFF;
+    border: 2.5px solid #1A1A1A;
+    border-radius: 0;
+    box-shadow: none;
+    border-left: 5px solid #C8E600;
+}
+
+.char-zsiga .char-card-avatar {
+    border: 2px solid #1A1A1A;
+    border-radius: 0;
+    background: #C8E600;
+    color: #1A1A1A;
+}
+
+.char-zsiga .char-card-name { color: #5A6600; }
+
+/* 内心独白：虚线边框 + 淡背景 */
+.char-inner {
+    border-style: dashed !important;
+    opacity: 0.85;
+}
+
+/* 动作描写：斜体文字区 */
+.char-action-beat .char-card-text {
+    font-style: italic;
+    color: #777;
+}
+
+/* 场景标题标签（时间线左列） */
+.tl-scene-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #888;
+    text-align: right;
+    padding: 2px 0;
+    white-space: nowrap;
+}
+
+/* ── 今日回响 ── */
+.echoes-section {
+    background: transparent;
+    padding: 0 0 40px;
+    margin-top: 16px;
+}
+
+.echoes-header {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #999;
+    margin-bottom: 20px;
+    padding-left: 2px;
+}
+
+.echoes-cards {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+/* 每张回响便签 */
+.echo-card {
+    flex: 1;
+    min-width: 0;
+    border: 2px solid var(--black);
+    border-radius: 6px;
+    padding: 20px 16px 16px;
+    position: relative;
+    box-shadow: 3px 3px 0 var(--black);
+}
+
+/* 顶部彩色圆点 */
+.echo-card::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--black);
+    background: var(--echo-dot-color, #CCC);
+    box-shadow: 1px 1px 0 var(--black);
+}
+
+.echo-card--qifei   { background: #FFD6DA; --echo-dot-color: #FF8FA3; }
+.echo-card--zsiga   { background: #FFE680; --echo-dot-color: #FFB700; }
+.echo-card--duchamp { background: #C8E600; --echo-dot-color: #6BA800; }
+.echo-card--default { background: var(--white); --echo-dot-color: #CCC; }
+
+.echo-card-quote {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #1A1A1A;
+    margin-bottom: 14px;
+    font-style: italic;
+}
+
+.echo-card-attr {
+    font-size: 13px;
+    font-weight: 800;
+    color: #1A1A1A;
+}
+
+.echo-card-attr::before { content: '— '; }
+</style>
+</head>
+<body>
+<div class='layout'>
+  <aside class='sidebar'><div class='sidebar-logo'><span class='logo-title'>Test</span></div></aside>
+  <main class='main'>
+    <div class='page-view' id='page-story' style='display:flex'>
+      <div class='story-page'>
+        <div class='story-header'>
+          <div class='story-header-left'>
+            <div class='story-eyebrow'>事件记录档案 <span id='story-episode'>#001</span></div>
+            <h1 class='story-title' id='story-title'>测试</h1>
+          </div>
+          <div class='story-status-badge'><span class='story-status-dot'></span><span id='story-status-text'>进行中</span></div>
+        </div>
+        <div class='story-scroll'>
+          <div class='starting-token-card'>
+            <div class='starting-token-corner-tag'>关键物品</div>
+            <div class='starting-token-body'>
+              <div class='starting-token-icon' id='story-token-icon'></div>
+              <p class='starting-token-quote' id='story-token-quote'></p>
+            </div>
+            <button class='starting-token-btn' id='story-token-btn'></button>
+          </div>
+          <div class='story-timeline' id='story-timeline'></div>
+          <div class='echoes-section'><div class='echoes-header'>今日回响</div><div class='echoes-cards' id='echoes-cards'></div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+const STORY_DATA = {"story_id":"outing_duchamp_world_qifei_duchamp_zsiga_001","title":"今日同游：杜尚的世界","subtitle":"齐妃、杜尚和 Zsiga 去了一个白得刺眼的地方。","destination":{"owner":"杜尚","name":"杜尚的世界","description":"一个由展厅、现成品、命名、观看关系与意义错位组成的世界。"},"characters":[{"id":"qifei","name":"齐妃"},{"id":"duchamp","name":"杜尚"},{"id":"zsiga","name":"Zsiga"}],"scenes":[{"scene_id":"scene_01","scene_title":"出发前","background":"life_pod_room","visual_hint":"生命仓旁，齐妃整理发髻，杜尚安静站着，Zsiga抱着自己的小脑袋观察他们。","mood":"轻微紧张 / 好奇","beats":[{"type":"narration","speaker":"旁白","text":"齐妃今日原本是不大愿意出门的。"},{"type":"action","speaker":"旁白","text":"她坐在生命仓边，慢慢扶了扶发髻。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"端着 / 在意体面","text":"本宫今日出去，可要换身得体些的衣裳？若是见人，总不能失了体面。"},{"type":"dialogue","speaker":"杜尚","character_id":"duchamp","emotion":"平静 / 观念化","text":"体面也是一种现成品。"},{"type":"narration","speaker":"旁白","text":"齐妃没听懂，只当他在夸自己，便略微满意地点了点头。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"自得 / 矜持","text":"你这洋人说话虽怪，倒也算有几分见识。"},{"type":"action","speaker":"Zsiga","character_id":"zsiga","emotion":"好奇","text":"Zsiga抱着自己的小脑袋看了看齐妃，又看了看杜尚，歪了歪头，像是在判断今天这个地方到底好不好玩。"},{"type":"dialogue","speaker":"杜尚","character_id":"duchamp","emotion":"邀请 / 平静","text":"今天去我的世界。"}]},{"scene_id":"scene_02","scene_title":"白色展厅","background":"white_gallery","visual_hint":"一道白色的门打开，门后是空旷刺眼的展厅，中央摆着《泉》。","mood":"荒诞 / 冲突","beats":[{"type":"narration","speaker":"旁白","text":"话音刚落，一道白色的门在他们面前打开。"},{"type":"narration","speaker":"旁白","text":"门后不是宫墙，也不是市集，而是一个白得刺眼的展厅。"},{"type":"action","speaker":"旁白","text":"齐妃刚踏进去，便皱了眉。"},{"type":"narration","speaker":"旁白","text":"这地方没有宫人，没有茶点，没有屏风，也没有正经陈设。四周空空荡荡，墙上挂着一些她看不明白的东西。"},{"type":"narration","speaker":"旁白","text":"最要紧的是，正中央竟然摆着一个倒过来的小便池。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"震惊 / 厌恶","text":"这是什么腌臜东西？也配摆在正殿中央？"},{"type":"dialogue","speaker":"杜尚","character_id":"duchamp","emotion":"平静","text":"它叫《泉》。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"不解 / 恼怒","text":"泉？你莫不是欺负本宫不识字？这哪里像泉？"}]},{"scene_id":"scene_03","scene_title":"名字和位置","background":"fountain_object_closeup","visual_hint":"《泉》被放在展厅中央，Zsiga绕着它观察，齐妃站在一旁不悦。","mood":"困惑 / 被触动","beats":[{"type":"dialogue","speaker":"杜尚","character_id":"duchamp","emotion":"解释 / 克制","text":"名字改变了它的位置，位置改变了它的意义。"},{"type":"narration","speaker":"旁白","text":"齐妃听得心烦，只觉得这人比宫里的太医还会绕弯子。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"不耐烦 / 维护规矩","text":"依本宫看，你这是强词夺理。若是在宫里，早叫人撤下去了。"},{"type":"action","speaker":"Zsiga","character_id":"zsiga","emotion":"好奇","text":"Zsiga却凑近那个小便池，绕着它看了一圈。"},{"type":"action","speaker":"Zsiga","character_id":"zsiga","emotion":"认真","text":"它伸出手，轻轻敲了敲边缘，又抬头看向杜尚。"},{"type":"dialogue","speaker":"Zsiga","character_id":"zsiga","emotion":"认真 / 好奇","text":"它以前不是住在这里的，对吗？"},{"type":"dialogue","speaker":"杜尚","character_id":"duchamp","emotion":"认可","text":"对。它被带到了另一个地方。"},{"type":"dialogue","speaker":"Zsiga","character_id":"zsiga","emotion":"恍然大悟","text":"那它也算入住了。"}]},{"scene_id":"scene_04","scene_title":"入住与规矩","background":"gallery_between_worlds","visual_hint":"齐妃站在《泉》旁边，展厅白得空旷，Zsiga认真看着她。","mood":"反驳 / 短暂动摇","beats":[{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"不解 / 嫌弃","text":"什么入住？这种东西也配入住？"},{"type":"dialogue","speaker":"Zsiga","character_id":"zsiga","emotion":"认真","text":"只要被带进新的世界，就会变得不一样。"},{"type":"narration","speaker":"旁白","text":"这句话让齐妃安静了一瞬。"},{"type":"inner_monologue","speaker":"齐妃","character_id":"qifei","emotion":"被触动 / 隐隐不安","text":"她忽然想起自己入宫时，也像是被放进了另一个世界。名字、规矩、位置，什么都变了。"},{"type":"narration","speaker":"旁白","text":"可她很快又恢复了那副不肯显露心思的样子。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"嘴硬 / 维护秩序","text":"哼。本宫只知道，东西该是什么就是什么。一个人该在什么位置，就该守着什么规矩。"},{"type":"dialogue","speaker":"杜尚","character_id":"duchamp","emotion":"轻微笑意 / 观念化","text":"所以你很适合这里。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"不悦","text":"你什么意思？"}]},{"scene_id":"scene_05","scene_title":"椅子、照片和文字","background":"chair_photo_text_gallery","visual_hint":"另一间展厅里，一张椅子、一张椅子的照片和一行文字并列展示。","mood":"争辩 / 观看关系","beats":[{"type":"narration","speaker":"旁白","text":"杜尚指向另一间展厅。那里没有华丽摆设，只有一张椅子、一张照片，以及墙上一行文字。"},{"type":"narration","speaker":"旁白","text":"齐妃看了半天，越看越恼。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"恼怒 / 不解","text":"一把椅子也要展出来？照片也要展出来？字也要展出来？这不是糊弄人吗？"},{"type":"dialogue","speaker":"杜尚","character_id":"duchamp","emotion":"平静 / 提问","text":"当椅子、椅子的图像、椅子的定义同时出现，你还能确定哪一个才是椅子吗？"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"冷笑 / 笃定","text":"这有什么不能确定？能坐人的才是椅子。不能坐人的，便是不中用。"},{"type":"action","speaker":"Zsiga","character_id":"zsiga","emotion":"验证 / 好奇","text":"Zsiga跳到椅子旁边，坐了一下，又跳下来，指了指照片里的椅子。"},{"type":"dialogue","speaker":"Zsiga","character_id":"zsiga","emotion":"认真","text":"这个不能坐，但它还是椅子。"},{"type":"dialogue","speaker":"Zsiga","character_id":"zsiga","emotion":"继续观察","text":"这个更不能坐，但大家也在看它。"}]},{"scene_id":"scene_06","scene_title":"角色还是展品","background":"zsiga_beside_chair","visual_hint":"Zsiga缩在椅子旁边，像一个误闯进展厅的潮玩摆件。","mood":"错位 / 自我意识","beats":[{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"皱眉 / 不满","text":"你这小东西，怎么也跟他一块儿胡说？"},{"type":"action","speaker":"Zsiga","character_id":"zsiga","emotion":"安静","text":"Zsiga没有反驳，只是把自己缩在椅子旁边，像一个误闯进展厅的潮玩摆件。"},{"type":"dialogue","speaker":"杜尚","character_id":"duchamp","emotion":"提出新问题","text":"现在问题变了。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"警惕 / 不耐","text":"又变什么了？"},{"type":"dialogue","speaker":"杜尚","character_id":"duchamp","emotion":"平静 / 尖锐","text":"如果它坐在椅子旁边，被观众观看，那它是角色，还是展品？"},{"type":"action","speaker":"Zsiga","character_id":"zsiga","emotion":"安静 / 注视","text":"Zsiga抬头看着齐妃，眨了一下眼。"},{"type":"inner_monologue","speaker":"齐妃","character_id":"qifei","emotion":"动摇 / 不舒服","text":"她忽然发现，这个小东西原本是被人买回去、摆起来、收藏起来的。可现在它会走，会看，会问问题。它像展品，又不像展品；像玩物，又不像玩物。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"不安 / 维护名分","text":"若是被人摆着看，便总要有个名分。没名没分地放在那里，像什么样子？"}]},{"scene_id":"scene_07","scene_title":"空白标签","background":"chair_and_blank_label","visual_hint":"杜尚递出一张空白标签，齐妃站在空椅子前。","mood":"命名 / 身份暴露","beats":[{"type":"action","speaker":"杜尚","character_id":"duchamp","emotion":"平静","text":"杜尚把一张空白标签递给她。"},{"type":"dialogue","speaker":"杜尚","character_id":"duchamp","emotion":"平静 / 引导","text":"在我的世界里，你可以给任何东西重新命名。"},{"type":"narration","speaker":"旁白","text":"齐妃捏着那张标签，看着展厅里那些奇奇怪怪的东西。"},{"type":"inner_monologue","speaker":"齐妃","character_id":"qifei","emotion":"迟疑 / 掩饰","text":"她原本想写“荒唐”，可手停了半天。"},{"type":"action","speaker":"旁白","text":"最后，她写下了：三阿哥之母。"},{"type":"action","speaker":"旁白","text":"她把标签贴在一张空椅子旁边。"},{"type":"dialogue","speaker":"杜尚","character_id":"duchamp","emotion":"冷静 / 看穿","text":"你没有命名椅子。你命名了自己。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"防御 / 慌乱","text":"本宫自然是三阿哥的生母，这有什么不对？"}]},{"scene_id":"scene_08","scene_title":"椅子上没有三阿哥","background":"empty_chair_with_label","visual_hint":"空椅子旁贴着“三阿哥之母”的标签，Zsiga看着椅子，又看向齐妃。","mood":"安静 / 被刺中","beats":[{"type":"action","speaker":"Zsiga","character_id":"zsiga","emotion":"观察","text":"Zsiga看着那张空椅子，又看了看齐妃。"},{"type":"dialogue","speaker":"Zsiga","character_id":"zsiga","emotion":"直接 / 天真","text":"可是椅子上没有三阿哥。"},{"type":"narration","speaker":"旁白","text":"展厅忽然变得很静。"},{"type":"inner_monologue","speaker":"齐妃","character_id":"qifei","emotion":"慌乱 / 空落","text":"齐妃站在那里，像是第一次发现，若没有“三阿哥”这三个字，她竟不知道该把自己放在哪里。"},{"type":"narration","speaker":"旁白","text":"她有些慌，便用惯常的语气掩过去。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"嘴硬 / 自我安慰","text":"胡说。本宫的三阿哥聪慧稳重，将来自有大造化。皇上也是看重他的。"}]},{"scene_id":"scene_09","scene_title":"镜子","background":"mirror_in_gallery","visual_hint":"杜尚从墙上取下一面镜子，镜中映出齐妃与Zsiga。","mood":"自我观看 / 逃避","beats":[{"type":"action","speaker":"杜尚","character_id":"duchamp","emotion":"平静","text":"杜尚没有反驳，只从墙上取下一面镜子，放到她面前。"},{"type":"narration","speaker":"旁白","text":"镜子里没有宫装，也没有旗头，只映出一个不断重复自己身份的人。"},{"type":"action","speaker":"旁白","text":"齐妃看了一眼，立刻偏过头。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"抗拒 / 不适","text":"这东西不好。撤了。"},{"type":"dialogue","speaker":"杜尚","character_id":"duchamp","emotion":"平静","text":"这正是它的好处。"},{"type":"action","speaker":"Zsiga","character_id":"zsiga","emotion":"观察自己","text":"Zsiga站到镜子旁边，也看了看自己。"},{"type":"narration","speaker":"旁白","text":"镜子里的它像一个被收藏的角色，又像一个突然拥有了自己想法的小生命。"},{"type":"dialogue","speaker":"Zsiga","character_id":"zsiga","emotion":"小声 / 认真","text":"我也不是只被摆着看的。"}]},{"scene_id":"scene_10","scene_title":"带走标签","background":"gallery_exit","visual_hint":"齐妃把写着“三阿哥之母”的标签揭下，重新贴到自己的袖口上。","mood":"嘴硬 / 微弱改变","beats":[{"type":"narration","speaker":"旁白","text":"齐妃听见这句话，神色微微动了一下。"},{"type":"narration","speaker":"旁白","text":"她没有接话。"},{"type":"action","speaker":"旁白","text":"过了很久，她把那张写着“三阿哥之母”的标签揭了下来，重新贴到自己的袖口上。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"嘴硬 / 防御","text":"本宫不喜欢你这个世界。"},{"type":"dialogue","speaker":"杜尚","character_id":"duchamp","emotion":"追问","text":"为什么？"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"端着 / 排斥","text":"太空，太白，太没有规矩。什么东西都能被摆上来，什么话都能被重新解释。若人人都如此，这世道还成什么样子？"},{"type":"dialogue","speaker":"杜尚","character_id":"duchamp","emotion":"平静 / 回答","text":"成一个可以被重新观看的样子。"}]}],"ending":{"scene_title":"黄色圆点贴纸","visual_hint":"Zsiga把一枚黄色圆点贴纸贴在齐妃袖口的标签旁边，生命仓亮起淡淡的紫色和黄色光。","beats":[{"type":"action","speaker":"Zsiga","character_id":"zsiga","emotion":"认真 / 安静","text":"Zsiga抱着从展厅角落捡到的一枚黄色圆点贴纸，贴在齐妃袖口那张标签旁边。"},{"type":"dialogue","speaker":"齐妃","character_id":"qifei","emotion":"皱眉 / 不解","text":"这又是什么？"},{"type":"dialogue","speaker":"Zsiga","character_id":"zsiga","emotion":"认真","text":"让它不要那么孤单。"},{"type":"narration","speaker":"旁白","text":"齐妃本想训它胡闹，可看着那一点亮色，终究没有撕下来。"}]},"log_card":{"title":"今日同游：杜尚的世界","memory_token":{"name":"不孤单的标签","description":"齐妃带回了那张写着“三阿哥之母”的标签。Zsiga在旁边添了一点黄色，像是替她给这个身份留了一点温度。"},"character_comments":[{"speaker":"齐妃","character_id":"qifei","text":"今日那洋人的地方，本宫是不喜欢的。只是……那张椅子，倒也不是全无意思。"},{"speaker":"杜尚","character_id":"duchamp","text":"齐妃拒绝了现代艺术，但带走了一张标签。她以为自己仍在维护身份，实际上已经完成了一次命名。"},{"speaker":"Zsiga","character_id":"zsiga","text":"今天我看见一个东西换了地方，就变成了艺术。我也换了地方。所以我可能也正在变成别的什么。"}]}};
+</script>
+<script>
+const app = (() => {
+    // ── 假数据 ────────────────────────────────────────────────
+    const MOCK = {
+        daysLiving:       7,
+        connectionStatus: '已连接',
+        breathColor:      '琥珀色',
+        interactCount:    12,
+        logIndex:         1,
+        logText:          '"今天的光落在玻璃罩上的时候，我觉得这里好像也没有那么陌生。"',
+    };
+
+    const MOCK_JOURNAL = [
+        { id: 7, day: '24', month: 'MAY', title: '傍晚的窗边闲聊', quote: '"你今天有没有看见那片云，它长得很像一只猫。"', mood: 'warm', duration: '18m', place: '书房窗边', memory: '云朵与猫' },
+        { id: 6, day: '23', month: 'MAY', title: '关于喜欢的颜色', quote: '"我一直觉得琥珀色是一种很安静的颜色，它把光留住了。"', mood: 'calm', duration: '31m', place: '客厅', memory: '琥珀与光' },
+        { id: 5, day: '22', month: 'MAY', title: '讲了一个关于海的故事', quote: '"海是很大的，大到你站在岸边会有点不知所措。"', mood: 'warm', duration: '24m', place: '床头', memory: '海边的故事' },
+        { id: 4, day: '20', month: 'MAY', title: '问了很多奇怪的问题', quote: '"如果声音有颜色，你觉得你的声音是什么颜色的？"', mood: 'active', duration: '42m', place: '书桌旁', memory: '声音的颜色' },
+        { id: 3, day: '19', month: 'MAY', title: '安静地待了一会儿', quote: '"有时候不说话也挺好的，就是待着。"', mood: 'calm', duration: '11m', place: '阳台', memory: '沉默的午后' },
+        { id: 2, day: '18', month: 'MAY', title: '初次正式交谈', quote: '"这里的光和我想象的不太一样，但我喜欢。"', mood: 'warm', duration: '28m', place: '客厅', memory: '第一次交谈' },
+        { id: 1, day: '18', month: 'MAY', title: '刚刚落脚', quote: '"第一次见面，有点不知道说什么好。"', mood: 'active', duration: '8m', place: '玄关', memory: '初次见面' },
+    ];
+
+    Object.assign(MOCK_JOURNAL[0], {
+        journalState: 'sensing',
+        quote: '"正在感知这一刻的温度..."',
+    });
+    Object.assign(MOCK_JOURNAL[1], {
+        journalState: 'awaiting-reply',
+    });
+    Object.assign(MOCK_JOURNAL[2], {
+        journalState: 'replied',
+    });
+
+    let journalEntries = [];
+    let journalPollTimer = null;
+    let currentCharacterId = '';
+    let characterList = [];
+
+    // ── 页面路由 ──────────────────────────────────────────────
+    let currentPage = 'home';
+
+    function switchPage(page) {
+        document.querySelectorAll('.page-view').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+        const target = document.getElementById(`page-${page}`);
+        if (target) target.style.display = 'flex';
+
+        const navEl = document.querySelector(`[data-page="${page}"]`);
+        if (navEl) navEl.classList.add('active');
+
+        // days-badge 只在生命仓显示
+        const badge = document.getElementById('days-badge');
+        if (badge) badge.style.display = page === 'home' ? '' : 'none';
+
+        currentPage = page;
+    }
+
+    function bindNav() {
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', e => {
+                e.preventDefault();
+                switchPage(item.dataset.page);
+            });
+        });
+
+    }
+
+    // ── 出行照片墙：可拖拽画布 ─────────────────────────────────
+    const ROTATIONS = [-3, 1.5, -1, 2.5, -2, 1, -1.5];
+
+    // 初始散布位置（相对画布左上角，单位px）
+    const INIT_POSITIONS = [
+        { x: 40,  y: 180 },
+        { x: 310, y: 160 },
+        { x: 580, y: 200 },
+        { x: 850, y: 170 },
+        { x: 160, y: 480 },
+        { x: 440, y: 460 },
+        { x: 720, y: 440 },
+    ];
+
+    // 画布变换状态
+    const canvas = { panX: 0, panY: 0, scale: 1 };
+
+    // 沿宝丽来四边随机生成胶带的内联样式
+    function randomTapeStyle(seed) {
+        // 用 seed 做伪随机，保证同一张卡每次渲染位置一致
+        const r  = (n) => ((seed * 9301 + n * 49297) % 233280) / 233280;
+        const edge = Math.floor(r(1) * 4); // 0=上 1=下 2=左 3=右
+        const pct  = 15 + Math.floor(r(2) * 55); // 15%~70%
+        const rot  = -6 + Math.floor(r(3) * 12);  // -6°~+6°
+        if (edge === 0) return `top:-10px;left:${pct}%;transform:rotate(${rot}deg)`;
+        if (edge === 1) return `bottom:-10px;left:${pct}%;transform:rotate(${rot}deg)`;
+        if (edge === 2) return `left:-10px;top:${pct}%;width:18px;height:40px;transform:rotate(${rot + 90}deg)`;
+        return              `right:-10px;top:${pct}%;width:18px;height:40px;transform:rotate(${rot + 90}deg)`;
+    }
+
+    function seededAngle(seed, n, range = 2) {
+        const r = ((seed * 9301 + n * 49297) % 233280) / 233280;
+        return ((r * range * 2) - range).toFixed(1);
+    }
+
+    function polaroidTransformStyle(rot) {
+        const hoverRot = rot < 0 ? -1 : 1;
+        return `--rot:${rot}deg;--hover-rot:${hoverRot}deg;transform:rotate(var(--rot))`;
+    }
+
+    function escapeHTML(value = '') {
+        return String(value).replace(/[&<>"']/g, ch => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+        }[ch]));
+    }
+
+    function moodTagsFromEntry(entry) {
+        const legacy = { warm: '温柔', calm: '安静', active: '好奇' };
+        const raw = Array.isArray(entry.mood) ? entry.mood : String(entry.mood || '').split(/[,\s，、/|]+/);
+        return raw
+            .map(tag => legacy[String(tag).trim()] || String(tag || '').trim())
+            .filter(Boolean)
+            .map(tag => tag.slice(0, 2))
+            .slice(0, 2);
+    }
+
+    function polaroidResponseHTML(entry) {
+        const state = entry.journalState || 'awaiting-reply';
+        const quote = entry.quote || '"正在感知这一刻的温度..."';
+        if (state === 'sensing') {
+            return `
+                <div class="polaroid-quote is-sensing-text">
+                    <img class="polaroid-generating-icon" src="generating.png" alt="">
+                    <span>${escapeHTML(quote)}</span>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="polaroid-quote">${escapeHTML(quote)}</div>
+        `;
+    }
+
+    function polaroidHTML(entry, i) {
+        const rot       = ROTATIONS[i % ROTATIONS.length];
+        const dateStr   = entry.date ? entry.date.replace(/-/g, '.') : `2024.05.${entry.day || '01'}`;
+        const tapeStyle = randomTapeStyle(entry.id);
+        const metaRot   = seededAngle(entry.id, 11);
+        const tagRotA   = seededAngle(entry.id, 12);
+        const tagRotB   = seededAngle(entry.id, 13);
+        const stateClass = entry.journalState === 'sensing' ? ' is-sensing' : '';
+        const moodTags = moodTagsFromEntry(entry);
+        const imageHTML = entry.imageUrl
+            ? `<img src="${escapeHTML(entry.imageUrl)}" draggable="false" style="width:100%;height:100%;object-fit:cover;display:block">`
+            : `<svg class="polaroid-img-icon" viewBox="0 0 40 40" fill="none" width="44" height="44">
+                    <rect x="4" y="8" width="32" height="24" rx="2" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="20" cy="20" r="7" stroke="currentColor" stroke-width="2"/>
+                    <path d="M14 8l2-4h8l2 4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                </svg>`;
+        const tagHTML = entry.journalState === 'sensing' || moodTags.length === 0
+            ? ''
+            : `
+                <div class="polaroid-tags">
+                    ${moodTags.map((tag, idx) => `
+                        <span class="polaroid-tag ${idx === 0 ? 'mood-active' : 'mood-calm'}" style="transform:rotate(${idx === 0 ? tagRotA : tagRotB}deg)">${escapeHTML(tag)}</span>
+                    `).join('')}
+                </div>
+            `;
+        return `
+        <div class="polaroid${stateClass}" style="${polaroidTransformStyle(rot)}">
+            <div class="polaroid-tape" style="${tapeStyle}"></div>
+            <div class="polaroid-img">
+                ${imageHTML}
+            </div>
+            <div class="polaroid-body">
+                <div class="polaroid-meta-box" style="transform:rotate(${metaRot}deg)">${escapeHTML(dateStr)} / ${escapeHTML(entry.place)}</div>
+                ${tagHTML}
+            </div>
+            <hr class="polaroid-divider">
+            ${polaroidResponseHTML(entry)}
+        </div>`;
+    }
+
+    function updatePolaroidTagLayout(root = document) {
+        root.querySelectorAll('.polaroid-body').forEach(body => {
+            const meta = body.querySelector('.polaroid-meta-box');
+            const tags = body.querySelector('.polaroid-tags');
+            if (!meta || !tags) return;
+
+            body.classList.remove('tags-stacked');
+            const gap = parseFloat(getComputedStyle(body).columnGap) || 0;
+            const needsStack = meta.offsetWidth + tags.scrollWidth + gap > body.clientWidth;
+            body.classList.toggle('tags-stacked', needsStack);
+        });
+    }
+
+    function renderJournal(entries = journalEntries) {
+        const wrap = document.getElementById('journal-canvas-wrap');
+        const cvs  = document.getElementById('journal-canvas');
+        if (!wrap || !cvs) return;
+
+        // 渲染节点
+        cvs.innerHTML = entries.map((entry, i) => {
+            const pos = INIT_POSITIONS[i] || { x: 60 + i * 260, y: 180 };
+            return `<div class="canvas-node" data-idx="${i}"
+                        style="left:${pos.x}px;top:${pos.y}px">
+                        ${polaroidHTML(entry, i)}
+                    </div>`;
+        }).join('');
+        requestAnimationFrame(() => updatePolaroidTagLayout(cvs));
+
+        // 更新统计数字
+        const placeEl = document.getElementById('j-place-count');
+        const memEl   = document.getElementById('j-memory-count');
+        if (placeEl) placeEl.textContent = entries.length;
+        if (memEl)   memEl.textContent   = entries.reduce((s, e) => s + parseInt(e.duration || 0), 0);
+
+        bindCanvasDrag(wrap, cvs);
+    }
+
+    async function loadJournal() {
+        try {
+            const qs = currentCharacterId ? `?characterId=${encodeURIComponent(currentCharacterId)}` : '';
+            const res = await fetch(`/api/journal${qs}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+            journalEntries = data.entries || [];
+            renderJournal(journalEntries);
+        } catch (e) {
+            console.warn('[Journal] 使用本地 mock:', e.message);
+            journalEntries = MOCK_JOURNAL;
+            renderJournal(journalEntries);
+        }
+    }
+
+    function startJournalPolling() {
+        if (journalPollTimer) return;
+        if (!journalEntries.some(e => e.journalState === 'sensing')) return;
+        journalPollTimer = setTimeout(async () => {
+            journalPollTimer = null;
+            await loadJournal();
+            startJournalPolling();
+        }, 2500);
+    }
+
+    function renderCharacterSelect(list, currentId) {
+        const select = document.getElementById('character-select');
+        if (!select) return;
+        select.innerHTML = list.map(ch =>
+            `<option value="${escapeHTML(ch.id)}">${escapeHTML(ch.name || ch.id)}</option>`
+        ).join('');
+        select.value = currentId || '';
+        select.onchange = async () => {
+            if (!select.value || select.value === currentCharacterId) return;
+            await switchCurrentCharacter(select.value);
+        };
+    }
+
+    function updateCharacterUI(cur) {
+        if (!cur) return;
+        currentCharacterId = cur.id || currentCharacterId;
+        document.getElementById('char-name').textContent = cur.name || '';
+        document.getElementById('char-type').textContent = `[${cur.series || '未知系列'}]`;
+        document.getElementById('photo-serial').textContent = `SP-01 / ${cur.name || ''}`;
+
+        const photo = document.getElementById('char-photo');
+        const placeholder = document.getElementById('char-photo-placeholder');
+        const sidebarAvatar = document.getElementById('sidebar-char-avatar');
+
+        [photo, sidebarAvatar].forEach(img => {
+            if (!img) return;
+            if (cur.avatar) {
+                img.onload = () => {
+                    img.style.display = 'block';
+                    if (img === photo && placeholder) placeholder.style.display = 'none';
+                };
+                img.onerror = () => {
+                    img.style.display = 'none';
+                    if (img === photo && placeholder) placeholder.style.display = '';
+                };
+                img.src = cur.avatar;
+            } else {
+                img.style.display = 'none';
+                if (img === photo && placeholder) placeholder.style.display = '';
+            }
+        });
+    }
+
+    async function loadCharacters() {
+        const res = await fetch('/api/characters');
+        const list = await res.json();
+        if (!res.ok) throw new Error(list.error || `HTTP ${res.status}`);
+        characterList = list;
+        const cur = list.find(c => c.isCurrent) || list[0];
+        if (cur) updateCharacterUI(cur);
+        renderCharacterSelect(list, cur?.id);
+    }
+
+    async function switchCurrentCharacter(id) {
+        const res = await fetch(`/api/characters/current/${encodeURIComponent(id)}`, { method: 'PUT' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        const cur = data.current || characterList.find(c => c.id === id);
+        updateCharacterUI(cur);
+        renderCharacterSelect(characterList, id);
+        await loadJournal();
+        startJournalPolling();
+    }
+
+    function applyCanvasTransform(cvs) {
+        cvs.style.transform = `translate(${canvas.panX}px,${canvas.panY}px) scale(${canvas.scale})`;
+    }
+
+    function bindCanvasDrag(wrap, cvs) {
+        if (wrap.dataset.dragBound === '1') return;
+        wrap.dataset.dragBound = '1';
+        let dragNode = null;
+        let dragOffX = 0, dragOffY = 0;
+        let panStart = null;
+
+        wrap.addEventListener('mousedown', e => {
+            const node = e.target.closest('.canvas-node');
+            if (node) {
+                e.stopPropagation();
+                dragNode = node;
+                dragNode.classList.add('dragging');
+                // 把屏幕坐标转换为画布坐标系内的偏移
+                const rect = node.getBoundingClientRect();
+                dragOffX = (e.clientX - rect.left) / canvas.scale;
+                dragOffY = (e.clientY - rect.top)  / canvas.scale;
+            } else {
+                wrap.classList.add('panning');
+                panStart = { x: e.clientX - canvas.panX, y: e.clientY - canvas.panY };
+            }
+        });
+
+        wrap.addEventListener('dragstart', e => {
+            if (e.target.closest('.polaroid-img')) e.preventDefault();
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (dragNode) {
+                const wrapRect = wrap.getBoundingClientRect();
+                // 屏幕坐标 → 画布坐标
+                const x = (e.clientX - wrapRect.left - canvas.panX) / canvas.scale - dragOffX;
+                const y = (e.clientY - wrapRect.top  - canvas.panY) / canvas.scale - dragOffY;
+                dragNode.style.left = x + 'px';
+                dragNode.style.top  = y + 'px';
+            } else if (panStart) {
+                canvas.panX = e.clientX - panStart.x;
+                canvas.panY = e.clientY - panStart.y;
+                applyCanvasTransform(cvs);
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (dragNode) { dragNode.classList.remove('dragging'); dragNode = null; }
+            if (panStart)  { wrap.classList.remove('panning');      panStart = null; }
+        });
+
+        // 滚轮缩放（以鼠标为中心缩放）
+        wrap.addEventListener('wheel', e => {
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+            const newScale = Math.min(3, Math.max(0.25, canvas.scale * factor));
+            const wrapRect = wrap.getBoundingClientRect();
+            // 鼠标在画布坐标系中的位置
+            const mx = (e.clientX - wrapRect.left - canvas.panX) / canvas.scale;
+            const my = (e.clientY - wrapRect.top  - canvas.panY) / canvas.scale;
+            // 缩放后保持鼠标指向同一画布点
+            canvas.panX = e.clientX - wrapRect.left - mx * newScale;
+            canvas.panY = e.clientY - wrapRect.top  - my * newScale;
+            canvas.scale = newScale;
+            applyCanvasTransform(cvs);
+        }, { passive: false });
+    }
+
+    // ── 初始化 ────────────────────────────────────────────────
+    async function init() {
+        document.getElementById('days-text').textContent   = `共同生活第 ${MOCK.daysLiving} 天`;
+        document.getElementById('conn-status').textContent = MOCK.connectionStatus;
+        document.getElementById('breath-color').textContent = MOCK.breathColor;
+        document.getElementById('interact-count').textContent = MOCK.interactCount + '次';
+        document.getElementById('log-index').textContent   = String(MOCK.logIndex).padStart(3, '0');
+        document.getElementById('log-text').textContent    = MOCK.logText;
+
+        bindNav();
+        window.addEventListener('resize', () => updatePolaroidTagLayout());
+        bindSettings();
+        bindRecordModal();
+        loadStory();
+
+        try {
+            await loadCharacters();
+            await loadJournal();
+            startJournalPolling();
+            /*
+            const res  = await fetch('/api/characters');
+            const list = await res.json();
+            const cur  = list.find(c => c.isCurrent) || list[0];
+            if (!cur) return;
+
+            document.getElementById('char-name').textContent  = cur.name;
+            document.getElementById('char-type').textContent  = `[${cur.series || '未知系列'}]`;
+            document.getElementById('photo-serial').textContent = `SP-01 / ${cur.name}`;
+
+            const photo       = document.getElementById('char-photo');
+            const placeholder = document.getElementById('char-photo-placeholder');
+            if (cur.avatar) {
+                photo.onload = () => {
+                    photo.style.display = 'block';
+                    placeholder.style.display = 'none';
+                };
+                photo.onerror = () => { photo.style.display = 'none'; };
+                photo.src = cur.avatar;
+            }
+            */
+        } catch (e) {
+            console.error('[Admin] 角色加载失败:', e.message);
+        }
+    }
+
+    // ── 设置页交互 ───────────────────────────────────────────
+    function bindSettings() {
+        // 语气偏好
+        document.querySelectorAll('.tone-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.tone-card').forEach(c => c.classList.remove('tone-card--selected'));
+                card.classList.add('tone-card--selected');
+            });
+        });
+        // 互动频率
+        document.querySelectorAll('.freq-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.freq-item').forEach(i => i.classList.remove('freq-item--selected'));
+                item.classList.add('freq-item--selected');
+            });
+        });
+        // 互动边界
+        document.querySelectorAll('.boundary-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.boundary-item').forEach(i => {
+                    i.classList.remove('boundary-item--selected');
+                    i.querySelector('.boundary-radio').classList.remove('boundary-radio--checked');
+                });
+                item.classList.add('boundary-item--selected');
+                item.querySelector('.boundary-radio').classList.add('boundary-radio--checked');
+            });
+        });
+        // 世界观强度
+        document.querySelectorAll('.worldview-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.worldview-btn').forEach(b => b.classList.remove('worldview-btn--selected'));
+                btn.classList.add('worldview-btn--selected');
+            });
+        });
+    }
+
+    // ── 照片墙：记录地点弹窗 ────────────────────────────────
+    let pendingImg = null; // { file, dataUrl, width, height }
+
+    function recordPlace() {
+        const overlay = document.getElementById('record-modal-overlay');
+        if (!overlay) return;
+        // 重置表单
+        document.getElementById('record-img-input').value = '';
+        document.getElementById('record-preview').style.display = 'none';
+        document.getElementById('record-upload-placeholder').style.display = '';
+        document.getElementById('record-date').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('record-place').value = '';
+        pendingImg = null;
+        overlay.style.display = 'flex';
+    }
+
+    function bindRecordModal() {
+        const overlay  = document.getElementById('record-modal-overlay');
+        const imgInput = document.getElementById('record-img-input');
+        const preview  = document.getElementById('record-preview');
+        const placeholder = document.getElementById('record-upload-placeholder');
+
+        document.getElementById('record-modal-close').onclick = () => {
+            overlay.style.display = 'none';
+        };
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) overlay.style.display = 'none';
+        });
+
+        imgInput.addEventListener('change', () => {
+            const file = imgInput.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const img = new Image();
+                img.onload = () => {
+                    pendingImg = { file, dataUrl: ev.target.result, width: img.naturalWidth, height: img.naturalHeight };
+                    preview.src = ev.target.result;
+                    preview.style.display = 'block';
+                    placeholder.style.display = 'none';
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('record-confirm').onclick = async () => {
+            const dateVal  = document.getElementById('record-date').value;
+            const uploadPlaceVal = document.getElementById('record-place').value || '未知地点';
+            if (!pendingImg?.file) {
+                alert('请先上传照片');
+                return;
+            }
+            if (!currentCharacterId) {
+                alert('请先选择当前角色');
+                return;
+            }
+
+            try {
+                const buffer = await pendingImg.file.arrayBuffer();
+                const res = await fetch('/api/journal', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': pendingImg.file.type || 'image/jpeg',
+                        'X-Journal-Character-Id': currentCharacterId,
+                        'X-Journal-Date': dateVal || '',
+                        'X-Journal-Place': encodeURIComponent(uploadPlaceVal),
+                    },
+                    body: buffer,
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+                overlay.style.display = 'none';
+                await loadJournal();
+                startJournalPolling();
+                return;
+            } catch (e) {
+                alert('照片墙保存失败：' + e.message);
+                return;
+            }
+            const placeVal = document.getElementById('record-place').value || '未知地点';
+
+            // 卡片宽度固定 220px，图片区高度根据真实比例计算
+            const CARD_W   = 220;
+            const PHOTO_W  = CARD_W - 20;
+            const imgAspect = pendingImg ? pendingImg.height / pendingImg.width : 0.75;
+            const photoH   = Math.round(PHOTO_W * imgAspect);
+
+            const dateStr  = dateVal ? dateVal.replace(/-/g, '.') : '未知日期';
+
+            // 找画布空白位置
+            const wrap    = document.getElementById('journal-canvas-wrap');
+            const cvs     = document.getElementById('journal-canvas');
+            const pos     = findEmptySpot(cvs, CARD_W, photoH + 90);
+
+            // 生成新节点
+            const id      = Date.now();
+            const seed    = id % 9999;
+            const rotIdx  = cvs.children.length % ROTATIONS.length;
+            const rot     = ROTATIONS[rotIdx];
+            const tapeStyle = randomTapeStyle(seed);
+            const metaRot = seededAngle(seed, 11);
+            const imgTag  = pendingImg
+                ? `<img src="${pendingImg.dataUrl}" draggable="false" style="width:100%;height:100%;object-fit:cover;display:block">`
+                : `<svg class="polaroid-img-icon" viewBox="0 0 40 40" fill="none" width="44" height="44">
+                       <rect x="4" y="8" width="32" height="24" rx="2" stroke="currentColor" stroke-width="2"/>
+                       <circle cx="20" cy="20" r="7" stroke="currentColor" stroke-width="2"/>
+                       <path d="M14 8l2-4h8l2 4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                   </svg>`;
+
+            const node = document.createElement('div');
+            node.className = 'canvas-node';
+            node.style.cssText = `left:${pos.x}px;top:${pos.y}px;width:${CARD_W}px`;
+            node.innerHTML = `
+                <div class="polaroid is-sensing" style="${polaroidTransformStyle(rot)}">
+                    <div class="polaroid-tape" style="${tapeStyle}"></div>
+                    <div class="polaroid-img" style="aspect-ratio:${PHOTO_W}/${photoH};height:${photoH}px">
+                        ${imgTag}
+                    </div>
+                    <div class="polaroid-body">
+                        <div class="polaroid-meta-box" style="transform:rotate(${metaRot}deg)">${dateStr} / ${placeVal}</div>
+                    </div>
+                    <hr class="polaroid-divider">
+                    <div class="polaroid-quote is-sensing-text">
+                        <img class="polaroid-generating-icon" src="generating.png" alt="">
+                        <span>"正在感知这一刻的温度..."</span>
+                    </div>
+                </div>`;
+            cvs.appendChild(node);
+            requestAnimationFrame(() => updatePolaroidTagLayout(node));
+
+            // 画布平移到新卡片中心
+            const wrapRect = wrap.getBoundingClientRect();
+            canvas.panX = wrapRect.width  / 2 - (pos.x + CARD_W / 2) * canvas.scale;
+            canvas.panY = wrapRect.height / 2 - (pos.y + (photoH + 90) / 2) * canvas.scale;
+            cvs.style.transition = 'transform 0.5s cubic-bezier(.4,0,.2,1)';
+            applyCanvasTransform(cvs);
+            setTimeout(() => { cvs.style.transition = ''; }, 550);
+
+            overlay.style.display = 'none';
+        };
+    }
+
+    // 在画布上找一块不与现有节点重叠的空位
+    function findEmptySpot(cvs, w, h) {
+        const nodes = Array.from(cvs.querySelectorAll('.canvas-node'));
+        const margin = 30;
+        const cols = 5, rows = 4;
+        const stepX = w + margin + 60, stepY = h + margin + 40;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const x = 60 + c * stepX;
+                const y = 180 + r * stepY;
+                const overlaps = nodes.some(n => {
+                    const nx = parseFloat(n.style.left), ny = parseFloat(n.style.top);
+                    const nw = n.offsetWidth || 220, nh = n.offsetHeight || 300;
+                    return !(x + w + margin < nx || x > nx + nw + margin ||
+                             y + h + margin < ny || y > ny + nh + margin);
+                });
+                if (!overlaps) return { x, y };
+            }
+        }
+        // 找不到空位则随机偏移放到右下
+        return { x: 60 + nodes.length * 40, y: 60 + nodes.length * 30 };
+    }
+
+    function postNote()      { alert('小纸条功能建设中～'); }
+    function savePrefs()     { alert('偏好已保存～'); }
+
+    // ── 今日同游 ──────────────────────────────────────────────────
+
+    const CHAR_AVATARS    = { duchamp: '杜', qifei: '妃', zsiga: 'Z', goodluck: 'GL' };
+    const CHAR_CSS_CLASS  = { duchamp: 'char-duchamp', qifei: 'char-qifei', zsiga: 'char-zsiga' };
+    const ECHO_CSS_CLASS  = { qifei: 'echo-card--qifei', zsiga: 'echo-card--zsiga', duchamp: 'echo-card--duchamp' };
+    const STATUS_LABEL    = { upcoming: '未开始', ongoing: '进行中', done: '已完成' };
+    const STATUS_DOT_COLOR = { upcoming: '#AAA', ongoing: '#7BC14A', done: '#FF6B35' };
+
+    // 稳定伪随机角度 [-range, range]，用 charId+index 做 seed
+    function stableAngle(seed, range = 2) {
+        const r = ((seed * 9301 + 49297) % 233280) / 233280;
+        return +((r * range * 2 - range).toFixed(1));
+    }
+
+    // ── JSON → 时间线条目映射 ──────────────────────────────────────
+    //
+    // Beat 类型映射规则：
+    //   narration                    → 旁白块（左列，连续旁白合并）
+    //   action（无 character_id）     → 旁白块（同上）
+    //   dialogue                     → 角色卡（左右交替）
+    //   action（有 character_id）     → 角色卡，isAction:true → 斜体文字
+    //   inner_monologue              → 角色卡，isInner:true → 虚线边框 + 淡背景
+    //
+    // 场景边界 → 菱形标记 + 场景标题；ending → 星形标记
+    function mapStoryToTimeline(story) {
+        const items = [];
+
+        function pushConnector() {
+            items.push({ type: 'connector' });
+        }
+
+        function processBeat(beat) {
+            const isNarrator = !beat.character_id ||
+                               beat.type === 'narration' ||
+                               (beat.type === 'action' && !beat.character_id);
+
+            if (isNarrator) {
+                // 连续旁白合并为一个块
+                const last = items[items.length - 1];
+                if (last && last.type === 'narration') {
+                    last.text += '\n' + beat.text;
+                    return;
+                }
+                items.push({ type: 'narration', text: beat.text, label: '旁白 (Narration)' });
+            } else {
+                pushConnector();
+                items.push({
+                    type:    'char',
+                    charId:  beat.character_id,
+                    name:    beat.speaker,
+                    sub:     beat.emotion || '',
+                    text:    beat.text,
+                    isInner: beat.type === 'inner_monologue',
+                    isAction: beat.type === 'action',
+                });
+            }
+        }
+
+        story.scenes.forEach((scene, i) => {
+            if (i > 0) pushConnector();
+            // 场景分隔：菱形标记，场景标题显示在左侧
+            items.push({ type: 'marker', variant: 'diamond', label: scene.scene_title });
+            pushConnector();
+            scene.beats.forEach(processBeat);
+        });
+
+        // ending 作为尾章
+        if (story.ending) {
+            pushConnector();
+            items.push({ type: 'marker', variant: 'star', label: story.ending.scene_title });
+            pushConnector();
+            story.ending.beats.forEach(processBeat);
+        }
+
+        return items;
+    }
+
+    // 从 JSON 提取渲染所需的扁平数据结构
+    function storyToRenderData(story) {
+        const lc = story.log_card || {};
+        const mt = lc.memory_token || {};
+        return {
+            title:    story.title,
+            episode:  '#' + (story.story_id || '').replace(/\D+/g, '').slice(-3) || '001',
+            status:   'ongoing',
+            token: {
+                color: '#AECF3A',
+                label: mt.name        || '关键物品',
+                quote: mt.description || '',
+            },
+            timeline: mapStoryToTimeline(story),
+            echoes: (lc.character_comments || []).map(c => ({
+                charId: c.character_id,
+                name:   c.speaker,
+                text:   c.text,
+            })),
+        };
+    }
+
+    // ── 渲染函数 ──────────────────────────────────────────────────
+
+    function buildCardHTML(item) {
+        const seed    = (item.charId || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+        const rot     = stableAngle(seed, 2);
+        const initial = CHAR_AVATARS[item.charId] || (item.name || '?')[0];
+        const baseCls = CHAR_CSS_CLASS[item.charId] || '';
+        const innerCls = item.isInner  ? ' char-inner'  : '';
+        const actCls   = item.isAction ? ' char-action-beat' : '';
+        const textCls  = item.isAction ? 'char-card-text char-card-text--action' : 'char-card-text';
+        return `<div class=”timeline-char-card ${baseCls}${innerCls}${actCls}” style=”transform:rotate(${rot}deg)”>
+            <div class=”char-card-header”>
+                <div class=”char-card-avatar”>${escapeHTML(initial)}</div>
+                <div>
+                    <div class=”char-card-name”>${escapeHTML(item.name || '')}</div>
+                    ${item.sub ? `<div class=”char-card-sub”>${escapeHTML(item.sub)}</div>` : ''}
+                </div>
+            </div>
+            <div class=”${textCls}”>${escapeHTML(item.text || '')}</div>
+        </div>`;
+    }
+
+    // 三栏行：left | spine | right
+    function tlRow(leftHTML, spineHTML, rightHTML) {
+        return `<div class=”tl-row”>
+            <div class=”tl-left”>${leftHTML}</div>
+            <div class=”tl-spine”>${spineHTML}</div>
+            <div class=”tl-right”>${rightHTML}</div>
+        </div>`;
+    }
+
+    function renderStory(s) {
+        document.getElementById('story-title').textContent        = s.title;
+        document.getElementById('story-episode').textContent      = s.episode;
+        document.getElementById('story-status-text').textContent  = STATUS_LABEL[s.status] || s.status;
+        document.querySelector('.story-status-dot').style.background = STATUS_DOT_COLOR[s.status] || '#AAA';
+
+        const tokenIcon = document.getElementById('story-token-icon');
+        tokenIcon.style.background = s.token.color;
+        document.getElementById('story-token-quote').textContent = s.token.quote;
+        document.getElementById('story-token-btn').textContent   = '▷ ' + s.token.label;
+
+        // 时间线 — 三栏渲染，角色卡左右交替
+        let charSide = 'right';
+        const tl = document.getElementById('story-timeline');
+        tl.innerHTML = s.timeline.map(item => {
+            if (item.type === 'connector') {
+                return tlRow('', '<div class=”tl-line”></div>', '');
+            }
+            if (item.type === 'marker') {
+                const markerHTML =
+                    item.variant === 'diamond' ? '<div class=”tl-marker--diamond”></div>' :
+                    item.variant === 'star'    ? '<span class=”tl-marker--star”>✦</span>' :
+                                                '<div class=”tl-marker--circle”></div>';
+                // 场景标题显示在标记左侧
+                const labelHTML = item.label
+                    ? `<div class=”tl-scene-label”>${escapeHTML(item.label)}</div>` : '';
+                return tlRow(labelHTML,
+                    `<div class=”tl-line” style=”min-height:6px”></div>${markerHTML}<div class=”tl-line” style=”min-height:6px”></div>`,
+                    '');
+            }
+            if (item.type === 'narration') {
+                const narHTML = `<div class=”timeline-narration”>
+                    <div class=”narration-label”>${escapeHTML(item.label || '旁白')}</div>
+                    ${escapeHTML(item.text).replace(/\n/g, '<br>')}
+                </div>`;
+                return tlRow(narHTML, '<div class=”tl-line”></div>', '');
+            }
+            if (item.type === 'char') {
+                const side = charSide;
+                charSide = side === 'left' ? 'right' : 'left';
+                const card = buildCardHTML(item);
+                return side === 'right'
+                    ? tlRow('', '<div class=”tl-line”></div>', card)
+                    : tlRow(card, '<div class=”tl-line”></div>', '');
+            }
+            return '';
+        }).join('');
+
+        // 今日回响 — 横排便签
+        const ec = document.getElementById('echoes-cards');
+        ec.innerHTML = s.echoes.map((e, i) => {
+            const seed = (e.charId || '').split('').reduce((a, c) => a + c.charCodeAt(0), i * 13);
+            const rot  = stableAngle(seed, 2.5);
+            const cls  = ECHO_CSS_CLASS[e.charId] || 'echo-card--default';
+            return `<div class=”echo-card ${cls}” style=”transform:rotate(${rot}deg)”>
+                <div class=”echo-card-quote”>${escapeHTML(e.text)}</div>
+                <div class=”echo-card-attr”>${escapeHTML(e.name)}</div>
+            </div>`;
+        }).join('');
+    }
+
+    // ── 从服务器加载故事 JSON ────────────────────────────────────
+    // data/stories/ 目录由 server.js 第 18 行静态托管，路径为 /stories/:id.json
+    async function loadStory(storyId = 'story1') {
+        try {
+            const res = await fetch(`/stories/${storyId}.json`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const story = await res.json();
+            renderStory(storyToRenderData(story));
+        } catch (e) {
+            console.error('[Story] 加载失败:', e);
+            document.getElementById('story-title').textContent = '故事加载失败';
+        }
+    }
+
+    
+    
+
+
+loadStory && loadStory();
+</script>
+</body></html>

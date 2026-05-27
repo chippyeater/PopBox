@@ -1,0 +1,20 @@
+[
+  {
+    "id": "note_3d621953-32f6-4fd0-bbc8-3433ab371dad",
+    "characterId": "qifei",
+    "from": "user",
+    "text": "我冰箱里还有一个小榴莲蛋糕，你想吃吗",
+    "state": "ready",
+    "createdAt": 1779861280267,
+    "replyTo": ""
+  },
+  {
+    "id": "note_reply_4cba4a1b-59b6-4ff1-8ddb-2352ef88575a",
+    "characterId": "qifei",
+    "from": "character",
+    "text": "榴莲虽香，却易生痰湿。你留着享用便是，本宫心领了。记得按时吃饭，莫要饿着。",
+    "state": "ready",
+    "createdAt": 1779861280270,
+    "replyTo": "note_3d621953-32f6-4fd0-bbc8-3433ab371dad"
+  }
+]

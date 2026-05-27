@@ -3,7 +3,21 @@
     "allow": [
       "WebFetch(domain:api.github.com)",
       "Bash(taskkill /F /IM platformio.exe)",
-      "WebFetch(domain:platform.minimaxi.com)"
+      "WebFetch(domain:platform.minimaxi.com)",
+      "Bash(curl -s http://localhost:3000/stories/story1.json)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(npx playwright *)",
+      "Bash(where puppeteer *)",
+      "Bash(curl -s http://localhost:3000/verify_test.html)",
+      "Bash(where msedge *)",
+      "Bash(where chrome *)",
+      "Read(//c/Program Files \\(x86\\)/Microsoft/Edge/Application/**)",
+      "Read(//c/Program Files/Google/Chrome/Application/**)",
+      "Bash(Start-Process \"C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\" --ArgumentList \"--headless=new\",\"--screenshot=d:/VSCode/VSProj/PopBox/verify_story_capture.png\",\"--window-size=1400,900\",\"http://localhost:3000/verify_test.html\" --Wait)",
+      "Bash(\"C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\" --headless=new --screenshot=\"d:/VSCode/VSProj/PopBox/verify_story_capture.png\" --window-size=1400,900 \"http://localhost:3000/verify_test.html\")",
+      "Bash(\"C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\" --headless=new --screenshot=\"d:/VSCode/VSProj/PopBox/verify_story2.png\" --window-size=1400,2400 --virtual-time-budget=5000 \"http://localhost:3000/verify_test.html\")",
+      "Bash('C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe' --headless=new --window-size=1400,900 --screenshot=d:/VSCode/VSProj/PopBox/verify_main.png --virtual-time-budget=6000 http://localhost:3000)",
+      "Bash('C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe' --headless=new --window-size=1400,900 --screenshot=d:/VSCode/VSProj/PopBox/verify_story_nav.png --virtual-time-budget=6000 'http://localhost:3000/#story')"
     ]
   }
 }

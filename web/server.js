@@ -16,31 +16,87 @@ app.use(express.json({ limit: '1mb' }));
 app.use('/cores3', express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public-admin')));
 app.use(express.static(path.join(__dirname, '../data'), { index: false }));
+app.use('/stories', express.static(path.join(__dirname, 'data/stories'), { index: false }));
 
 // ── 目录 ─────────────────────────────────────────────────────
-const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+const DATA_DIR          = path.join(__dirname, 'data');
+const CHAT_HISTORY_DIR  = path.join(DATA_DIR, 'chat-history');
 const JOURNAL_IMAGES_DIR = path.join(DATA_DIR, 'journal-images');
-if (!fs.existsSync(JOURNAL_IMAGES_DIR)) fs.mkdirSync(JOURNAL_IMAGES_DIR, { recursive: true });
+const JOURNALS_DIR      = path.join(DATA_DIR, 'journals');       // 按角色分目录的 journal
+const VLM_IMAGES_DIR    = path.join(DATA_DIR, 'vlm-images');
+const MEDIA_DIR         = path.join(DATA_DIR, 'media');
+
+for (const dir of [DATA_DIR, CHAT_HISTORY_DIR, JOURNAL_IMAGES_DIR, JOURNALS_DIR, VLM_IMAGES_DIR, MEDIA_DIR]) {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
 app.use('/journal-images', express.static(JOURNAL_IMAGES_DIR, { index: false }));
+app.use('/media',          express.static(MEDIA_DIR,          { index: false }));
 
 // ── 对话历史配置 ──────────────────────────────────────────────
 const MAX_TURNS = parseInt(process.env.MAX_HISTORY_TURNS || '10');
 
-const JOURNAL_JSON = path.join(DATA_DIR, 'journal.json');
+// journal 按角色分文件：journals/{characterId}.json
+// journalEntries 仍作为当前角色的内存缓存（按需加载）
 let journalEntries = [];
+let journalCurrentCharId = '';
+const NOTES_JSON = path.join(DATA_DIR, 'notes.json');
+let noteEntries = [];
 
-function loadJournal() {
+function journalFile(characterId) {
+    return path.join(JOURNALS_DIR, `${characterId}.json`);
+}
+
+function loadJournal(characterId) {
+    characterId = characterId || currentCharacterId || '';
+    journalCurrentCharId = characterId;
     try {
-        const raw = fs.readFileSync(JOURNAL_JSON, 'utf-8').trim();
+        const raw = fs.readFileSync(journalFile(characterId), 'utf-8').trim();
         journalEntries = raw ? JSON.parse(raw) : [];
     } catch {
-        journalEntries = [];
+        // 兼容旧的单文件 journal.json：迁移一次
+        const legacy = path.join(DATA_DIR, 'journal.json');
+        try {
+            const raw = fs.readFileSync(legacy, 'utf-8').trim();
+            const all = raw ? JSON.parse(raw) : [];
+            journalEntries = characterId
+                ? all.filter(e => !e.characterId || e.characterId === characterId)
+                : all;
+        } catch {
+            journalEntries = [];
+        }
     }
 }
 
-function saveJournal() {
-    fs.writeFileSync(JOURNAL_JSON, JSON.stringify(journalEntries, null, 2), 'utf-8');
+function saveJournal(characterId) {
+    characterId = characterId || journalCurrentCharId || currentCharacterId || '';
+    if (!characterId) return;
+    fs.writeFileSync(journalFile(characterId), JSON.stringify(journalEntries, null, 2), 'utf-8');
+}
+
+function loadNotes() {
+    try {
+        const raw = fs.readFileSync(NOTES_JSON, 'utf-8').trim();
+        noteEntries = raw ? JSON.parse(raw) : [];
+    } catch {
+        noteEntries = [];
+    }
+}
+
+function saveNotes() {
+    fs.writeFileSync(NOTES_JSON, JSON.stringify(noteEntries, null, 2), 'utf-8');
+}
+
+function normalizeNoteEntry(entry) {
+    return {
+        id: entry.id || `note_${randomUUID()}`,
+        characterId: entry.characterId || currentCharacterId || '',
+        from: entry.from === 'character' ? 'character' : 'user',
+        text: String(entry.text || '').trim(),
+        state: entry.state || 'ready',
+        createdAt: entry.createdAt || Date.now(),
+        replyTo: entry.replyTo || '',
+    };
 }
 
 function normalizeJournalEntry(entry) {
@@ -192,7 +248,7 @@ async function completeJournalEntry(id, imageBuffer, mimeType) {
             duration: '1m',
         };
     }
-    saveJournal();
+    saveJournal(journalEntries[idx]?.characterId);
 }
 
 // ── MiniMax 音色映射（全局，角色对象和 TTS 接口共用）────────────
@@ -201,7 +257,12 @@ const MINIMAX_VOICE_MAP = {
     // 'Zsiga': 'xxx',
     'Zsiga': 'Chinese (Mandarin)_Cute_Spirit',
     '杜尚': 'Chinese (Mandarin)_Unrestrained_Young_Man',
-    '齐妃': 'Chinese (Mandarin)_Kind-hearted_Antie'
+    '胖虎': 'Chinese (Mandarin)_Unrestrained_Young_Man',
+    '喜羊羊': 'Chinese (Mandarin)_Unrestrained_Young_Man',
+    'Labubu': 'Chinese (Mandarin)_Unrestrained_Young_Man',
+    '小野人': 'Chinese (Mandarin)_Unrestrained_Young_Man',
+    '齐妃': 'Chinese (Mandarin)_Kind-hearted_Antie',
+    '甄嬛': 'Chinese (Mandarin)_Kind-hearted_Antie'
 };
 
 // 无匹配时的 fallback 音色
@@ -313,7 +374,7 @@ function buildSystemPrompt(ch) {
     p += `严格禁止：\n`;
     p += `1. 禁止把 happy、thinking、idle、sad、angry 写进 reply。\n`;
     p += `2. 禁止说教、禁止赶人、禁止冷淡、不要旁白、不要总结。\n`;
-    p += `3. 不要频繁提你世界里的其他人。`;
+    p += `3. 禁止频繁提及你世界里的其他人，除非用户主动提起。`;
     return p;
 }
 
@@ -325,17 +386,17 @@ function buildSystemPrompt(ch) {
 const historyCache = {};
 
 function historyFile(characterId) {
-    return path.join(DATA_DIR, `history_${characterId}.json`);
+    return path.join(CHAT_HISTORY_DIR, `history_${characterId}.json`);
 }
 
 // 启动时从文件加载所有历史
 function loadAllHistory() {
     try {
-        const files = fs.readdirSync(DATA_DIR)
+        const files = fs.readdirSync(CHAT_HISTORY_DIR)
             .filter(f => f.startsWith('history_') && f.endsWith('.json'));
         for (const f of files) {
             const id  = f.replace('history_', '').replace('.json', '');
-            const raw = fs.readFileSync(path.join(DATA_DIR, f), 'utf-8').trim();
+            const raw = fs.readFileSync(path.join(CHAT_HISTORY_DIR, f), 'utf-8').trim();
             if (!raw) continue;
             historyCache[id] = JSON.parse(raw);
             console.log(`[History] 已加载 ${id}：${historyCache[id].length} 条消息`);
@@ -360,7 +421,7 @@ function saveHistory(characterId) {
 function buildJournalMemoryPrompt(characterId, limit = 5) {
     const ready = journalEntries
         .filter(e => e.journalState === 'ready')
-        .filter(e => !e.characterId || e.characterId === characterId)
+        .filter(e => e.characterId === characterId)
         .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
         .slice(0, limit)
         .map(normalizeJournalEntry);
@@ -381,6 +442,115 @@ function buildJournalMemoryPrompt(characterId, limit = 5) {
     ].join('\n');
 }
 
+function buildNotesContextPrompt(characterId, limit = 6) {
+    const recent = noteEntries
+        .filter(n => n.characterId === characterId)
+        .filter(n => n.state === 'ready')
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+        .slice(0, limit)
+        .reverse()
+        .map(normalizeNoteEntry);
+
+    if (!recent.length) return '';
+
+    return [
+        '你和用户最近互相留过这些小纸条。它们是轻量的日常留言，不是正式对话记录。',
+        ...recent.map(n => `${n.from === 'user' ? '用户' : '你'}：${n.text}`),
+    ].join('\n');
+}
+
+async function generateNoteReply(characterId, userText) {
+    const ch = characterLibrary.get(characterId) || getCurrentCharacter();
+    if (!ch) throw new Error('没有可用角色');
+
+    const apiKey = process.env.DASHSCOPE_API_KEY;
+    if (!apiKey || apiKey === 'your_dashscope_api_key_here') {
+        return `我看到你留下的小纸条了。${userText.slice(0, 18)}，我会记住。`;
+    }
+
+    const journalPrompt = buildJournalMemoryPrompt(characterId);
+    const notesPrompt = buildNotesContextPrompt(characterId);
+    const messages = [
+        { role: 'system', content: buildSystemPrompt(ch) },
+        ...(journalPrompt ? [{ role: 'system', content: journalPrompt }] : []),
+        ...(notesPrompt ? [{ role: 'system', content: notesPrompt }] : []),
+        {
+            role: 'user',
+            content: [
+                '用户给你贴了一张小纸条，请你以当前角色身份回一张很短的小纸条。',
+                '要求：回复 45 字以内；像留便签，不要像客服；不要解释规则；不要写动作旁白；只返回 JSON。',
+                `用户纸条：${userText}`,
+                '{"reply":"你回给用户的小纸条"}',
+            ].join('\n'),
+        },
+    ];
+
+    const model = process.env.QWEN_CHAT_MODEL || 'qwen-turbo';
+    const url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+    const response = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({ model, messages, max_tokens: 100, temperature: 0.85, enable_thinking: false }),
+    }, 15000);
+
+    if (!response.ok) {
+        const t = await response.text();
+        throw new Error(`note LLM ${response.status}: ${t.slice(0, 120)}`);
+    }
+
+    const data = await response.json();
+    const raw = data?.choices?.[0]?.message?.content?.trim() || '';
+    try {
+        const jsonStr = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+        const parsed = JSON.parse(jsonStr);
+        return String(parsed.reply || '').trim() || raw.slice(0, 45);
+    } catch {
+        return raw.replace(/```json|```/g, '').trim().slice(0, 60);
+    }
+}
+
+async function completeNoteReply(characterId, userNoteId, userText) {
+    const pendingId = `note_reply_${randomUUID()}`;
+    const pending = normalizeNoteEntry({
+        id: pendingId,
+        characterId,
+        from: 'character',
+        text: '正在想要怎么回应你...',
+        state: 'generating',
+        replyTo: userNoteId,
+        createdAt: Date.now(),
+    });
+    noteEntries.push(pending);
+    saveNotes();
+
+    try {
+        const reply = await generateNoteReply(characterId, userText);
+        const idx = noteEntries.findIndex(n => n.id === pendingId);
+        if (idx >= 0) {
+            noteEntries[idx] = normalizeNoteEntry({
+                ...noteEntries[idx],
+                text: reply || '我看见了，也把它放在心里了。',
+                state: 'ready',
+            });
+            saveNotes();
+        }
+    } catch (err) {
+        console.error('[Notes] 生成回复失败:', err.message);
+        const idx = noteEntries.findIndex(n => n.id === pendingId);
+        if (idx >= 0) {
+            noteEntries[idx] = normalizeNoteEntry({
+                ...noteEntries[idx],
+                text: '我看见你写的了。等我再想一想，晚点告诉你。',
+                state: 'ready',
+            });
+            saveNotes();
+        }
+    }
+}
+
 function getHistory(characterId) {
     if (!historyCache[characterId]) historyCache[characterId] = [];
     return historyCache[characterId];
@@ -398,7 +568,8 @@ function appendTurn(characterId, userMsg, assistantMsg) {
 
 loadAllHistory();
 loadCharacterLibrary();
-loadJournal();
+loadJournal(currentCharacterId);
+loadNotes();
 
 // ══════════════════════════════════════════════════════════════
 // API 路由
@@ -603,7 +774,7 @@ app.post('/api/stt', sttRaw, async (req, res) => {
     }
 
     const wavBuf = pcmToWav(req.body, sampleRate);
-    try { fs.writeFileSync(path.join(DATA_DIR, 'debug_mic.wav'), wavBuf); } catch {}
+    try { fs.writeFileSync(path.join(VLM_IMAGES_DIR, 'debug_mic.wav'), wavBuf); } catch {}
 
     try {
         const transcript = await runRealtimeStt(req.body, sampleRate, apiKey);
@@ -706,10 +877,49 @@ app.delete('/api/history/:characterId', (req, res) => {
     res.json({ ok: true });
 });
 
+app.get('/api/notes', (req, res) => {
+    const characterId = String(req.query.characterId || currentCharacterId || '');
+    const notes = noteEntries
+        .filter(n => n.characterId === characterId)
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+        .map(normalizeNoteEntry);
+    res.json({ notes });
+});
+
+app.post('/api/notes', async (req, res) => {
+    const characterId = String(req.body?.characterId || currentCharacterId || '');
+    const text = String(req.body?.text || '').trim();
+
+    if (!characterLibrary.has(characterId)) {
+        return res.status(400).json({ error: '无效的角色，无法写小纸条' });
+    }
+    if (!text) {
+        return res.status(400).json({ error: '小纸条不能为空' });
+    }
+    if (text.length > 300) {
+        return res.status(400).json({ error: '小纸条太长了，最多 300 字' });
+    }
+
+    const note = normalizeNoteEntry({
+        id: `note_${randomUUID()}`,
+        characterId,
+        from: 'user',
+        text,
+        state: 'ready',
+        createdAt: Date.now(),
+    });
+
+    noteEntries.push(note);
+    saveNotes();
+    completeNoteReply(characterId, note.id, text);
+    res.status(201).json({ note });
+});
+
 app.get('/api/journal', (req, res) => {
-    const characterId = req.query.characterId || currentCharacterId;
+    const characterId = String(req.query.characterId || currentCharacterId || '');
+    // 若请求的角色与缓存不同，重新从对应文件加载
+    if (characterId !== journalCurrentCharId) loadJournal(characterId);
     const entries = [...journalEntries]
-        .filter(e => !e.characterId || e.characterId === characterId)
         .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
         .map(normalizeJournalEntry);
     res.json({
@@ -726,6 +936,11 @@ app.post('/api/journal', rawImage, (req, res) => {
         return res.status(400).json({ error: '未收到图片数据' });
     }
 
+    const characterId = String(req.headers['x-journal-character-id'] || currentCharacterId || '');
+    if (!characterLibrary.has(characterId)) {
+        return res.status(400).json({ error: '无效的角色，无法写入照片墙记忆' });
+    }
+
     const mimeType = req.headers['content-type'] || 'image/jpeg';
     const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
     const id = `journal_${Date.now()}`;
@@ -734,7 +949,7 @@ app.post('/api/journal', rawImage, (req, res) => {
 
     const entry = normalizeJournalEntry({
         id,
-        characterId: currentCharacterId,
+        characterId,
         date: String(req.headers['x-journal-date'] || '').slice(0, 10),
         place: decodeURIComponent(String(req.headers['x-journal-place'] || '未知地点')),
         imageUrl: `/journal-images/${imageName}`,
@@ -742,8 +957,10 @@ app.post('/api/journal', rawImage, (req, res) => {
         createdAt: Date.now(),
     });
 
+    // 若当前缓存不是该角色，先加载再追加
+    if (characterId !== journalCurrentCharId) loadJournal(characterId);
     journalEntries.unshift(entry);
-    saveJournal();
+    saveJournal(characterId);
     completeJournalEntry(id, Buffer.from(req.body), mimeType);
     res.status(201).json(entry);
 });
@@ -919,7 +1136,7 @@ async function runRecognition(imageBuffer, mimeType, res) {
     }
 
     const ext = mimeType.includes('png') ? 'png' : 'jpg';
-    const debugPath = path.join(DATA_DIR, `debug_capture_${Date.now()}.${ext}`);
+    const debugPath = path.join(VLM_IMAGES_DIR, `debug_capture_${Date.now()}.${ext}`);
     try { fs.writeFileSync(debugPath, imageBuffer); } catch {}
     console.log(`[识别] 开始，图片: ${imageBuffer.length} 字节 → 已保存到 ${debugPath}`);
 
