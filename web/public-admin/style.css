@@ -159,6 +159,10 @@ body {
     overflow: hidden;
 }
 
+.main.main--notes-full {
+    padding: 0;
+}
+
 .days-badge {
     position: absolute;
     top: 24px;
@@ -1101,13 +1105,19 @@ body {
 }
 
 /* ── 小纸条公告板 ── */
+#page-notes {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    max-height: none;
+}
+
 .notes-board {
     flex: 1;
     position: relative;
     background: var(--bg);
-    border: var(--border);
-    border-radius: 12px;
-    box-shadow: var(--shadow);
+    width: 100%;
+    height: 100%;
     overflow: hidden;
 }
 
@@ -1125,10 +1135,30 @@ body {
     letter-spacing: 0.3px;
 }
 
+.notes-viewport {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    cursor: grab;
+    z-index: 2;
+}
+
+.notes-viewport.panning {
+    cursor: grabbing;
+}
+
+.notes-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2800px;
+    height: 2200px;
+    transform-origin: 0 0;
+}
+
 .notes-list {
     position: absolute;
     inset: 0;
-    z-index: 2;
 }
 
 .notes-empty {
@@ -1142,7 +1172,7 @@ body {
     background: rgba(255,255,255,0.45);
     padding: 10px 14px;
     transform: rotate(-1deg);
-    z-index: 2;
+    z-index: 6;
 }
 
 .note-add-btn {
@@ -1196,6 +1226,13 @@ body {
     flex-direction: column;
     gap: 10px;
     z-index: 3;
+    cursor: grab;
+    user-select: none;
+}
+
+.note-sticky.dragging {
+    cursor: grabbing;
+    z-index: 9;
 }
 
 .note-sticky--char {
@@ -1295,6 +1332,8 @@ body {
     font-weight: 700;
     line-height: 1.65;
     color: var(--black);
+    user-select: text;
+    cursor: text;
 }
 
 .note-draft-textarea::placeholder {

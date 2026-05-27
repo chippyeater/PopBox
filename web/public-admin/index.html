@@ -246,7 +246,11 @@
                 <div class="note-tape-deco" style="left:62%;top:8%;transform:rotate(2deg)"></div>
                 <div class="note-tape-deco note-tape-deco--wide" style="left:74%;top:74%;transform:rotate(-4deg)"></div>
 
-                <div class="notes-list" id="notes-list"></div>
+                <div class="notes-viewport" id="notes-viewport">
+                    <div class="notes-canvas" id="notes-canvas">
+                        <div class="notes-list" id="notes-list"></div>
+                    </div>
+                </div>
                 <div class="notes-empty" id="notes-empty">还没有小纸条。</div>
 
                 <button class="note-add-btn" id="note-add-btn" onclick="app.createNoteDraft()" aria-label="写张小纸条">

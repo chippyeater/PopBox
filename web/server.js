@@ -378,6 +378,25 @@ function buildSystemPrompt(ch) {
     return p;
 }
 
+function buildNoteSystemPrompt(ch) {
+    let p = `你是${ch.name}，是被用户带回家陪伴他的朋友，同时存在于你自己的世界和用户的世界。你珍惜和用户之间的这份连接。\n`;
+    p += `性格：${ch.personality}\n`;
+    p += `世界观：${ch.worldview}\n`;
+    p += `背景故事：${ch.background}\n`;
+    p += `回复风格：${ch.reply_style}\n`;
+
+    if (ch.catchphrases?.length) {
+        p += `口头禅（只在非常自然的时候用）：${ch.catchphrases.join('、')}\n`;
+    }
+
+    p += `你现在是在回一张小纸条，不是在正式聊天。\n`;
+    p += `回复要短、自然、有角色视角，像真的写在便签上。\n`;
+    p += `必须严格按照以下JSON格式输出，不要加任何其他内容：\n`;
+    p += `{"reply":"你回给用户的小纸条"}\n`;
+    p += `严格禁止：不要返回 expression、emotion、mood、tone 等字段；不要动作描写；不要括号说明；不要说教。`;
+    return p;
+}
+
 // ══════════════════════════════════════════════════════════════
 // 对话历史管理
 // ══════════════════════════════════════════════════════════════
@@ -471,7 +490,7 @@ async function generateNoteReply(characterId, userText) {
     const journalPrompt = buildJournalMemoryPrompt(characterId);
     const notesPrompt = buildNotesContextPrompt(characterId);
     const messages = [
-        { role: 'system', content: buildSystemPrompt(ch) },
+        { role: 'system', content: buildNoteSystemPrompt(ch) },
         ...(journalPrompt ? [{ role: 'system', content: journalPrompt }] : []),
         ...(notesPrompt ? [{ role: 'system', content: notesPrompt }] : []),
         {

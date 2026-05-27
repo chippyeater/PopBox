@@ -35,6 +35,8 @@ const app = (() => {
     let noteEntries = [];
     let notePollTimer = null;
     let noteDraft = null;
+    const noteCanvas = { panX: 0, panY: 0, scale: 1 };
+    const noteLayout = new Map();
     let currentCharacterId = '';
     let characterList = [];
 
@@ -54,6 +56,7 @@ const app = (() => {
         // days-badge 只在生命仓显示
         const badge = document.getElementById('days-badge');
         if (badge) badge.style.display = page === 'home' ? '' : 'none';
+        document.querySelector('.main')?.classList.toggle('main--notes-full', page === 'notes');
 
         currentPage = page;
         if (page === 'notes') loadNotes();
@@ -235,18 +238,219 @@ const app = (() => {
         return escapeHTML((ch?.name || '?').slice(0, 1));
     }
 
-    function notePositionStyle(note, i) {
-        const positions = [
-            { left: 8, top: 12 },
-            { left: 38, top: 16 },
-            { left: 14, top: 48 },
-            { left: 50, top: 52 },
-            { left: 24, top: 30 },
-        ];
-        const p = positions[i % positions.length];
+    function noteSize(note) {
+        return {
+            w: note.state === 'draft' ? 320 : 280,
+            h: note.state === 'draft' ? 250 : 180,
+        };
+    }
+
+    function noteAngle(note, i = 0) {
         const seed = String(note.id || i).split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
-        const rot = seededAngle(seed, 19, 3);
-        return `left:${p.left}%;top:${p.top}%;transform:rotate(${rot}deg)`;
+        return seededAngle(seed, 19, 3);
+    }
+
+    function notePositionStyle(note, i) {
+        const pos = noteLayout.get(note.id) || assignNotePosition(note, i);
+        const rot = noteAngle(note, i);
+        return `left:${pos.x}px;top:${pos.y}px;transform:rotate(${rot}deg)`;
+    }
+
+    function assignNotePosition(note, i = 0) {
+        if (noteLayout.has(note.id)) return noteLayout.get(note.id);
+        const size = noteSize(note);
+        const pos = note.replyTo
+            ? findNearbyNoteSpot(note.replyTo, size.w, size.h)
+            : findEmptyNoteSpot(size.w, size.h);
+        noteLayout.set(note.id, pos);
+        return pos;
+    }
+
+    function noteRects(excludeId = '') {
+        return Array.from(noteLayout.entries())
+            .filter(([id]) => id !== excludeId)
+            .map(([id, pos]) => {
+                const note = noteEntries.find(n => n.id === id) || (noteDraft?.id === id ? noteDraft : null);
+                const size = noteSize(note || {});
+                return { x: pos.x, y: pos.y, w: size.w, h: size.h };
+            });
+    }
+
+    function rectsOverlap(a, b, margin = 34) {
+        return !(a.x + a.w + margin < b.x ||
+                 a.x > b.x + b.w + margin ||
+                 a.y + a.h + margin < b.y ||
+                 a.y > b.y + b.h + margin);
+    }
+
+    function findEmptyNoteSpot(w = 280, h = 180) {
+        const existing = noteRects();
+        const centerX = 980, centerY = 460;
+        const stepX = 360, stepY = 260;
+        const candidates = [{ x: centerX, y: centerY }];
+        for (let ring = 1; ring <= 5; ring++) {
+            for (let dx = -ring; dx <= ring; dx++) {
+                candidates.push({ x: centerX + dx * stepX, y: centerY - ring * stepY });
+                candidates.push({ x: centerX + dx * stepX, y: centerY + ring * stepY });
+            }
+            for (let dy = -ring + 1; dy <= ring - 1; dy++) {
+                candidates.push({ x: centerX - ring * stepX, y: centerY + dy * stepY });
+                candidates.push({ x: centerX + ring * stepX, y: centerY + dy * stepY });
+            }
+        }
+
+        for (const pos of candidates) {
+            const candidate = { x: pos.x, y: pos.y, w, h };
+            if (!existing.some(rect => rectsOverlap(candidate, rect))) {
+                return { x: candidate.x, y: candidate.y };
+            }
+        }
+        return { x: centerX + existing.length * 64, y: centerY + existing.length * 46 };
+    }
+
+    function findNearbyNoteSpot(anchorId, w = 280, h = 180) {
+        const anchor = noteLayout.get(anchorId);
+        if (!anchor) return findEmptyNoteSpot(w, h);
+
+        const anchorNote = noteEntries.find(n => n.id === anchorId) || {};
+        const anchorSize = noteSize(anchorNote);
+        const candidates = [
+            { x: anchor.x + anchorSize.w + 48, y: anchor.y + 24 },
+            { x: anchor.x + 40, y: anchor.y + anchorSize.h + 42 },
+            { x: anchor.x - w - 48, y: anchor.y + 20 },
+            { x: anchor.x + anchorSize.w + 48, y: anchor.y + anchorSize.h - h },
+            { x: anchor.x - w - 48, y: anchor.y + anchorSize.h - h },
+            { x: anchor.x + 80, y: anchor.y - h - 38 },
+        ];
+        const existing = noteRects();
+        for (const pos of candidates) {
+            const candidate = { x: pos.x, y: pos.y, w, h };
+            if (!existing.some(rect => rectsOverlap(candidate, rect))) {
+                return { x: candidate.x, y: candidate.y };
+            }
+        }
+        return findEmptyNoteSpot(w, h);
+    }
+
+    function applyNoteCanvasTransform() {
+        const cvs = document.getElementById('notes-canvas');
+        if (!cvs) return;
+        cvs.style.transform = `translate(${noteCanvas.panX}px,${noteCanvas.panY}px) scale(${noteCanvas.scale})`;
+    }
+
+    function resetNoteCanvas() {
+        noteCanvas.panX = 0;
+        noteCanvas.panY = 0;
+        noteCanvas.scale = 1;
+        noteLayout.clear();
+        noteDraft = null;
+        applyNoteCanvasTransform();
+    }
+
+    function centerNoteOnCanvas(noteId, animate = true) {
+        const viewport = document.getElementById('notes-viewport');
+        const cvs = document.getElementById('notes-canvas');
+        const pos = noteLayout.get(noteId);
+        if (!viewport || !cvs || !pos) return;
+        const note = noteEntries.find(n => n.id === noteId) || (noteDraft?.id === noteId ? noteDraft : null) || {};
+        const size = noteSize(note);
+        const rect = viewport.getBoundingClientRect();
+        noteCanvas.panX = rect.width / 2 - (pos.x + size.w / 2) * noteCanvas.scale;
+        noteCanvas.panY = rect.height / 2 - (pos.y + size.h / 2) * noteCanvas.scale;
+        if (animate) cvs.style.transition = 'transform 0.45s cubic-bezier(.4,0,.2,1)';
+        applyNoteCanvasTransform();
+        if (animate) setTimeout(() => { cvs.style.transition = ''; }, 480);
+    }
+
+    function bindNotesCanvasDrag() {
+        const viewport = document.getElementById('notes-viewport');
+        if (!viewport || viewport.dataset.dragBound === '1') return;
+        viewport.dataset.dragBound = '1';
+        let panStart = null;
+        let dragNote = null;
+
+        viewport.addEventListener('mousedown', e => {
+            const noteEl = e.target.closest('.note-sticky');
+            if (noteEl && !e.target.closest('textarea,button')) {
+                const id = noteEl.dataset.noteId;
+                const pos = noteLayout.get(id);
+                if (!id || !pos) return;
+                const rect = viewport.getBoundingClientRect();
+                dragNote = {
+                    id,
+                    offX: (e.clientX - rect.left - noteCanvas.panX) / noteCanvas.scale - pos.x,
+                    offY: (e.clientY - rect.top - noteCanvas.panY) / noteCanvas.scale - pos.y,
+                };
+                noteEl.classList.add('dragging');
+                return;
+            }
+            if (e.target.closest('.note-add-btn, .notes-status-chip')) return;
+            viewport.classList.add('panning');
+            panStart = { x: e.clientX - noteCanvas.panX, y: e.clientY - noteCanvas.panY };
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (dragNote) {
+                const rect = viewport.getBoundingClientRect();
+                const x = (e.clientX - rect.left - noteCanvas.panX) / noteCanvas.scale - dragNote.offX;
+                const y = (e.clientY - rect.top - noteCanvas.panY) / noteCanvas.scale - dragNote.offY;
+                noteLayout.set(dragNote.id, { x, y });
+                const el = document.querySelector(`[data-note-id="${CSS.escape(dragNote.id)}"]`);
+                const note = noteEntries.find(n => n.id === dragNote.id) || (noteDraft?.id === dragNote.id ? noteDraft : null);
+                if (el && note) el.style.cssText = notePositionStyle(note);
+                return;
+            }
+            if (!panStart) return;
+            noteCanvas.panX = e.clientX - panStart.x;
+            noteCanvas.panY = e.clientY - panStart.y;
+            applyNoteCanvasTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (dragNote) {
+                document.querySelector(`[data-note-id="${CSS.escape(dragNote.id)}"]`)?.classList.remove('dragging');
+                dragNote = null;
+            }
+            if (!panStart) return;
+            panStart = null;
+            viewport.classList.remove('panning');
+        });
+
+        viewport.addEventListener('wheel', e => {
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
+            const newScale = Math.min(1.8, Math.max(0.45, noteCanvas.scale * factor));
+            const rect = viewport.getBoundingClientRect();
+            const mx = (e.clientX - rect.left - noteCanvas.panX) / noteCanvas.scale;
+            const my = (e.clientY - rect.top - noteCanvas.panY) / noteCanvas.scale;
+            noteCanvas.panX = e.clientX - rect.left - mx * newScale;
+            noteCanvas.panY = e.clientY - rect.top - my * newScale;
+            noteCanvas.scale = newScale;
+            applyNoteCanvasTransform();
+        }, { passive: false });
+    }
+
+    function pruneNoteLayout(validIds) {
+        for (const id of noteLayout.keys()) {
+            if (!validIds.has(id)) noteLayout.delete(id);
+        }
+    }
+
+    function noteNodeHTML(note, i) {
+        const isChar = note.from === 'character';
+        const isGenerating = note.state === 'generating';
+        return `
+            <div class="note-sticky ${isChar ? 'note-sticky--char' : 'note-sticky--user'} ${isGenerating ? 'note-sticky--generating' : ''}"
+                 data-note-id="${escapeHTML(note.id)}"
+                 style="${notePositionStyle(note, i)}">
+                <div class="note-tape-top"></div>
+                <div class="note-sticky-header">
+                    <div class="note-char-avatar">${noteAvatarHTML(note)}</div>
+                    <span class="note-sticky-time">${noteTime(note.createdAt)}</span>
+                </div>
+                <div class="note-sticky-text">${escapeHTML(note.text)}</div>
+            </div>
+        `;
     }
 
     function renderNotes(entries = noteEntries) {
@@ -257,27 +461,17 @@ const app = (() => {
 
         const sorted = [...entries].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
         const displayEntries = noteDraft ? [...sorted, noteDraft] : sorted;
-        list.innerHTML = sorted.map((note, i) => {
-            const isChar = note.from === 'character';
-            const isGenerating = note.state === 'generating';
-            return `
-                <div class="note-sticky ${isChar ? 'note-sticky--char' : 'note-sticky--user'} ${isGenerating ? 'note-sticky--generating' : ''}"
-                     style="${notePositionStyle(note, i)}">
-                    <div class="note-tape-top"></div>
-                    <div class="note-sticky-header">
-                        <div class="note-char-avatar">${noteAvatarHTML(note)}</div>
-                        <span class="note-sticky-time">${noteTime(note.createdAt)}</span>
-                    </div>
-                    <div class="note-sticky-text">${escapeHTML(note.text)}</div>
-                </div>
-            `;
-        }).join('') + (noteDraft ? noteDraftHTML(noteDraft, displayEntries.length - 1) : '');
+        pruneNoteLayout(new Set(displayEntries.map(n => n.id)));
+        displayEntries.forEach(assignNotePosition);
+        list.innerHTML = sorted.map(noteNodeHTML).join('') + (noteDraft ? noteDraftHTML(noteDraft, displayEntries.length - 1) : '');
 
         if (empty) empty.style.display = displayEntries.length ? 'none' : 'block';
         if (status) {
             const generating = sorted.some(n => n.state === 'generating');
             status.textContent = generating ? '状态：正在回纸条' : `状态：${sorted.length} 张小纸条`;
         }
+        bindNotesCanvasDrag();
+        applyNoteCanvasTransform();
         const draftInput = document.getElementById('note-draft-input');
         if (draftInput) {
             draftInput.focus();
@@ -288,7 +482,7 @@ const app = (() => {
 
     function noteDraftHTML(note, i) {
         return `
-            <div class="note-sticky note-sticky--user note-sticky--draft" style="${notePositionStyle(note, i)}">
+            <div class="note-sticky note-sticky--user note-sticky--draft" data-note-id="${escapeHTML(note.id)}" style="${notePositionStyle(note, i)}">
                 <div class="note-tape-top"></div>
                 <div class="note-sticky-header">
                     <div class="note-char-avatar">你</div>
@@ -333,8 +527,10 @@ const app = (() => {
                 state: 'draft',
                 createdAt: Date.now(),
             };
+            assignNotePosition(noteDraft);
         }
         renderNotes(noteEntries);
+        requestAnimationFrame(() => centerNoteOnCanvas(noteDraft.id));
     }
 
     function cancelNoteDraft() {
@@ -440,6 +636,7 @@ const app = (() => {
         const cur = data.current || characterList.find(c => c.id === id);
         updateCharacterUI(cur);
         renderCharacterSelect(characterList, id);
+        resetNoteCanvas();
         await loadJournal();
         await loadNotes();
         startJournalPolling();
@@ -793,8 +990,12 @@ const app = (() => {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+            const draftPos = noteDraft ? noteLayout.get(noteDraft.id) : null;
+            if (draftPos && data.note?.id) noteLayout.set(data.note.id, draftPos);
+            if (noteDraft) noteLayout.delete(noteDraft.id);
             noteDraft = null;
             await loadNotes();
+            if (data.note?.id) requestAnimationFrame(() => centerNoteOnCanvas(data.note.id));
             startNotePolling();
         } catch (e) {
             alert('小纸条发送失败：' + e.message);
