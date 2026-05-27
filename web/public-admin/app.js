@@ -34,6 +34,7 @@ const app = (() => {
     let journalPollTimer = null;
     let noteEntries = [];
     let notePollTimer = null;
+    let noteDraft = null;
     let currentCharacterId = '';
     let characterList = [];
 
@@ -255,6 +256,7 @@ const app = (() => {
         if (!list) return;
 
         const sorted = [...entries].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        const displayEntries = noteDraft ? [...sorted, noteDraft] : sorted;
         list.innerHTML = sorted.map((note, i) => {
             const isChar = note.from === 'character';
             const isGenerating = note.state === 'generating';
@@ -269,14 +271,36 @@ const app = (() => {
                     <div class="note-sticky-text">${escapeHTML(note.text)}</div>
                 </div>
             `;
-        }).join('');
+        }).join('') + (noteDraft ? noteDraftHTML(noteDraft, displayEntries.length - 1) : '');
 
-        if (empty) empty.style.display = sorted.length ? 'none' : 'block';
+        if (empty) empty.style.display = displayEntries.length ? 'none' : 'block';
         if (status) {
             const generating = sorted.some(n => n.state === 'generating');
             status.textContent = generating ? '状态：正在回纸条' : `状态：${sorted.length} 张小纸条`;
         }
+        const draftInput = document.getElementById('note-draft-input');
+        if (draftInput) {
+            draftInput.focus();
+            draftInput.setSelectionRange(draftInput.value.length, draftInput.value.length);
+        }
         startNotePolling();
+    }
+
+    function noteDraftHTML(note, i) {
+        return `
+            <div class="note-sticky note-sticky--user note-sticky--draft" style="${notePositionStyle(note, i)}">
+                <div class="note-tape-top"></div>
+                <div class="note-sticky-header">
+                    <div class="note-char-avatar">你</div>
+                    <span class="note-sticky-time">正在写</span>
+                    <button class="note-draft-close" onclick="app.cancelNoteDraft()" aria-label="取消">×</button>
+                </div>
+                <textarea class="note-draft-textarea" id="note-draft-input" maxlength="300" placeholder="今天想让它知道什么？" oninput="app.updateNoteDraft(this.value)">${escapeHTML(note.text || '')}</textarea>
+                <div class="note-draft-footer">
+                    <button class="btn-post-note btn-post-note--small" id="note-submit" onclick="app.postNote()">发送</button>
+                </div>
+            </div>
+        `;
     }
 
     async function loadNotes() {
@@ -286,12 +310,40 @@ const app = (() => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
             noteEntries = data.notes || [];
+            if (noteDraft && currentPage !== 'notes') noteDraft = null;
             renderNotes(noteEntries);
         } catch (e) {
             console.error('[Notes] 加载失败:', e.message);
             noteEntries = [];
             renderNotes(noteEntries);
         }
+    }
+
+    function createNoteDraft() {
+        if (!currentCharacterId) {
+            alert('请先选择当前角色');
+            return;
+        }
+        if (!noteDraft) {
+            noteDraft = {
+                id: `draft_${Date.now()}`,
+                characterId: currentCharacterId,
+                from: 'user',
+                text: '',
+                state: 'draft',
+                createdAt: Date.now(),
+            };
+        }
+        renderNotes(noteEntries);
+    }
+
+    function cancelNoteDraft() {
+        noteDraft = null;
+        renderNotes(noteEntries);
+    }
+
+    function updateNoteDraft(value) {
+        if (noteDraft) noteDraft.text = value;
     }
 
     function startNotePolling() {
@@ -710,8 +762,13 @@ const app = (() => {
     }
 
     async function postNote() {
-        const input = document.getElementById('note-input');
+        const input = document.getElementById('note-draft-input');
         const btn = document.getElementById('note-submit');
+        if (!input) {
+            switchPage('notes');
+            createNoteDraft();
+            return;
+        }
         const text = (input?.value || '').trim();
 
         if (!text) {
@@ -736,7 +793,7 @@ const app = (() => {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-            if (input) input.value = '';
+            noteDraft = null;
             await loadNotes();
             startNotePolling();
         } catch (e) {
@@ -956,5 +1013,5 @@ const app = (() => {
     }
 
     init();
-    return { postNote, recordPlace, savePrefs, switchPage, bindRecordModal };
+    return { postNote, createNoteDraft, cancelNoteDraft, updateNoteDraft, recordPlace, savePrefs, switchPage, bindRecordModal };
 })();

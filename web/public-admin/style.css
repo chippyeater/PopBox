@@ -1145,6 +1145,30 @@ body {
     z-index: 2;
 }
 
+.note-add-btn {
+    position: absolute;
+    top: 26px;
+    right: 28px;
+    width: 42px;
+    height: 42px;
+    border: var(--border);
+    background: var(--lime);
+    color: var(--black);
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 8;
+    transform: rotate(1.5deg);
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.note-add-btn:hover {
+    transform: translate(-1px,-1px) rotate(1.5deg);
+    box-shadow: 5px 5px 0 var(--black);
+}
+
 /* 胶带装饰块 */
 .note-tape-deco {
     position: absolute;
@@ -1180,6 +1204,11 @@ body {
 
 .note-sticky--user {
     background: #F9E1EA;
+}
+
+.note-sticky--draft {
+    width: 320px;
+    z-index: 7;
 }
 
 .note-sticky--generating {
@@ -1242,6 +1271,42 @@ body {
     color: var(--black);
 }
 
+.note-draft-close {
+    margin-left: auto;
+    width: 24px;
+    height: 24px;
+    border: 0;
+    background: transparent;
+    font-size: 22px;
+    line-height: 1;
+    color: #777;
+    cursor: pointer;
+}
+
+.note-draft-textarea {
+    width: 100%;
+    min-height: 120px;
+    border: 0;
+    background: transparent;
+    resize: none;
+    outline: none;
+    font-family: var(--font);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.65;
+    color: var(--black);
+}
+
+.note-draft-textarea::placeholder {
+    color: #999;
+    font-weight: 700;
+}
+
+.note-draft-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
 /* 记忆宝丽来 */
 .note-memory-polaroid {
     position: absolute;
@@ -1272,82 +1337,6 @@ body {
     letter-spacing: 0.5px;
 }
 
-/* 写小纸条面板 */
-.note-write-panel {
-    position: absolute;
-    width: 360px;
-    background: var(--white);
-    border: var(--border);
-    box-shadow: var(--shadow);
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    z-index: 4;
-}
-
-.note-write-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.note-write-title {
-    font-size: 18px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-}
-
-.note-write-textarea {
-    width: 100%;
-    border: var(--border);
-    background: var(--beige);
-    padding: 12px;
-    font-family: var(--font);
-    font-size: 13px;
-    color: var(--black);
-    resize: none;
-    line-height: 2;
-    background-image: repeating-linear-gradient(
-        transparent,
-        transparent calc(2em - 1px),
-        #d8d2c4 calc(2em - 1px),
-        #d8d2c4 2em
-    );
-    background-size: 100% 2em;
-    outline: none;
-}
-
-.note-write-textarea::placeholder { color: #aaa; }
-
-.note-write-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.note-write-icons {
-    display: flex;
-    gap: 6px;
-}
-
-.note-icon-btn {
-    width: 32px;
-    height: 32px;
-    border: var(--border);
-    background: var(--white);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s, box-shadow 0.1s;
-}
-
-.note-icon-btn:hover {
-    background: var(--beige);
-    box-shadow: 2px 2px 0 var(--black);
-}
-
 .btn-post-note {
     font-family: var(--font);
     font-size: 13px;
@@ -1364,6 +1353,12 @@ body {
     opacity: 0.55;
     cursor: wait;
     transform: none;
+}
+
+.btn-post-note--small {
+    padding: 7px 16px;
+    font-size: 12px;
+    box-shadow: 3px 3px 0 var(--black);
 }
 
 .btn-post-note:hover  { transform: translate(-1px,-1px); box-shadow: 5px 5px 0 var(--black); }
