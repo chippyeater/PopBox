@@ -23,10 +23,11 @@ const DATA_DIR          = path.join(__dirname, 'data');
 const CHAT_HISTORY_DIR  = path.join(DATA_DIR, 'chat-history');
 const JOURNAL_IMAGES_DIR = path.join(DATA_DIR, 'journal-images');
 const JOURNALS_DIR      = path.join(DATA_DIR, 'journals');       // 按角色分目录的 journal
-const VLM_IMAGES_DIR    = path.join(DATA_DIR, 'vlm-images');
-const MEDIA_DIR         = path.join(DATA_DIR, 'media');
+const VLM_IMAGES_DIR        = path.join(DATA_DIR, 'vlm-images');
+const MEDIA_DIR             = path.join(DATA_DIR, 'media');
+const REFERENCE_DIR         = path.join(DATA_DIR, 'reference-images');
 
-for (const dir of [DATA_DIR, CHAT_HISTORY_DIR, JOURNAL_IMAGES_DIR, JOURNALS_DIR, VLM_IMAGES_DIR, MEDIA_DIR]) {
+for (const dir of [DATA_DIR, CHAT_HISTORY_DIR, JOURNAL_IMAGES_DIR, JOURNALS_DIR, VLM_IMAGES_DIR, MEDIA_DIR, REFERENCE_DIR]) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
@@ -1331,6 +1332,13 @@ app.post('/api/journal', rawImage, (req, res) => {
 // ══════════════════════════════════════════════════════════════
 
 function buildVlPrompt() {
+    // 从本地库中提取已知角色名，帮助 VL 优先匹配已有角色
+    const knownNames = [...characterLibrary.values()]
+        .map(c => c.name)
+        .filter(Boolean);
+    const hint = knownNames.length > 0
+        ? `\n提示：以下是本地已知角色列表，如果图中角色匹配其中之一请优先输出：${knownNames.join('、')}`
+        : '';
     return `请识别图中角色，只返回以下 JSON，不加任何其他文字或代码块标记：
 {
   "name": "角色个人名字（精确到个体，如'派蒙'，而非系列名'原神'）",
@@ -1339,7 +1347,7 @@ function buildVlPrompt() {
 要求：
 - name 必须是角色自身的名字，不能只写作品名
 - 如果图中有多个角色，只写最主要的那一个
-- 不确定时填写最佳推测，不要留空`;
+- 不确定时填写最佳推测，不要留空${hint}`;
 }
 
 // 带超时的 fetch 封装（防止 API 无响应时永久挂起）
@@ -1482,6 +1490,128 @@ function buildCharacterObject(nameStr, series, searchInfo = {}) {
 }
 
 
+// ── 参考图对比 ──────────────────────────────────────────
+// 角色手办因角度/光线差异会被 VL 误识别为各种人物。
+// 存储一张该角色的标准参考图，识别时把新图和参考图一起发给 VL 做"是不是同一个人"判断。
+//
+// 参考图文件命名：{characterId}.jpg（自动转换为 JPEG）
+// ───────────────────────────────────────────────────────
+
+function referenceImagePath(characterId) {
+    return path.join(REFERENCE_DIR, `${characterId}.jpg`);
+}
+
+// 上传/更新角色的参考图
+app.post('/api/reference/:charId', rawImage, (req, res) => {
+    const { charId } = req.params;
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        return res.status(400).json({ error: '未收到图片数据' });
+    }
+    const target = referenceImagePath(charId);
+    fs.writeFileSync(target, req.body);
+    console.log(`[参考图] 已保存 ${charId} → ${target} (${req.body.length} 字节)`);
+    res.json({ ok: true, path: `/data/reference-images/${charId}.jpg` });
+});
+
+// 删除角色的参考图
+app.delete('/api/reference/:charId', (req, res) => {
+    const { charId } = req.params;
+    const target = referenceImagePath(charId);
+    try {
+        fs.unlinkSync(target);
+        console.log(`[参考图] 已删除 ${charId}`);
+        res.json({ ok: true });
+    } catch {
+        res.status(404).json({ error: '参考图不存在' });
+    }
+});
+
+// 查询某角色是否有参考图
+app.get('/api/reference/:charId', (req, res) => {
+    const { charId } = req.params;
+    const exists = fs.existsSync(referenceImagePath(charId));
+    res.json({ exists, charId });
+});
+
+// 列出所有参考图
+app.get('/api/references', (req, res) => {
+    const files = [];
+    try {
+        for (const f of fs.readdirSync(REFERENCE_DIR)) {
+            if (f.endsWith('.jpg') || f.endsWith('.png')) {
+                const charId = f.replace(/\.(jpg|png)$/, '');
+                files.push({ charId, path: `/data/reference-images/${f}` });
+            }
+        }
+    } catch {}
+    res.json(files);
+});
+
+// 通过参考图验证：将新图与角色的参考图一起发给 VL，判断是否同一角色
+async function verifyWithReference(imageBuffer, mimeType, skipCharId) {
+    const apiKey = process.env.DASHSCOPE_API_KEY;
+    const model  = process.env.QWEN_VL_MODEL || 'qwen-vl-max';
+    const url    = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+
+    // 收集所有有参考图的角色（跳过 skipCharId，即 VL 已识别出的角色）
+    const candidates = [];
+    try {
+        for (const f of fs.readdirSync(REFERENCE_DIR)) {
+            if (!f.endsWith('.jpg') && !f.endsWith('.png')) continue;
+            const charId = f.replace(/\.(jpg|png)$/, '');
+            if (skipCharId && charId === skipCharId) continue;
+            candidates.push({ charId, refPath: path.join(REFERENCE_DIR, f) });
+        }
+    } catch {}
+    if (candidates.length === 0) return null;
+
+    const newDataUrl = `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+
+    for (const { charId, refPath } of candidates) {
+        const refBuffer = fs.readFileSync(refPath);
+        const refDataUrl = `data:image/jpeg;base64,${refBuffer.toString('base64')}`;
+
+        const requestBody = {
+            model,
+            messages: [{
+                role: 'user',
+                content: [
+                    { type: 'image_url', image_url: { url: refDataUrl } },
+                    { type: 'image_url', image_url: { url: newDataUrl } },
+                    { type: 'text', text:
+                        `这是两张玩具/手办角色的照片。图1是参考图，图2是新拍的。\n` +
+                        `请仔细对比面部特征、服饰造型、颜色等细节，这两张图是同一个角色吗？\n` +
+                        `只回答"是"或"否"。` }
+                ]
+            }],
+            max_tokens: 10,
+            enable_thinking: false,
+        };
+
+        try {
+            const resp = await fetchWithTimeout(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify(requestBody),
+            }, 30000);
+
+            const data = await resp.json();
+            let answer = data?.choices?.[0]?.message?.content?.trim() || '';
+            answer = answer.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+            if (answer === '是') {
+                console.log(`[参考图] ✅ ${charId} 匹配（参考图对比通过）`);
+                return charId;
+            } else {
+                console.log(`[参考图] ❌ ${charId} 不匹配（回答: ${answer || '空'}）`);
+            }
+        } catch (err) {
+            console.warn(`[参考图] ${charId} 对比出错: ${err.message}`);
+        }
+    }
+    return null;
+}
+
 // ── 识别流程核心（硬件和网页共用）───────────────────────────
 async function runRecognition(imageBuffer, mimeType, res) {
     const apiKey = process.env.DASHSCOPE_API_KEY;
@@ -1503,14 +1633,48 @@ async function runRecognition(imageBuffer, mimeType, res) {
         }
         console.log(`[识别] VL 识别 → ${vlInfo.name}（${vlInfo.series || '未知系列'}）`);
 
-        // 规则命中本地库（按名字精确匹配）→ 直接复用，跳过搜索
+        // 名字纠正：VL 模型常把长相相似的小众角色误识别为知名角色
+        const NAME_OVERRIDES = { '甄嬛': '齐妃' };
+        if (NAME_OVERRIDES[vlInfo.name]) {
+            console.log(`[识别] 名字纠正: ${vlInfo.name} → ${NAME_OVERRIDES[vlInfo.name]}`);
+            vlInfo.name = NAME_OVERRIDES[vlInfo.name];
+        }
+
+        // 规则命中本地库（按名字精确匹配）→ 先用参考图验证，防止 VL 误识别
         const libMatch = [...characterLibrary.values()].find(
             c => c.name === vlInfo.name
         );
         if (libMatch) {
+            // 检查是否有其他角色的参考图能匹配上新照片（纠正 VL 把杜尚认成特朗普这类问题）
+            const refMatch = await verifyWithReference(imageBuffer, mimeType, libMatch.id);
+            if (refMatch && characterLibrary.has(refMatch)) {
+                console.log(`[识别] VL 说 ${libMatch.name}，但参考图匹配为 ${characterLibrary.get(refMatch).name}，覆盖`);
+                try { fs.writeFileSync(referenceImagePath(refMatch), imageBuffer); } catch {}
+                setCurrentCharacter(refMatch);
+                return res.json({ ...characterLibrary.get(refMatch), isCurrent: true });
+            }
             console.log(`[识别] 命中本地库 → ${libMatch.name}，跳过联网搜索`);
+            // 自动保存此照片作为该角色的参考图（覆盖旧图，逐次优化）
+            try { fs.writeFileSync(referenceImagePath(libMatch.id), imageBuffer);
+                console.log(`[识别] 已自动更新参考图: ${libMatch.id}`);
+            } catch (e) { console.warn(`[识别] 保存参考图失败: ${e.message}`); }
             setCurrentCharacter(libMatch.id);
             return res.json({ ...libMatch, isCurrent: true });
+        }
+
+        // 未命中本地库 → 尝试参考图对比（解决 VL 把冷门角色识别成随机人物的问题）
+        console.log(`[识别] 未命中本地库，尝试参考图对比...`);
+        const matchedCharId = await verifyWithReference(imageBuffer, mimeType);
+        if (matchedCharId && characterLibrary.has(matchedCharId)) {
+            console.log(`[识别] 参考图命中 → ${characterLibrary.get(matchedCharId).name}`);
+            try { fs.writeFileSync(referenceImagePath(matchedCharId), imageBuffer); } catch {}
+            setCurrentCharacter(matchedCharId);
+            return res.json({ ...characterLibrary.get(matchedCharId), isCurrent: true });
+        }
+        // 参考图命中了但该角色不在本地库（理论上不应发生，兜底继续走搜索）
+        if (matchedCharId) {
+            console.log(`[识别] 参考图命中 ${matchedCharId} 但不在本地库，继续联网搜索`);
+            vlInfo.name = characterLibrary.get(matchedCharId)?.name || matchedCharId;
         }
 
         // Step2: 未命中 → 联网搜索全部字段
