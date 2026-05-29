@@ -56,7 +56,9 @@ const app = (() => {
         // days-badge 只在生命仓显示
         const badge = document.getElementById('days-badge');
         if (badge) badge.style.display = page === 'home' ? '' : 'none';
-        document.querySelector('.main')?.classList.toggle('main--notes-full', page === 'notes');
+        const mainEl = document.querySelector('.main');
+        mainEl?.classList.toggle('main--notes-full', page === 'notes');
+        mainEl?.classList.toggle('main--story-full', page === 'story');
 
         currentPage = page;
         if (page === 'notes') loadNotes();
@@ -285,7 +287,9 @@ const app = (() => {
 
     function findEmptyNoteSpot(w = 280, h = 180) {
         const existing = noteRects();
-        const centerX = 980, centerY = 460;
+        const center = noteViewportCenterInCanvas();
+        const centerX = center.x - w / 2;
+        const centerY = center.y - h / 2;
         const stepX = 360, stepY = 260;
         const candidates = [{ x: centerX, y: centerY }];
         for (let ring = 1; ring <= 5; ring++) {
@@ -338,6 +342,23 @@ const app = (() => {
         cvs.style.transform = `translate(${noteCanvas.panX}px,${noteCanvas.panY}px) scale(${noteCanvas.scale})`;
     }
 
+    function getNotesViewportRect() {
+        const viewport = document.getElementById('notes-viewport');
+        const board = document.querySelector('.notes-board');
+        const rect = viewport?.getBoundingClientRect();
+        if (rect && rect.width > 100 && rect.height > 100) return rect;
+        return board?.getBoundingClientRect() || rect;
+    }
+
+    function noteViewportCenterInCanvas() {
+        const rect = getNotesViewportRect();
+        if (!rect) return { x: 980, y: 460 };
+        return {
+            x: (rect.width / 2 - noteCanvas.panX) / noteCanvas.scale,
+            y: (rect.height / 2 - noteCanvas.panY) / noteCanvas.scale,
+        };
+    }
+
     function resetNoteCanvas() {
         noteCanvas.panX = 0;
         noteCanvas.panY = 0;
@@ -348,13 +369,17 @@ const app = (() => {
     }
 
     function centerNoteOnCanvas(noteId, animate = true) {
-        const viewport = document.getElementById('notes-viewport');
         const cvs = document.getElementById('notes-canvas');
         const pos = noteLayout.get(noteId);
-        if (!viewport || !cvs || !pos) return;
+        const rect = getNotesViewportRect();
+        if (!rect || !cvs || !pos) return;
         const note = noteEntries.find(n => n.id === noteId) || (noteDraft?.id === noteId ? noteDraft : null) || {};
-        const size = noteSize(note);
-        const rect = viewport.getBoundingClientRect();
+        const noteEl = document.querySelector(`[data-note-id="${CSS.escape(noteId)}"]`);
+        const fallbackSize = noteSize(note);
+        const size = {
+            w: noteEl?.offsetWidth || fallbackSize.w,
+            h: noteEl?.offsetHeight || fallbackSize.h,
+        };
         noteCanvas.panX = rect.width / 2 - (pos.x + size.w / 2) * noteCanvas.scale;
         noteCanvas.panY = rect.height / 2 - (pos.y + size.h / 2) * noteCanvas.scale;
         if (animate) cvs.style.transition = 'transform 0.45s cubic-bezier(.4,0,.2,1)';
@@ -530,7 +555,7 @@ const app = (() => {
             assignNotePosition(noteDraft);
         }
         renderNotes(noteEntries);
-        requestAnimationFrame(() => centerNoteOnCanvas(noteDraft.id));
+        requestAnimationFrame(() => requestAnimationFrame(() => centerNoteOnCanvas(noteDraft.id)));
     }
 
     function cancelNoteDraft() {
@@ -724,6 +749,7 @@ const app = (() => {
         bindSettings();
         bindRecordModal();
         loadStory();
+        bindStoryScroll();
 
         try {
             await loadCharacters();
@@ -995,7 +1021,7 @@ const app = (() => {
             if (noteDraft) noteLayout.delete(noteDraft.id);
             noteDraft = null;
             await loadNotes();
-            if (data.note?.id) requestAnimationFrame(() => centerNoteOnCanvas(data.note.id));
+            if (data.note?.id) requestAnimationFrame(() => requestAnimationFrame(() => centerNoteOnCanvas(data.note.id)));
             startNotePolling();
         } catch (e) {
             alert('小纸条发送失败：' + e.message);
@@ -1015,11 +1041,51 @@ const app = (() => {
     const ECHO_CSS_CLASS  = { qifei: 'echo-card--qifei', zsiga: 'echo-card--zsiga', duchamp: 'echo-card--duchamp' };
     const STATUS_LABEL    = { upcoming: '未开始', ongoing: '进行中', done: '已完成' };
     const STATUS_DOT_COLOR = { upcoming: '#AAA', ongoing: '#7BC14A', done: '#FF6B35' };
+    const STORY_SCENE_MEDIA = {
+        scene_02: {
+            src: '/media/duchamp-fountain.jpg',
+            alt: 'Marcel Duchamp, Fountain, 1917',
+            caption: 'Marcel Duchamp, Fountain, 1917',
+        },
+    };
+    const STORY_MOOD_COLORS = ['#FFE680', '#FFB49D', '#DDF264', '#D7D3F1', '#EDE7D7'];
+    const STORY_MOOD_POSITIONS = [
+        { top: '-14px', left: '18px' },
+        { top: '-12px', right: '24px' },
+        { right: '-18px', top: '44px' },
+        { bottom: '-14px', left: '26px' },
+        { bottom: '-12px', right: '22px' },
+    ];
 
     // 稳定伪随机角度 [-range, range]，用 charId+index 做 seed
     function stableAngle(seed, range = 2) {
         const r = ((seed * 9301 + 49297) % 233280) / 233280;
         return +((r * range * 2 - range).toFixed(1));
+    }
+
+    function stableIndex(seed, length) {
+        if (!length) return 0;
+        return Math.floor(Math.abs(seed * 1103515245 + 12345) % length);
+    }
+
+    function splitMoodTags(text) {
+        return String(text || '')
+            .split(/[\/、，,\s|]+/)
+            .map(t => t.trim())
+            .filter(Boolean)
+            .slice(0, 2);
+    }
+
+    function buildMoodTagsHTML(item, seed) {
+        const tags = Array.isArray(item.moods) ? item.moods : [];
+        return tags.map((tag, i) => {
+            const tagSeed = seed + i * 17 + tag.length;
+            const pos = STORY_MOOD_POSITIONS[stableIndex(tagSeed, STORY_MOOD_POSITIONS.length)];
+            const styleParts = Object.entries(pos).map(([key, value]) => `${key}:${value}`);
+            styleParts.push(`background:${STORY_MOOD_COLORS[stableIndex(tagSeed + 3, STORY_MOOD_COLORS.length)]}`);
+            styleParts.push(`transform:rotate(${stableAngle(tagSeed, 8)}deg)`);
+            return `<span class="story-mood-tag" style="${styleParts.join(';')}">${escapeHTML(tag)}</span>`;
+        }).join('');
     }
 
     // ── JSON → 时间线条目映射 ──────────────────────────────────────
@@ -1037,6 +1103,13 @@ const app = (() => {
 
         function pushConnector() {
             items.push({ type: 'connector' });
+        }
+
+        function pushSceneMedia(scene) {
+            const media = STORY_SCENE_MEDIA[scene.scene_id];
+            if (!media) return;
+            pushConnector();
+            items.push({ type: 'media', ...media });
         }
 
         function processBeat(beat) {
@@ -1058,7 +1131,7 @@ const app = (() => {
                     type:    'char',
                     charId:  beat.character_id,
                     name:    beat.speaker,
-                    sub:     beat.emotion || '',
+                    moods:   splitMoodTags(beat.emotion),
                     text:    beat.text,
                     isInner: beat.type === 'inner_monologue',
                     isAction: beat.type === 'action',
@@ -1071,7 +1144,18 @@ const app = (() => {
             // 场景分隔：菱形标记，场景标题显示在左侧
             items.push({ type: 'marker', variant: 'diamond', label: scene.scene_title });
             pushConnector();
-            scene.beats.forEach(processBeat);
+            let mediaInserted = false;
+            scene.beats.forEach(beat => {
+                const isNarrator = !beat.character_id ||
+                                   beat.type === 'narration' ||
+                                   (beat.type === 'action' && !beat.character_id);
+                if (!mediaInserted && STORY_SCENE_MEDIA[scene.scene_id] && !isNarrator) {
+                    pushSceneMedia(scene);
+                    mediaInserted = true;
+                }
+                processBeat(beat);
+            });
+            if (!mediaInserted) pushSceneMedia(scene);
         });
 
         // ending 作为尾章
@@ -1117,12 +1201,13 @@ const app = (() => {
         const innerCls = item.isInner  ? ' char-inner'  : '';
         const actCls   = item.isAction ? ' char-action-beat' : '';
         const textCls  = item.isAction ? 'char-card-text char-card-text--action' : 'char-card-text';
+        const moodHTML = buildMoodTagsHTML(item, seed);
         return `<div class="timeline-char-card ${baseCls}${innerCls}${actCls}" style="transform:rotate(${rot}deg)">
+            ${moodHTML}
             <div class="char-card-header">
                 <div class="char-card-avatar">${escapeHTML(initial)}</div>
                 <div>
                     <div class="char-card-name">${escapeHTML(item.name || '')}</div>
-                    ${item.sub ? `<div class="char-card-sub">${escapeHTML(item.sub)}</div>` : ''}
                 </div>
             </div>
             <div class="${textCls}">${escapeHTML(item.text || '')}</div>
@@ -1130,8 +1215,8 @@ const app = (() => {
     }
 
     // 三栏行：left | spine | right
-    function tlRow(leftHTML, spineHTML, rightHTML) {
-        return `<div class="tl-row">
+    function tlRow(leftHTML, spineHTML, rightHTML, extraClass = '') {
+        return `<div class="tl-row ${extraClass}">
             <div class="tl-left">${leftHTML}</div>
             <div class="tl-spine">${spineHTML}</div>
             <div class="tl-right">${rightHTML}</div>
@@ -1173,7 +1258,14 @@ const app = (() => {
                     <div class="narration-label">${escapeHTML(item.label || '旁白')}</div>
                     ${escapeHTML(item.text).replace(/\n/g, '<br>')}
                 </div>`;
-                return tlRow(narHTML, '<div class="tl-line"></div>', '');
+                return tlRow('', '<div class="tl-line"></div>', narHTML, 'tl-row--narration');
+            }
+            if (item.type === 'media') {
+                const mediaHTML = `<figure class="story-media-card">
+                    <img src="${escapeHTML(item.src)}" alt="${escapeHTML(item.alt || '')}">
+                    <figcaption>${escapeHTML(item.caption || '')}</figcaption>
+                </figure>`;
+                return tlRow('', '<div class="tl-line"></div>', mediaHTML, 'tl-row--media');
             }
             if (item.type === 'char') {
                 const side = charSide;
@@ -1197,6 +1289,18 @@ const app = (() => {
                 <div class="echo-card-attr">${escapeHTML(e.name)}</div>
             </div>`;
         }).join('');
+    }
+
+    function bindStoryScroll() {
+        const scroller = document.querySelector('.story-scroll');
+        const page = document.querySelector('.story-page');
+        if (!scroller || !page || scroller.dataset.bound === '1') return;
+        scroller.dataset.bound = '1';
+        const updateHeader = () => {
+            page.classList.toggle('story-scrolled', scroller.scrollTop > 24);
+        };
+        scroller.addEventListener('scroll', updateHeader, { passive: true });
+        updateHeader();
     }
 
     // ── 从服务器加载故事 JSON ────────────────────────────────────

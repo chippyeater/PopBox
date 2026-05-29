@@ -159,7 +159,8 @@ body {
     overflow: hidden;
 }
 
-.main.main--notes-full {
+.main.main--notes-full,
+.main.main--story-full {
     padding: 0;
 }
 
@@ -1633,17 +1634,17 @@ body {
    今日同游
    ══════════════════════════════════════════════════════════════ */
 
-/* 用负 margin 抵消 .main 的 padding，保持正常文档流 */
 #page-story {
-    margin: -28px -32px;
-    margin-top: -28px;
-    width: calc(100% + 64px);
-    max-height: calc(100vh);
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    max-height: none;
     overflow: hidden;
     flex-direction: column;
 }
 
 .story-page {
+    position: relative;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -1656,12 +1657,24 @@ body {
 
 /* 页头 */
 .story-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 4;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     padding: 28px 32px 16px;
     flex-shrink: 0;
-    background: transparent;
+    background: linear-gradient(180deg, #EDEAE4 0%, rgba(237,234,228,0.96) 72%, rgba(237,234,228,0) 100%);
+    transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+.story-page.story-scrolled .story-header {
+    opacity: 0;
+    transform: translateY(-14px);
+    pointer-events: none;
 }
 
 .story-eyebrow {
@@ -1710,10 +1723,10 @@ body {
 
 /* 滚动区 */
 .story-scroll {
-    flex: 1;
+    height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 4px 32px 0;
+    padding: 136px 32px 0;
 }
 
 .story-scroll::-webkit-scrollbar { width: 4px; }
@@ -1824,6 +1837,25 @@ body {
     padding-bottom: 8px;
 }
 
+.tl-row--narration,
+.tl-row--media {
+    justify-content: center;
+}
+
+.tl-row--narration .tl-left,
+.tl-row--narration .tl-spine,
+.tl-row--media .tl-left,
+.tl-row--media .tl-spine {
+    display: none;
+}
+
+.tl-row--narration .tl-right,
+.tl-row--media .tl-right {
+    flex: 0 1 640px;
+    justify-content: center;
+    padding-left: 0;
+}
+
 /* 中轴：竖线 + 节点 */
 .tl-spine {
     width: 40px;
@@ -1865,7 +1897,8 @@ body {
 
 /* 旁白 */
 .timeline-narration {
-    max-width: 100%;
+    width: 100%;
+    max-width: 600px;
     padding: 8px 12px;
     border: 1.5px dashed #B8B3AA;
     background: transparent;
@@ -1873,6 +1906,29 @@ body {
     color: #888;
     font-style: italic;
     line-height: 1.7;
+}
+
+.story-media-card {
+    width: min(100%, 200px);
+    margin: 8px 0 18px;
+    background: #FAFAFA;
+    border: 2px solid var(--black);
+    box-shadow: 4px 4px 0 var(--black);
+    transform: rotate(-1.2deg);
+}
+
+.story-media-card img {
+    display: block;
+    width: 100%;
+    border-bottom: 2px solid var(--black);
+}
+
+.story-media-card figcaption {
+    padding: 7px 10px 8px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #333;
 }
 
 .narration-label {
@@ -1890,6 +1946,8 @@ body {
     max-width: 340px;
     padding: 14px 16px;
     position: relative;
+    border-radius: 0 !important;
+    overflow: visible;
 }
 
 .char-card-header {
@@ -1916,12 +1974,17 @@ body {
     letter-spacing: 0.02em;
 }
 
-.char-card-sub {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    color: #888;
-    text-transform: uppercase;
+.story-mood-tag {
+    position: absolute;
+    z-index: 3;
+    border: 2px solid var(--black);
+    box-shadow: 2px 2px 0 var(--black);
+    padding: 3px 9px;
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 900;
+    color: var(--black);
+    white-space: nowrap;
 }
 
 .char-card-text {
@@ -1956,11 +2019,11 @@ body {
 
 .char-duchamp .char-card-name { font-family: 'Courier New', monospace; letter-spacing: 0.08em; }
 
-/* 齐妃：淡粉圆角温柔 */
+/* 齐妃：淡粉 */
 .char-qifei {
     background: #FFE8ED;
     border: 2px solid #E8A0B0;
-    border-radius: 12px;
+    border-radius: 0;
     box-shadow: 3px 3px 0 #E8A0B0;
 }
 
@@ -2035,13 +2098,15 @@ body {
 .echoes-cards {
     display: flex;
     flex-direction: row;
-    gap: 20px;
+    justify-content: center;
+    gap: 16px;
     align-items: flex-start;
 }
 
 /* 每张回响便签 */
 .echo-card {
-    flex: 1;
+    flex: 0 1 260px;
+    max-width: 260px;
     min-width: 0;
     border: 2px solid var(--black);
     border-radius: 6px;

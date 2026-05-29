@@ -25,9 +25,7 @@
     {
       "scene_id": "scene_01",
       "scene_title": "出发前",
-      "background": "life_pod_room",
-      "visual_hint": "生命仓旁，齐妃整理发髻，杜尚安静站着，Zsiga抱着自己的小脑袋观察他们。",
-      "mood": "轻微紧张 / 好奇",
+      "visual_hint": "齐妃慢悠悠地整理发髻，杜尚安静站着，似是在思考着什么，Zsiga歪着脑袋观察着他们。",
       "beats": [
         {
           "type": "narration",
@@ -43,14 +41,14 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "端着 / 在意体面",
+          "emotion": "端着",
           "text": "本宫今日出去，可要换身得体些的衣裳？若是见人，总不能失了体面。"
         },
         {
           "type": "dialogue",
           "speaker": "杜尚",
           "character_id": "duchamp",
-          "emotion": "平静 / 观念化",
+          "emotion": "平静",
           "text": "体面也是一种现成品。"
         },
         {
@@ -66,27 +64,18 @@
           "text": "你这洋人说话虽怪，倒也算有几分见识。"
         },
         {
-          "type": "action",
-          "speaker": "Zsiga",
-          "character_id": "zsiga",
-          "emotion": "好奇",
-          "text": "Zsiga抱着自己的小脑袋看了看齐妃，又看了看杜尚，歪了歪头，像是在判断今天这个地方到底好不好玩。"
-        },
-        {
           "type": "dialogue",
           "speaker": "杜尚",
           "character_id": "duchamp",
-          "emotion": "邀请 / 平静",
-          "text": "今天去我的世界。"
+          "emotion": "邀请",
+          "text": "今天请你们去我的世界参观参观吧。"
         }
       ]
     },
     {
       "scene_id": "scene_02",
       "scene_title": "白色展厅",
-      "background": "white_gallery",
       "visual_hint": "一道白色的门打开，门后是空旷刺眼的展厅，中央摆着《泉》。",
-      "mood": "荒诞 / 冲突",
       "beats": [
         {
           "type": "narration",
@@ -139,15 +128,13 @@
     {
       "scene_id": "scene_03",
       "scene_title": "名字和位置",
-      "background": "fountain_object_closeup",
       "visual_hint": "《泉》被放在展厅中央，Zsiga绕着它观察，齐妃站在一旁不悦。",
-      "mood": "困惑 / 被触动",
       "beats": [
         {
           "type": "dialogue",
           "speaker": "杜尚",
           "character_id": "duchamp",
-          "emotion": "解释 / 克制",
+          "emotion": "解释",
           "text": "名字改变了它的位置，位置改变了它的意义。"
         },
         {
@@ -166,59 +153,42 @@
           "type": "action",
           "speaker": "Zsiga",
           "character_id": "zsiga",
-          "emotion": "好奇",
-          "text": "Zsiga却凑近那个小便池，绕着它看了一圈。"
-        },
-        {
-          "type": "action",
-          "speaker": "Zsiga",
-          "character_id": "zsiga",
-          "emotion": "认真",
-          "text": "它伸出手，轻轻敲了敲边缘，又抬头看向杜尚。"
+          "text": "Zsiga却凑近那个小便池，绕着它看了一圈，又抬头看向杜尚。"
         },
         {
           "type": "dialogue",
           "speaker": "Zsiga",
           "character_id": "zsiga",
           "emotion": "认真 / 好奇",
-          "text": "它以前不是住在这里的，对吗？"
+          "text": "它原本不是被这样看的，对吗？"
         },
         {
           "type": "dialogue",
           "speaker": "杜尚",
           "character_id": "duchamp",
           "emotion": "认可",
-          "text": "对。它被带到了另一个地方。"
-        },
-        {
-          "type": "dialogue",
-          "speaker": "Zsiga",
-          "character_id": "zsiga",
-          "emotion": "恍然大悟",
-          "text": "那它也算入住了。"
+          "text": "对。它被换了一个位置，也被重新看见了。"
         }
       ]
     },
     {
       "scene_id": "scene_04",
-      "scene_title": "入住与规矩",
-      "background": "gallery_between_worlds",
+      "scene_title": "观看与规矩",
       "visual_hint": "齐妃站在《泉》旁边，展厅白得空旷，Zsiga认真看着她。",
-      "mood": "反驳 / 短暂动摇",
       "beats": [
         {
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
           "emotion": "不解 / 嫌弃",
-          "text": "什么入住？这种东西也配入住？"
+          "text": "重新看见？这种东西也配被看见？"
         },
         {
           "type": "dialogue",
           "speaker": "Zsiga",
           "character_id": "zsiga",
           "emotion": "认真",
-          "text": "只要被带进新的世界，就会变得不一样。"
+          "text": "只要被放进新的眼睛里，就会变得不一样。"
         },
         {
           "type": "narration",
@@ -229,7 +199,6 @@
           "type": "inner_monologue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "被触动 / 隐隐不安",
           "text": "她忽然想起自己入宫时，也像是被放进了另一个世界。名字、规矩、位置，什么都变了。"
         },
         {
@@ -241,31 +210,15 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "嘴硬 / 维护秩序",
+          "emotion": "嘴硬",
           "text": "哼。本宫只知道，东西该是什么就是什么。一个人该在什么位置，就该守着什么规矩。"
-        },
-        {
-          "type": "dialogue",
-          "speaker": "杜尚",
-          "character_id": "duchamp",
-          "emotion": "轻微笑意 / 观念化",
-          "text": "所以你很适合这里。"
-        },
-        {
-          "type": "dialogue",
-          "speaker": "齐妃",
-          "character_id": "qifei",
-          "emotion": "不悦",
-          "text": "你什么意思？"
         }
       ]
     },
     {
       "scene_id": "scene_05",
       "scene_title": "椅子、照片和文字",
-      "background": "chair_photo_text_gallery",
       "visual_hint": "另一间展厅里，一张椅子、一张椅子的照片和一行文字并列展示。",
-      "mood": "争辩 / 观看关系",
       "beats": [
         {
           "type": "narration",
@@ -282,14 +235,14 @@
           "speaker": "齐妃",
           "character_id": "qifei",
           "emotion": "恼怒 / 不解",
-          "text": "一把椅子也要展出来？照片也要展出来？字也要展出来？这不是糊弄人吗？"
+          "text": "一把椅子也要展出来？这不是糊弄人吗！"
         },
         {
           "type": "dialogue",
           "speaker": "杜尚",
           "character_id": "duchamp",
           "emotion": "平静 / 提问",
-          "text": "当椅子、椅子的图像、椅子的定义同时出现，你还能确定哪一个才是椅子吗？"
+          "text": "如果我把它选出来，放到这里，给它一个位置，它还是原来的东西吗？"
         },
         {
           "type": "dialogue",
@@ -299,25 +252,11 @@
           "text": "这有什么不能确定？能坐人的才是椅子。不能坐人的，便是不中用。"
         },
         {
-          "type": "action",
-          "speaker": "Zsiga",
-          "character_id": "zsiga",
-          "emotion": "验证 / 好奇",
-          "text": "Zsiga跳到椅子旁边，坐了一下，又跳下来，指了指照片里的椅子。"
-        },
-        {
           "type": "dialogue",
           "speaker": "Zsiga",
           "character_id": "zsiga",
           "emotion": "认真",
-          "text": "这个不能坐，但它还是椅子。"
-        },
-        {
-          "type": "dialogue",
-          "speaker": "Zsiga",
-          "character_id": "zsiga",
-          "emotion": "继续观察",
-          "text": "这个更不能坐，但大家也在看它。"
+          "text": "它还是椅子，但好像不只是椅子了。"
         }
       ]
     },
@@ -325,7 +264,7 @@
       "scene_id": "scene_06",
       "scene_title": "角色还是展品",
       "background": "zsiga_beside_chair",
-      "visual_hint": "Zsiga缩在椅子旁边，像一个误闯进展厅的潮玩摆件。",
+      "visual_hint": "Zsiga站在椅子旁边，忽然意识到自己也被放进了这个展厅的观看关系里。",
       "mood": "错位 / 自我意识",
       "beats": [
         {
@@ -339,8 +278,7 @@
           "type": "action",
           "speaker": "Zsiga",
           "character_id": "zsiga",
-          "emotion": "安静",
-          "text": "Zsiga没有反驳，只是把自己缩在椅子旁边，像一个误闯进展厅的潮玩摆件。"
+          "text": "Zsiga没有反驳，只是站在椅子旁边，忽然意识到自己也被放进了这个展厅的观看关系里。"
         },
         {
           "type": "dialogue",
@@ -360,28 +298,26 @@
           "type": "dialogue",
           "speaker": "杜尚",
           "character_id": "duchamp",
-          "emotion": "平静 / 尖锐",
-          "text": "如果它坐在椅子旁边，被观众观看，那它是角色，还是展品？"
+          "emotion": "平静",
+          "text": "如果它站在这把椅子旁边，被观众观看，那它是角色，还是展品？"
         },
         {
           "type": "action",
           "speaker": "Zsiga",
           "character_id": "zsiga",
-          "emotion": "安静 / 注视",
           "text": "Zsiga抬头看着齐妃，眨了一下眼。"
         },
         {
           "type": "inner_monologue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "动摇 / 不舒服",
           "text": "她忽然发现，这个小东西原本是被人买回去、摆起来、收藏起来的。可现在它会走，会看，会问问题。它像展品，又不像展品；像玩物，又不像玩物。"
         },
         {
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "不安 / 维护名分",
+          "emotion": "不安",
           "text": "若是被人摆着看，便总要有个名分。没名没分地放在那里，像什么样子？"
         }
       ]
@@ -389,9 +325,7 @@
     {
       "scene_id": "scene_07",
       "scene_title": "空白标签",
-      "background": "chair_and_blank_label",
       "visual_hint": "杜尚递出一张空白标签，齐妃站在空椅子前。",
-      "mood": "命名 / 身份暴露",
       "beats": [
         {
           "type": "action",
@@ -427,14 +361,14 @@
         {
           "type": "action",
           "speaker": "旁白",
-          "text": "她把标签贴在一张空椅子旁边。"
+          "text": "她把标签贴在自己的袖口上，像是把那个名字重新别回身上。"
         },
         {
           "type": "dialogue",
           "speaker": "杜尚",
           "character_id": "duchamp",
           "emotion": "冷静 / 看穿",
-          "text": "你没有命名椅子。你命名了自己。"
+          "text": "你不是在命名一个物件。你是在命名自己。"
         },
         {
           "type": "dialogue",
@@ -447,24 +381,22 @@
     },
     {
       "scene_id": "scene_08",
-      "scene_title": "椅子上没有三阿哥",
-      "background": "empty_chair_with_label",
-      "visual_hint": "空椅子旁贴着“三阿哥之母”的标签，Zsiga看着椅子，又看向齐妃。",
-      "mood": "安静 / 被刺中",
+      "scene_title": "名字不等于人",
+      "visual_hint": "齐妃袖口上贴着“三阿哥之母”的标签，Zsiga看着标签，又抬头看向她。",
       "beats": [
         {
           "type": "action",
           "speaker": "Zsiga",
           "character_id": "zsiga",
           "emotion": "观察",
-          "text": "Zsiga看着那张空椅子，又看了看齐妃。"
+          "text": "Zsiga看着齐妃袖口上的那张标签，又抬头看了看她。"
         },
         {
           "type": "dialogue",
           "speaker": "Zsiga",
           "character_id": "zsiga",
           "emotion": "直接 / 天真",
-          "text": "可是椅子上没有三阿哥。"
+          "text": "可是这张标签贴在你身上，不在三阿哥身上。"
         },
         {
           "type": "narration",
@@ -488,159 +420,55 @@
           "speaker": "齐妃",
           "character_id": "qifei",
           "emotion": "嘴硬 / 自我安慰",
-          "text": "胡说。本宫的三阿哥聪慧稳重，将来自有大造化。皇上也是看重他的。"
-        }
-      ]
-    },
-    {
-      "scene_id": "scene_09",
-      "scene_title": "镜子",
-      "background": "mirror_in_gallery",
-      "visual_hint": "杜尚从墙上取下一面镜子，镜中映出齐妃与Zsiga。",
-      "mood": "自我观看 / 逃避",
-      "beats": [
-        {
-          "type": "action",
-          "speaker": "杜尚",
-          "character_id": "duchamp",
-          "emotion": "平静",
-          "text": "杜尚没有反驳，只从墙上取下一面镜子，放到她面前。"
-        },
-        {
-          "type": "narration",
-          "speaker": "旁白",
-          "text": "镜子里没有宫装，也没有旗头，只映出一个不断重复自己身份的人。"
-        },
-        {
-          "type": "action",
-          "speaker": "旁白",
-          "text": "齐妃看了一眼，立刻偏过头。"
-        },
-        {
-          "type": "dialogue",
-          "speaker": "齐妃",
-          "character_id": "qifei",
-          "emotion": "抗拒 / 不适",
-          "text": "这东西不好。撤了。"
-        },
-        {
-          "type": "dialogue",
-          "speaker": "杜尚",
-          "character_id": "duchamp",
-          "emotion": "平静",
-          "text": "这正是它的好处。"
-        },
-        {
-          "type": "action",
-          "speaker": "Zsiga",
-          "character_id": "zsiga",
-          "emotion": "观察自己",
-          "text": "Zsiga站到镜子旁边，也看了看自己。"
-        },
-        {
-          "type": "narration",
-          "speaker": "旁白",
-          "text": "镜子里的它像一个被收藏的角色，又像一个突然拥有了自己想法的小生命。"
-        },
-        {
-          "type": "dialogue",
-          "speaker": "Zsiga",
-          "character_id": "zsiga",
-          "emotion": "小声 / 认真",
-          "text": "我也不是只被摆着看的。"
-        }
-      ]
-    },
-    {
-      "scene_id": "scene_10",
-      "scene_title": "带走标签",
-      "background": "gallery_exit",
-      "visual_hint": "齐妃把写着“三阿哥之母”的标签揭下，重新贴到自己的袖口上。",
-      "mood": "嘴硬 / 微弱改变",
-      "beats": [
-        {
-          "type": "narration",
-          "speaker": "旁白",
-          "text": "齐妃听见这句话，神色微微动了一下。"
-        },
-        {
-          "type": "narration",
-          "speaker": "旁白",
-          "text": "她没有接话。"
-        },
-        {
-          "type": "action",
-          "speaker": "旁白",
-          "text": "过了很久，她把那张写着“三阿哥之母”的标签揭了下来，重新贴到自己的袖口上。"
-        },
-        {
-          "type": "dialogue",
-          "speaker": "齐妃",
-          "character_id": "qifei",
-          "emotion": "嘴硬 / 防御",
-          "text": "本宫不喜欢你这个世界。"
-        },
-        {
-          "type": "dialogue",
-          "speaker": "杜尚",
-          "character_id": "duchamp",
-          "emotion": "追问",
-          "text": "为什么？"
-        },
-        {
-          "type": "dialogue",
-          "speaker": "齐妃",
-          "character_id": "qifei",
-          "emotion": "端着 / 排斥",
-          "text": "太空，太白，太没有规矩。什么东西都能被摆上来，什么话都能被重新解释。若人人都如此，这世道还成什么样子？"
-        },
-        {
-          "type": "dialogue",
-          "speaker": "杜尚",
-          "character_id": "duchamp",
-          "emotion": "平静 / 回答",
-          "text": "成一个可以被重新观看的样子。"
+          "text": "本宫的三阿哥聪慧稳重，将来自有大造化。皇上也是看重他的。"
         }
       ]
     }
   ],
   "ending": {
-    "scene_title": "黄色圆点贴纸",
-    "visual_hint": "Zsiga把一枚黄色圆点贴纸贴在齐妃袖口的标签旁边，生命仓亮起淡淡的紫色和黄色光。",
+    "scene_title": "带走标签",
+    "visual_hint": "齐妃低头看了看袖口上写着“三阿哥之母”的标签，最终没有把它撕下来。",
     "beats": [
       {
         "type": "action",
-        "speaker": "Zsiga",
-        "character_id": "zsiga",
-        "emotion": "认真 / 安静",
-        "text": "Zsiga抱着从展厅角落捡到的一枚黄色圆点贴纸，贴在齐妃袖口那张标签旁边。"
+        "speaker": "旁白",
+        "text": "过了很久，她低头看了看袖口上的那张标签，最终没有把它撕下来。"
       },
       {
         "type": "dialogue",
         "speaker": "齐妃",
         "character_id": "qifei",
-        "emotion": "皱眉 / 不解",
-        "text": "这又是什么？"
+        "emotion": "嘴硬 / 防御",
+        "text": "本宫不喜欢你这个世界。"
       },
       {
         "type": "dialogue",
-        "speaker": "Zsiga",
-        "character_id": "zsiga",
-        "emotion": "认真",
-        "text": "让它不要那么孤单。"
+        "speaker": "杜尚",
+        "character_id": "duchamp",
+        "emotion": "追问",
+        "text": "为什么？"
       },
       {
-        "type": "narration",
-        "speaker": "旁白",
-        "text": "齐妃本想训它胡闹，可看着那一点亮色，终究没有撕下来。"
+        "type": "dialogue",
+        "speaker": "齐妃",
+        "character_id": "qifei",
+        "emotion": "端着 / 排斥",
+        "text": "太空，太白，太没有规矩。什么东西都能被摆上来，什么话都能被重新解释。若人人都如此，这世道还成什么样子？"
+      },
+      {
+        "type": "dialogue",
+        "speaker": "杜尚",
+        "character_id": "duchamp",
+        "emotion": "平静 / 回答",
+        "text": "成一个可以被重新看见的样子。"
       }
     ]
   },
   "log_card": {
     "title": "今日同游：杜尚的世界",
     "memory_token": {
-        "name": "不孤单的标签",
-        "description": "齐妃带回了那张写着“三阿哥之母”的标签。Zsiga在旁边添了一点黄色，像是替她给这个身份留了一点温度。"
+      "name": "不孤单的标签",
+      "description": "齐妃带回了一张写着“三阿哥之母”的标签。"
     },
     "character_comments": [
       {
