@@ -3,7 +3,14 @@
 src/config.h
 web/.env
 web/node_modules/
-web/data/history_*.json
-web/data/debug_*
+web/data/chat-history/history_*.json
+web/data/vlm-images/
+web/data/media/
+web/data/reference-images/
+web/data/stories/
+web/data/journal-images/
+web/data/journals/
+web/server.log
 *.pyc
 __pycache__/
+web/data/debug_*

@@ -33,6 +33,7 @@ for (const dir of [DATA_DIR, CHAT_HISTORY_DIR, JOURNAL_IMAGES_DIR, JOURNALS_DIR,
 
 app.use('/journal-images', express.static(JOURNAL_IMAGES_DIR, { index: false }));
 app.use('/media',          express.static(MEDIA_DIR,          { index: false }));
+app.use('/avatars',        express.static(path.join(__dirname, 'data/avatars'), { index: false }));
 
 // ── 对话历史配置 ──────────────────────────────────────────────
 const MAX_TURNS = parseInt(process.env.MAX_HISTORY_TURNS || '10');

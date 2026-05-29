@@ -37,7 +37,7 @@ bool RecognitionClient::_parseCharacterJson(const String& json,
         return false;
     }
 
-    if (doc.containsKey("error")) {
+    if (doc["error"].is<const char*>()) {
         Serial.printf("[Recognition] 后端错误: %s\n",
                       doc["error"].as<const char*>());
         return false;
@@ -46,6 +46,7 @@ bool RecognitionClient::_parseCharacterJson(const String& json,
     out.id          = doc["id"].as<String>();
     out.name        = doc["name"].as<String>();
     out.avatarPath  = doc["avatar"] | String("/avatar.jpg");
+    out.voice       = doc["voice"] | String("");
     out.personality = doc["personality"].as<String>();
     out.worldview   = doc["worldview"].as<String>();
     out.replyStyle  = doc["reply_style"].as<String>();
