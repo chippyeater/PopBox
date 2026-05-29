@@ -480,10 +480,13 @@ body {
 .char-panel-count { font-size: 11px; color: var(--muted); font-weight: 700; }
 
 .char-panel-group-btn {
-  font-size: 10px; font-weight: 900; letter-spacing: 1px;
-  padding: 3px 8px; border: 1.5px solid var(--neon); background: #1a2000;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; margin-top: 10px;
+  font-size: 13px; font-weight: 900; letter-spacing: 1px;
+  padding: 8px 12px; border: 2px solid var(--neon); background: #1a2000;
   color: var(--neon); cursor: pointer; font-family: inherit;
-  transition: 0.1s;
+  transition: 0.1s; clip-path: none;
+  box-shadow: 3px 3px 0px rgba(0,0,0,0.5);
 }
 .char-panel-group-btn:hover { background: var(--neon); color: #000; }
 
@@ -566,6 +569,95 @@ body {
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.1; }
+}
+
+/* ── 群聊角色选择弹窗 ── */
+.group-picker-modal {
+  position: fixed; inset: 0; z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+}
+.group-picker-bg {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.7);
+}
+.group-picker-box {
+  position: relative; z-index: 1;
+  width: 340px; max-height: 80vh;
+  background: var(--panel); border: 2px solid var(--neon);
+  padding: 24px 20px;
+  box-shadow: 6px 6px 0 rgba(0,0,0,0.5);
+  display: flex; flex-direction: column;
+}
+.group-picker-title {
+  font-size: 18px; font-weight: 900; text-align: center;
+  color: var(--neon); margin-bottom: 4px;
+}
+.group-picker-hint {
+  font-size: 11px; text-align: center;
+  color: var(--muted); margin-bottom: 16px;
+}
+.group-picker-list {
+  display: flex; flex-direction: column; gap: 8px;
+  overflow-y: auto; flex: 1; min-height: 0;
+  padding: 4px 0;
+}
+.group-picker-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  border: 2px solid var(--border);
+  background: #18181f;
+  cursor: pointer; transition: 0.1s;
+  user-select: none;
+}
+.group-picker-item:hover { border-color: var(--purple); }
+.group-picker-item.selected {
+  border-color: var(--neon);
+  background: #1a2400;
+  box-shadow: 0 0 0 1px var(--neon);
+}
+.group-picker-item.selected .picker-check {
+  background: var(--neon);
+  color: #000;
+  border-color: var(--neon);
+}
+.group-picker-item.disabled {
+  opacity: 0.4; cursor: not-allowed;
+}
+.picker-check {
+  width: 24px; height: 24px; flex-shrink: 0;
+  border: 2px solid var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 900;
+  transition: 0.1s;
+}
+.picker-info { flex: 1; min-width: 0; }
+.picker-name { font-size: 14px; font-weight: 700; color: #eee; }
+.picker-series { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.picker-num {
+  font-size: 10px; color: var(--neon); font-weight: 700;
+  flex-shrink: 0; width: 20px; text-align: center;
+}
+.group-picker-actions {
+  display: flex; gap: 10px; margin-top: 16px;
+}
+.group-picker-cancel, .group-picker-confirm {
+  flex: 1; padding: 10px;
+  font-size: 13px; font-weight: 900; font-family: inherit;
+  border: 2px solid #000; cursor: pointer;
+  transition: 0.08s; text-align: center;
+}
+.group-picker-cancel {
+  background: #2a2a38; color: #888;
+}
+.group-picker-cancel:hover { background: #3a3a48; }
+.group-picker-confirm {
+  background: var(--neon); color: #000;
+  box-shadow: 3px 3px 0 #88AA00;
+}
+.group-picker-confirm:active { transform: translate(3px,3px); box-shadow: none; }
+.group-picker-confirm:disabled {
+  background: #2a2a38; color: #555;
+  box-shadow: none; cursor: not-allowed;
 }
 
 /* ── 角色数量选择模态框 ── */
