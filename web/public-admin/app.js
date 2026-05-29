@@ -37,6 +37,7 @@ const app = (() => {
     let noteDraft = null;
     const noteCanvas = { panX: 0, panY: 0, scale: 1 };
     const noteLayout = new Map();
+    let noteCenteredCharacterId = '';
     let currentCharacterId = '';
     let characterList = [];
 
@@ -59,6 +60,7 @@ const app = (() => {
         const mainEl = document.querySelector('.main');
         mainEl?.classList.toggle('main--notes-full', page === 'notes');
         mainEl?.classList.toggle('main--story-full', page === 'story');
+        mainEl?.classList.toggle('main--settings-full', page === 'settings');
 
         currentPage = page;
         if (page === 'notes') loadNotes();
@@ -222,8 +224,9 @@ const app = (() => {
         // 更新统计数字
         const placeEl = document.getElementById('j-place-count');
         const memEl   = document.getElementById('j-memory-count');
-        if (placeEl) placeEl.textContent = entries.length;
-        if (memEl)   memEl.textContent   = entries.reduce((s, e) => s + parseInt(e.duration || 0), 0);
+        const uniquePlaces = new Set(entries.map(e => String(e.place || '').trim()).filter(Boolean));
+        if (placeEl) placeEl.textContent = uniquePlaces.size;
+        if (memEl)   memEl.textContent   = entries.length;
 
         bindCanvasDrag(wrap, cvs);
     }
@@ -365,7 +368,43 @@ const app = (() => {
         noteCanvas.scale = 1;
         noteLayout.clear();
         noteDraft = null;
+        noteCenteredCharacterId = '';
         applyNoteCanvasTransform();
+    }
+
+    function getRenderedNoteBounds() {
+        const ids = [...noteEntries, noteDraft].filter(Boolean).map(n => n.id);
+        const rects = ids.map(id => {
+            const pos = noteLayout.get(id);
+            if (!pos) return null;
+            const note = noteEntries.find(n => n.id === id) || (noteDraft?.id === id ? noteDraft : null) || {};
+            const el = document.querySelector(`[data-note-id="${CSS.escape(id)}"]`);
+            const fallback = noteSize(note);
+            return {
+                x: pos.x,
+                y: pos.y,
+                w: el?.offsetWidth || fallback.w,
+                h: el?.offsetHeight || fallback.h,
+            };
+        }).filter(Boolean);
+        if (!rects.length) return null;
+        const left = Math.min(...rects.map(r => r.x));
+        const top = Math.min(...rects.map(r => r.y));
+        const right = Math.max(...rects.map(r => r.x + r.w));
+        const bottom = Math.max(...rects.map(r => r.y + r.h));
+        return { left, top, right, bottom, w: right - left, h: bottom - top };
+    }
+
+    function centerNotesGroupOnCanvas(animate = false) {
+        const cvs = document.getElementById('notes-canvas');
+        const rect = getNotesViewportRect();
+        const bounds = getRenderedNoteBounds();
+        if (!cvs || !rect || !bounds) return;
+        noteCanvas.panX = rect.width / 2 - (bounds.left + bounds.w / 2) * noteCanvas.scale;
+        noteCanvas.panY = rect.height / 2 - (bounds.top + bounds.h / 2) * noteCanvas.scale;
+        if (animate) cvs.style.transition = 'transform 0.45s cubic-bezier(.4,0,.2,1)';
+        applyNoteCanvasTransform();
+        if (animate) setTimeout(() => { cvs.style.transition = ''; }, 480);
     }
 
     function centerNoteOnCanvas(noteId, animate = true) {
@@ -497,6 +536,10 @@ const app = (() => {
         }
         bindNotesCanvasDrag();
         applyNoteCanvasTransform();
+        if (currentPage === 'notes' && currentCharacterId && noteCenteredCharacterId !== currentCharacterId && !noteDraft) {
+            noteCenteredCharacterId = currentCharacterId;
+            requestAnimationFrame(() => requestAnimationFrame(() => centerNotesGroupOnCanvas(false)));
+        }
         const draftInput = document.getElementById('note-draft-input');
         if (draftInput) {
             draftInput.focus();
@@ -1041,6 +1084,7 @@ const app = (() => {
     const ECHO_CSS_CLASS  = { qifei: 'echo-card--qifei', zsiga: 'echo-card--zsiga', duchamp: 'echo-card--duchamp' };
     const STATUS_LABEL    = { upcoming: '未开始', ongoing: '进行中', done: '已完成' };
     const STATUS_DOT_COLOR = { upcoming: '#AAA', ongoing: '#7BC14A', done: '#FF6B35' };
+    const STORY_MOOD_ANGLES = [-2, -1, 1, 2];
     const STORY_SCENE_MEDIA = {
         scene_02: {
             src: '/media/duchamp-fountain.jpg',
@@ -1048,24 +1092,11 @@ const app = (() => {
             caption: 'Marcel Duchamp, Fountain, 1917',
         },
     };
-    const STORY_MOOD_COLORS = ['#FFE680', '#FFB49D', '#DDF264', '#D7D3F1', '#EDE7D7'];
-    const STORY_MOOD_POSITIONS = [
-        { top: '-14px', left: '18px' },
-        { top: '-12px', right: '24px' },
-        { right: '-18px', top: '44px' },
-        { bottom: '-14px', left: '26px' },
-        { bottom: '-12px', right: '22px' },
-    ];
 
     // 稳定伪随机角度 [-range, range]，用 charId+index 做 seed
     function stableAngle(seed, range = 2) {
         const r = ((seed * 9301 + 49297) % 233280) / 233280;
         return +((r * range * 2 - range).toFixed(1));
-    }
-
-    function stableIndex(seed, length) {
-        if (!length) return 0;
-        return Math.floor(Math.abs(seed * 1103515245 + 12345) % length);
     }
 
     function splitMoodTags(text) {
@@ -1080,10 +1111,11 @@ const app = (() => {
         const tags = Array.isArray(item.moods) ? item.moods : [];
         return tags.map((tag, i) => {
             const tagSeed = seed + i * 17 + tag.length;
-            const pos = STORY_MOOD_POSITIONS[stableIndex(tagSeed, STORY_MOOD_POSITIONS.length)];
-            const styleParts = Object.entries(pos).map(([key, value]) => `${key}:${value}`);
-            styleParts.push(`background:${STORY_MOOD_COLORS[stableIndex(tagSeed + 3, STORY_MOOD_COLORS.length)]}`);
-            styleParts.push(`transform:rotate(${stableAngle(tagSeed, 8)}deg)`);
+            const styleParts = [
+                `right:${10 + i * 56}px`,
+                'top:-12px',
+                `transform:rotate(${STORY_MOOD_ANGLES[Math.abs(tagSeed) % STORY_MOOD_ANGLES.length]}deg)`,
+            ];
             return `<span class="story-mood-tag" style="${styleParts.join(';')}">${escapeHTML(tag)}</span>`;
         }).join('');
     }
@@ -1094,25 +1126,54 @@ const app = (() => {
     //   narration                    → 旁白块（左列，连续旁白合并）
     //   action（无 character_id）     → 旁白块（同上）
     //   dialogue                     → 角色卡（左右交替）
-    //   action（有 character_id）     → 角色卡，isAction:true → 斜体文字
-    //   inner_monologue              → 角色卡，isInner:true → 虚线边框 + 淡背景
+    //   action/inner_monologue + dialogue（同角色相邻）→ 同一角色卡，上方小框 + 正文
+    //   单独 action/inner_monologue  → 角色卡内只渲染上方小框
     //
     // 场景边界 → 菱形标记 + 场景标题；ending → 星形标记
     function mapStoryToTimeline(story) {
         const items = [];
 
-        function pushConnector() {
-            items.push({ type: 'connector' });
-        }
+        function pushConnector() {}
 
         function pushSceneMedia(scene) {
             const media = STORY_SCENE_MEDIA[scene.scene_id];
             if (!media) return;
-            pushConnector();
-            items.push({ type: 'media', ...media });
+            const lastNarration = [...items].reverse().find(item => item.type === 'narration');
+            if (lastNarration) {
+                lastNarration.media = media;
+            } else {
+                pushConnector();
+                items.push({ type: 'media', ...media });
+            }
         }
 
-        function processBeat(beat) {
+        function isPreludeBeat(beat) {
+            return beat?.type === 'action' || beat?.type === 'inner_monologue';
+        }
+
+        function shouldMergeWithDialogue(beat, nextBeat) {
+            return isPreludeBeat(beat) &&
+                                   nextBeat &&
+                                   nextBeat.type === 'dialogue' &&
+                                   nextBeat.character_id === beat.character_id;
+        }
+
+        function beatToCharItem(beat, nextBeat = null) {
+            const canMergePrelude = shouldMergeWithDialogue(beat, nextBeat);
+            const dialogueBeat = canMergePrelude ? nextBeat : beat;
+            const isStandalonePrelude = isPreludeBeat(beat) && !canMergePrelude;
+            return {
+                type:    'char',
+                charId:  beat.character_id,
+                name:    beat.speaker || dialogueBeat.speaker,
+                moods:   splitMoodTags(dialogueBeat.emotion || beat.emotion),
+                actionText: canMergePrelude || isStandalonePrelude ? beat.text : '',
+                text:    canMergePrelude ? nextBeat.text : (isStandalonePrelude ? '' : beat.text),
+                isAction: isStandalonePrelude,
+            };
+        }
+
+        function processBeat(beat, nextBeat = null) {
             const isNarrator = !beat.character_id ||
                                beat.type === 'narration' ||
                                (beat.type === 'action' && !beat.character_id);
@@ -1124,18 +1185,10 @@ const app = (() => {
                     last.text += '\n' + beat.text;
                     return;
                 }
-                items.push({ type: 'narration', text: beat.text, label: '旁白 (Narration)' });
+                items.push({ type: 'narration', text: beat.text });
             } else {
                 pushConnector();
-                items.push({
-                    type:    'char',
-                    charId:  beat.character_id,
-                    name:    beat.speaker,
-                    moods:   splitMoodTags(beat.emotion),
-                    text:    beat.text,
-                    isInner: beat.type === 'inner_monologue',
-                    isAction: beat.type === 'action',
-                });
+                items.push(beatToCharItem(beat, nextBeat));
             }
         }
 
@@ -1145,7 +1198,9 @@ const app = (() => {
             items.push({ type: 'marker', variant: 'diamond', label: scene.scene_title });
             pushConnector();
             let mediaInserted = false;
-            scene.beats.forEach(beat => {
+            for (let beatIndex = 0; beatIndex < scene.beats.length; beatIndex++) {
+                const beat = scene.beats[beatIndex];
+                const nextBeat = scene.beats[beatIndex + 1];
                 const isNarrator = !beat.character_id ||
                                    beat.type === 'narration' ||
                                    (beat.type === 'action' && !beat.character_id);
@@ -1153,8 +1208,11 @@ const app = (() => {
                     pushSceneMedia(scene);
                     mediaInserted = true;
                 }
-                processBeat(beat);
-            });
+                processBeat(beat, nextBeat);
+                if (shouldMergeWithDialogue(beat, nextBeat)) {
+                    beatIndex += 1;
+                }
+            }
             if (!mediaInserted) pushSceneMedia(scene);
         });
 
@@ -1163,7 +1221,14 @@ const app = (() => {
             pushConnector();
             items.push({ type: 'marker', variant: 'star', label: story.ending.scene_title });
             pushConnector();
-            story.ending.beats.forEach(processBeat);
+            for (let beatIndex = 0; beatIndex < story.ending.beats.length; beatIndex++) {
+                const beat = story.ending.beats[beatIndex];
+                const nextBeat = story.ending.beats[beatIndex + 1];
+                processBeat(beat, nextBeat);
+                if (shouldMergeWithDialogue(beat, nextBeat)) {
+                    beatIndex += 1;
+                }
+            }
         }
 
         return items;
@@ -1195,31 +1260,27 @@ const app = (() => {
 
     function buildCardHTML(item) {
         const seed    = (item.charId || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-        const rot     = stableAngle(seed, 2);
         const initial = CHAR_AVATARS[item.charId] || (item.name || '?')[0];
         const baseCls = CHAR_CSS_CLASS[item.charId] || '';
-        const innerCls = item.isInner  ? ' char-inner'  : '';
         const actCls   = item.isAction ? ' char-action-beat' : '';
-        const textCls  = item.isAction ? 'char-card-text char-card-text--action' : 'char-card-text';
+        const dialogueCls = item.text ? ' char-dialogue-beat' : '';
         const moodHTML = buildMoodTagsHTML(item, seed);
-        return `<div class="timeline-char-card ${baseCls}${innerCls}${actCls}" style="transform:rotate(${rot}deg)">
+        const actionHTML = item.actionText
+            ? `<div class="char-card-action-box">${escapeHTML(item.actionText)}</div>` : '';
+        const dialogueHTML = item.text
+            ? `<div class="char-card-text">${escapeHTML(item.text || '')}</div>` : '';
+        return `<div class="timeline-char-card ${baseCls}${actCls}${dialogueCls}">
             ${moodHTML}
-            <div class="char-card-header">
-                <div class="char-card-avatar">${escapeHTML(initial)}</div>
-                <div>
-                    <div class="char-card-name">${escapeHTML(item.name || '')}</div>
-                </div>
-            </div>
-            <div class="${textCls}">${escapeHTML(item.text || '')}</div>
+            ${actionHTML}
+            ${dialogueHTML}
+            <div class="char-card-name-tag">${escapeHTML(item.name || initial)}</div>
         </div>`;
     }
 
-    // 三栏行：left | spine | right
-    function tlRow(leftHTML, spineHTML, rightHTML, extraClass = '') {
+    function tlRow(spineHTML, contentHTML, extraClass = '') {
         return `<div class="tl-row ${extraClass}">
-            <div class="tl-left">${leftHTML}</div>
             <div class="tl-spine">${spineHTML}</div>
-            <div class="tl-right">${rightHTML}</div>
+            <div class="tl-content">${contentHTML}</div>
         </div>`;
     }
 
@@ -1229,51 +1290,42 @@ const app = (() => {
         document.getElementById('story-status-text').textContent  = STATUS_LABEL[s.status] || s.status;
         document.querySelector('.story-status-dot').style.background = STATUS_DOT_COLOR[s.status] || '#AAA';
 
-        const tokenIcon = document.getElementById('story-token-icon');
-        tokenIcon.style.background = s.token.color;
-        document.getElementById('story-token-quote').textContent = s.token.quote;
-        document.getElementById('story-token-btn').textContent   = '▷ ' + s.token.label;
-
-        // 时间线 — 三栏渲染，角色卡左右交替
-        let charSide = 'right';
+        // 时间线 — 左侧轴线 + 右侧单列叙事
         const tl = document.getElementById('story-timeline');
         tl.innerHTML = s.timeline.map(item => {
-            if (item.type === 'connector') {
-                return tlRow('', '<div class="tl-line"></div>', '');
-            }
             if (item.type === 'marker') {
                 const markerHTML =
                     item.variant === 'diamond' ? '<div class="tl-marker--diamond"></div>' :
                     item.variant === 'star'    ? '<span class="tl-marker--star">✦</span>' :
                                                 '<div class="tl-marker--circle"></div>';
-                // 场景标题显示在标记左侧
-                const labelHTML = item.label
-                    ? `<div class="tl-scene-label">${escapeHTML(item.label)}</div>` : '';
-                return tlRow(labelHTML,
+                const sceneHTML = item.label
+                    ? `<div class="tl-scene-title">${escapeHTML(item.label)}</div>` : '';
+                return tlRow(
                     `<div class="tl-line" style="min-height:6px"></div>${markerHTML}<div class="tl-line" style="min-height:6px"></div>`,
-                    '');
+                    sceneHTML,
+                    'tl-row--scene');
             }
             if (item.type === 'narration') {
+                const mediaHTML = item.media ? `<figure class="story-media-card story-media-card--inline">
+                    <img src="${escapeHTML(item.media.src)}" alt="${escapeHTML(item.media.alt || '')}">
+                    <figcaption>${escapeHTML(item.media.caption || '')}</figcaption>
+                </figure>` : '';
                 const narHTML = `<div class="timeline-narration">
-                    <div class="narration-label">${escapeHTML(item.label || '旁白')}</div>
-                    ${escapeHTML(item.text).replace(/\n/g, '<br>')}
+                    <div class="timeline-narration-text">${escapeHTML(item.text).replace(/\n/g, '<br>')}</div>
+                    ${mediaHTML}
                 </div>`;
-                return tlRow('', '<div class="tl-line"></div>', narHTML, 'tl-row--narration');
+                return tlRow('<div class="tl-line"></div><div class="tl-marker--note"></div><div class="tl-line"></div>', narHTML, 'tl-row--narration');
             }
             if (item.type === 'media') {
                 const mediaHTML = `<figure class="story-media-card">
                     <img src="${escapeHTML(item.src)}" alt="${escapeHTML(item.alt || '')}">
                     <figcaption>${escapeHTML(item.caption || '')}</figcaption>
                 </figure>`;
-                return tlRow('', '<div class="tl-line"></div>', mediaHTML, 'tl-row--media');
+                return tlRow('<div class="tl-line"></div>', mediaHTML, 'tl-row--media');
             }
             if (item.type === 'char') {
-                const side = charSide;
-                charSide = side === 'left' ? 'right' : 'left';
                 const card = buildCardHTML(item);
-                return side === 'right'
-                    ? tlRow('', '<div class="tl-line"></div>', card)
-                    : tlRow(card, '<div class="tl-line"></div>', '');
+                return tlRow('<div class="tl-line"></div>', card, 'tl-row--char');
             }
             return '';
         }).join('');

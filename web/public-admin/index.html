@@ -15,11 +15,11 @@
     <!-- ── 左侧边栏 ── -->
     <aside class="sidebar">
         <div class="sidebar-logo">
-            <div class="logo-row">
-                <img id="sidebar-char-avatar" class="sidebar-char-avatar" src="" alt="" style="display:none">
+            <img id="sidebar-char-avatar" class="sidebar-char-avatar" src="" alt="" style="display:none">
+            <div class="logo-text">
                 <span class="logo-title">Pop Box</span>
+                <span class="logo-sub">Online · Living with you</span>
             </div>
-            <span class="logo-sub">Online · Living with you</span>
         </div>
 
         <nav class="sidebar-nav">
@@ -239,13 +239,6 @@
         <div class="page-view" id="page-notes" style="display:none">
             <div class="notes-board">
 
-                <!-- 状态标签 -->
-                <div class="notes-status-chip" id="notes-status">状态：无聊中</div>
-
-                <!-- 胶带装饰 -->
-                <div class="note-tape-deco" style="left:62%;top:8%;transform:rotate(2deg)"></div>
-                <div class="note-tape-deco note-tape-deco--wide" style="left:74%;top:74%;transform:rotate(-4deg)"></div>
-
                 <div class="notes-viewport" id="notes-viewport">
                     <div class="notes-canvas" id="notes-canvas">
                         <div class="notes-list" id="notes-list"></div>
@@ -258,6 +251,9 @@
                         <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </button>
+
+                <!-- 状态标签 -->
+                <div class="notes-status-chip" id="notes-status">状态：无聊中</div>
 
             </div>
         </div>
@@ -280,16 +276,6 @@
 
                 <!-- 内容滚动区 -->
                 <div class="story-scroll">
-
-                    <!-- 起始之引 -->
-                    <div class="starting-token-card">
-                        <div class="starting-token-corner-tag">关键物品 / Memory Token</div>
-                        <div class="starting-token-body">
-                            <div class="starting-token-icon" id="story-token-icon"></div>
-                            <p class="starting-token-quote" id="story-token-quote">"这张标签带我去了一个意想不到的地方。"</p>
-                        </div>
-                        <button class="starting-token-btn" id="story-token-btn">▷ 不孤单的标签</button>
-                    </div>
 
                     <!-- 叙事时间线 -->
                     <div class="story-timeline" id="story-timeline">
@@ -314,14 +300,16 @@
 
                 <!-- 页头 -->
                 <div class="settings-header">
-                    <div class="settings-config-chip">配置</div>
-                    <h1 class="settings-title">入住偏好调整</h1>
+                    <div class="settings-title-wrap">
+                        <div class="settings-config-chip">配置</div>
+                        <h1 class="settings-title">入住偏好调整</h1>
+                    </div>
                     <p class="settings-subtitle">自定义您的伴侣以何种方式与您互动。转化为共享空间的基本规则。</p>
-                    <div class="settings-section-tag" style="right:0;top:0">声音与氛围</div>
                 </div>
 
                 <!-- 语气偏好 -->
-                <div class="settings-section">
+                <div class="settings-section settings-section--card" style="position:relative">
+                    <div class="settings-section-tag" style="right:-4px;top:-14px;transform:rotate(1.5deg)">声音与氛围</div>
                     <div class="settings-section-title">
                         <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
                             <circle cx="10" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/>
@@ -338,7 +326,7 @@
                                 </svg>
                             </div>
                             <div class="tone-name">安静</div>
-                            <div class="tone-desc">感静，回应简洁。只有在被问到时才说话。</div>
+                            <div class="tone-desc">平静，回应简洁。只有在被问到时才说话。</div>
                         </label>
                         <label class="tone-card tone-card--selected" data-value="lively">
                             <input type="radio" name="tone" value="lively" checked>
@@ -368,8 +356,8 @@
                             <input type="radio" name="tone" value="mysterious">
                             <div class="tone-icon">
                                 <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
-                                    <path d="M10 3a7 7 0 100 14A7 7 0 0010 3z" stroke="currentColor" stroke-width="1.5"/>
-                                    <path d="M10 8v1.5M10 13v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                    <path d="M2 2l16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                    <path d="M6.7 6.7A7.2 7.2 0 003 10c1.5 3 4 5 7 5a7 7 0 003.3-.8M9 4.1A7 7 0 0117 10c-.4.9-1 1.8-1.7 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                                 </svg>
                             </div>
                             <div class="tone-name">神秘</div>

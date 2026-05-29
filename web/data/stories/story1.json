@@ -30,12 +30,7 @@
         {
           "type": "narration",
           "speaker": "旁白",
-          "text": "齐妃今日原本是不大愿意出门的。"
-        },
-        {
-          "type": "action",
-          "speaker": "旁白",
-          "text": "她坐在生命仓边，慢慢扶了扶发髻。"
+          "text": "齐妃今日原本是不大愿意出门的。她坐在生命仓边，慢慢扶了扶发髻。"
         },
         {
           "type": "dialogue",
@@ -88,7 +83,7 @@
           "text": "门后不是宫墙，也不是市集，而是一个白得刺眼的展厅。"
         },
         {
-          "type": "action",
+          "type": "narration",
           "speaker": "旁白",
           "text": "齐妃刚踏进去，便皱了眉。"
         },
@@ -150,9 +145,8 @@
           "text": "依本宫看，你这是强词夺理。若是在宫里，早叫人撤下去了。"
         },
         {
-          "type": "action",
-          "speaker": "Zsiga",
-          "character_id": "zsiga",
+          "type": "narration",
+          "speaker": "旁白",
           "text": "Zsiga却凑近那个小便池，绕着它看了一圈，又抬头看向杜尚。"
         },
         {
@@ -193,18 +187,7 @@
         {
           "type": "narration",
           "speaker": "旁白",
-          "text": "这句话让齐妃安静了一瞬。"
-        },
-        {
-          "type": "inner_monologue",
-          "speaker": "齐妃",
-          "character_id": "qifei",
-          "text": "她忽然想起自己入宫时，也像是被放进了另一个世界。名字、规矩、位置，什么都变了。"
-        },
-        {
-          "type": "narration",
-          "speaker": "旁白",
-          "text": "可她很快又恢复了那副不肯显露心思的样子。"
+          "text": "这句话让齐妃安静了一瞬。她忽然想起自己入宫时，也像是被放进了另一个世界。名字、规矩、位置，什么都变了。可她很快又恢复了那副不肯显露心思的样子。"
         },
         {
           "type": "dialogue",
@@ -275,9 +258,8 @@
           "text": "你这小东西，怎么也跟他一块儿胡说？"
         },
         {
-          "type": "action",
-          "speaker": "Zsiga",
-          "character_id": "zsiga",
+          "type": "narration",
+          "speaker": "旁白",
           "text": "Zsiga没有反驳，只是站在椅子旁边，忽然意识到自己也被放进了这个展厅的观看关系里。"
         },
         {
@@ -302,15 +284,13 @@
           "text": "如果它站在这把椅子旁边，被观众观看，那它是角色，还是展品？"
         },
         {
-          "type": "action",
-          "speaker": "Zsiga",
-          "character_id": "zsiga",
+          "type": "narration",
+          "speaker": "旁白",
           "text": "Zsiga抬头看着齐妃，眨了一下眼。"
         },
         {
-          "type": "inner_monologue",
-          "speaker": "齐妃",
-          "character_id": "qifei",
+          "type": "narration",
+          "speaker": "旁白",
           "text": "她忽然发现，这个小东西原本是被人买回去、摆起来、收藏起来的。可现在它会走，会看，会问问题。它像展品，又不像展品；像玩物，又不像玩物。"
         },
         {
@@ -328,10 +308,8 @@
       "visual_hint": "杜尚递出一张空白标签，齐妃站在空椅子前。",
       "beats": [
         {
-          "type": "action",
-          "speaker": "杜尚",
-          "character_id": "duchamp",
-          "emotion": "平静",
+          "type": "narration",
+          "speaker": "旁白",
           "text": "杜尚把一张空白标签递给她。"
         },
         {
@@ -347,19 +325,17 @@
           "text": "齐妃捏着那张标签，看着展厅里那些奇奇怪怪的东西。"
         },
         {
-          "type": "inner_monologue",
-          "speaker": "齐妃",
-          "character_id": "qifei",
-          "emotion": "迟疑 / 掩饰",
+          "type": "narration",
+          "speaker": "旁白",
           "text": "她原本想写“荒唐”，可手停了半天。"
         },
         {
-          "type": "action",
+          "type": "narration",
           "speaker": "旁白",
           "text": "最后，她写下了：三阿哥之母。"
         },
         {
-          "type": "action",
+          "type": "narration",
           "speaker": "旁白",
           "text": "她把标签贴在自己的袖口上，像是把那个名字重新别回身上。"
         },
@@ -385,10 +361,8 @@
       "visual_hint": "齐妃袖口上贴着“三阿哥之母”的标签，Zsiga看着标签，又抬头看向她。",
       "beats": [
         {
-          "type": "action",
-          "speaker": "Zsiga",
-          "character_id": "zsiga",
-          "emotion": "观察",
+          "type": "narration",
+          "speaker": "旁白",
           "text": "Zsiga看着齐妃袖口上的那张标签，又抬头看了看她。"
         },
         {
@@ -404,10 +378,8 @@
           "text": "展厅忽然变得很静。"
         },
         {
-          "type": "inner_monologue",
-          "speaker": "齐妃",
-          "character_id": "qifei",
-          "emotion": "慌乱 / 空落",
+          "type": "narration",
+          "speaker": "旁白",
           "text": "齐妃站在那里，像是第一次发现，若没有“三阿哥”这三个字，她竟不知道该把自己放在哪里。"
         },
         {
@@ -430,7 +402,7 @@
     "visual_hint": "齐妃低头看了看袖口上写着“三阿哥之母”的标签，最终没有把它撕下来。",
     "beats": [
       {
-        "type": "action",
+        "type": "narration",
         "speaker": "旁白",
         "text": "过了很久，她低头看了看袖口上的那张标签，最终没有把它撕下来。"
       },

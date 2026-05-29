@@ -115,7 +115,6 @@ function normalizeJournalEntry(entry) {
         quote: entry.quote || '"正在感知这一刻的温度..."',
         description: entry.description || '',
         mood: entry.journalState === 'sensing' ? [] : normalizeJournalMoodTags(entry.mood),
-        duration: entry.duration || '0m',
         createdAt: ts,
     };
 }
@@ -146,33 +145,12 @@ async function generateJournalReflection(entry, imageBuffer, mimeType) {
             quote: `"${entry.place}这一刻被好好收进来了。"` ,
             mood: ['温柔'],
             description: `${entry.place}的一张照片。画面记录了用户和角色共同经历过的一个地点。`,
-            duration: '1m',
         };
     }
 
     const model = process.env.QWEN_VL_MODEL || 'qwen-vl-max';
     const url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
     const dataUrl = `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
-    const prompt = `你是${ch?.name || '角色'}。请看这张用户上传到照片墙的照片，并以角色口吻生成一句很短的感想。
-地点：${entry.place}
-日期：${entry.date}
-只返回 JSON，不要代码块：
-{"quote":"一句 30 字以内、带中文引号的角色感想","mood":"warm|calm|active","duration":"1m"}`;
-
-    const journalPrompt = `你是${ch?.name || '角色'}。请从这个角色自己的世界观看待用户上传到照片墙的照片，不要写普通看图文案。
-角色性格：${ch?.personality || ''}
-角色世界观：${ch?.worldview || ''}
-角色背景：${ch?.background || ''}
-地点：${entry.place}
-日期：${entry.date}
-
-要求：
-- quote 必须像这个角色真的看见了这张照片后说的话，使用它的世界观、比喻和关注点。
-- quote 不要泛泛地说“这一刻很美/被收进来了”，要和照片内容、地点、角色视角有关系。
-- quote 30 字以内，带中文引号。
-- mood 不是情绪分类，而是 1 到 2 个两字中文词，形容这个角色对此刻的感受或联想，例如 ["潮声","远行"]。
-- 只返回 JSON，不要代码块：
-{"quote":"一句角色感想","mood":["两字","两字"],"duration":"1m"}`;
 
     const journalMemoryPrompt = `你是${ch?.name || '角色'}。请从这个角色自己的世界观看待用户上传到照片墙的照片，不要写普通看图文案。
 角色性格：${ch?.personality || ''}
@@ -188,7 +166,7 @@ async function generateJournalReflection(entry, imageBuffer, mimeType) {
 - description 用两句话客观描述这张图片里有什么、发生在什么环境。不要写角色口吻，不展示给用户，只用于之后让角色回忆。
 - mood 不是情绪分类，而是 1 到 2 个两字中文词，形容这个角色对此刻的感受或联想，例如 ["潮声","远行"]。
 - 只返回 JSON，不要代码块：
-{"quote":"一句角色感想","description":"两句话图片描述。第二句话补充环境或细节。","mood":["两字","两字"],"duration":"1m"}`;
+{"quote":"一句角色感想","description":"两句话图片描述。第二句话补充环境或细节。","mood":["两字","两字"]}`;
 
     const resp = await fetchWithTimeout(url, {
         method: 'POST',
@@ -221,7 +199,6 @@ async function generateJournalReflection(entry, imageBuffer, mimeType) {
         quote: parsed.quote || `"${entry.place}这一刻被好好收进来了。"`,
         description: parsed.description || `${entry.place}的一张照片。画面记录了用户和角色共同经历过的一个地点。`,
         mood: normalizeJournalMoodTags(parsed.mood),
-        duration: parsed.duration || '1m',
     };
 }
 
@@ -236,7 +213,6 @@ async function completeJournalEntry(id, imageBuffer, mimeType) {
             quote: result.quote,
             description: result.description,
             mood: result.mood,
-            duration: result.duration,
         };
     } catch (err) {
         console.error('[Journal] 生成感想失败:', err.message);
@@ -246,7 +222,6 @@ async function completeJournalEntry(id, imageBuffer, mimeType) {
             quote: `"${journalEntries[idx].place}这一刻被好好收进来了。"`,
             description: `${journalEntries[idx].place}的一张照片。画面记录了用户和角色共同经历过的一个地点。`,
             mood: ['温柔'],
-            duration: '1m',
         };
     }
     saveJournal(journalEntries[idx]?.characterId);
@@ -536,20 +511,11 @@ async function generateNoteReply(characterId, userText) {
         return `我看到你留下的小纸条了。${userText.slice(0, 18)}，我会记住。`;
     }
 
-    const journalPrompt = buildJournalMemoryPrompt(characterId);
-    const notesPrompt = buildNotesContextPrompt(characterId);
     const messages = [
         { role: 'system', content: buildNoteSystemPrompt(ch) },
-        ...(journalPrompt ? [{ role: 'system', content: journalPrompt }] : []),
-        ...(notesPrompt ? [{ role: 'system', content: notesPrompt }] : []),
         {
             role: 'user',
-            content: [
-                '用户给你贴了一张小纸条，请你以当前角色身份回一张很短的小纸条。',
-                '要求：回复 45 字以内；像留便签，不要像客服；不要解释规则；不要写动作旁白；只返回 JSON。',
-                `用户纸条：${userText}`,
-                '{"reply":"你回给用户的小纸条"}',
-            ].join('\n'),
+            content: userText,
         },
     ];
 
@@ -1277,11 +1243,12 @@ app.get('/api/journal', (req, res) => {
     const entries = [...journalEntries]
         .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
         .map(normalizeJournalEntry);
+    const uniquePlaces = new Set(entries.map(e => String(e.place || '').trim()).filter(Boolean));
     res.json({
         entries,
         stats: {
-            places: entries.length,
-            memories: entries.reduce((sum, e) => sum + (parseInt(e.duration, 10) || 0), 0),
+            places: uniquePlaces.size,
+            memories: entries.length,
         },
     });
 });

@@ -18,24 +18,6 @@
     "createdAt": 1779859824065
   },
   {
-    "id": "journal_1779795332612",
-    "characterId": "qifei",
-    "date": "2026-05-26",
-    "day": "26",
-    "month": "MAY",
-    "place": "我学习的地方同济设创",
-    "imageUrl": "/journal-images/journal_1779795332612.jpg",
-    "journalState": "ready",
-    "quote": "这学堂气派，若三阿哥在此苦读，定能光宗耀祖，本宫便放心了。",
-    "description": "同济大学设计创意学院的红砖白墙建筑在蓝天下显得格外醒目，门口停放着许多自行车和电动车。建筑风格现代与复古结合，玻璃幕墙上印有学院英文名称。",
-    "mood": [
-      "望子",
-      "安稳"
-    ],
-    "duration": "1m",
-    "createdAt": 1779795332645
-  },
-  {
     "id": "journal_1779788934899",
     "characterId": "qifei",
     "date": "2026-05-26",
@@ -51,19 +33,5 @@
     ],
     "duration": "1m",
     "createdAt": 1779788934902
-  },
-  {
-    "id": "journal_1779785304234",
-    "characterId": "qifei",
-    "date": "2026-05-26",
-    "day": "26",
-    "month": "MAY",
-    "place": "参观别的盲盒",
-    "imageUrl": "/journal-images/journal_1779785304234.jpg",
-    "journalState": "ready",
-    "quote": "“小小的冠军举着大大的梦想，这份热血真让人心动呀。”",
-    "mood": "warm",
-    "duration": "1m",
-    "createdAt": 1779785304241
   }
 ]
