@@ -292,6 +292,19 @@ const app = (() => {
         sendMessage(msg);
     }
 
+    // ── 群聊停止关键词 ──────────────────────────────────────
+    const STOP_KEYWORDS = ['不聊了', '不说了', '下次再', '先这样', '拜拜', '晚安', '睡了', '休息', '先睡了', '到此为止', '结束', '下次聊'];
+
+    function isStopMessage(text) {
+        return STOP_KEYWORDS.some(kw => text.includes(kw));
+    }
+
+    function stopGroupChatAuto() {
+        clearTimeout(idleTimer);
+        idleTimer = null;
+        addSystemMsg('群聊已停止。你可以继续单独聊天。');
+    }
+
     // ── 发送消息给后端 ───────────────────────────────────────
     let idleTimer = null;
 
@@ -309,6 +322,12 @@ const app = (() => {
 
         if (!isHeartbeat) {
             addUserMsg(userText);
+        }
+        // 群聊模式检测用户退出意图
+        if (isGroupChat && !isHeartbeat && isStopMessage(userText)) {
+            stopGroupChatAuto();
+            setState('idle');
+            return;
         }
         setState('processing');
         showThinker();
@@ -443,21 +462,77 @@ const app = (() => {
     }
 
     // ── 群聊模式管理 ─────────────────────────────────────────────
-    async function startGroupChat() {
+    let pickerSelected = [];
+
+    function openGroupPicker() {
         if (isGroupChat) {
             exitGroupChat();
             return;
         }
-        try {
-            const res = await fetch('/api/characters');
-            const list = await res.json();
-            const primary = list.find(c => c.id === characterId) || list[0];
-            const secondary = list.find(c => c.id !== characterId) || list[1];
-            if (!primary || !secondary) {
-                showError('需要至少两个角色才能发起群聊');
+        pickerSelected = [];
+        updatePickerConfirmBtn();
+        const list = document.getElementById('group-picker-list');
+        if (!list) return;
+        // 从角色库渲染
+        fetch('/api/characters').then(res => res.json()).then(chars => {
+            list.innerHTML = chars.map(ch => `
+                <div class="group-picker-item" data-id="${ch.id}"
+                     onclick="app.toggleGroupPickerItem('${ch.id}')">
+                    <div class="picker-check">○</div>
+                    <div class="picker-info">
+                        <div class="picker-name">${ch.name}</div>
+                        <div class="picker-series">${ch.series || '独立角色'}</div>
+                    </div>
+                    <div class="picker-num"></div>
+                </div>
+            `).join('');
+        }).catch(() => showError('加载角色列表失败'));
+        document.getElementById('group-picker-modal').style.display = 'flex';
+    }
+
+    function closeGroupPicker() {
+        document.getElementById('group-picker-modal').style.display = 'none';
+        pickerSelected = [];
+    }
+
+    function toggleGroupPickerItem(id) {
+        const idx = pickerSelected.indexOf(id);
+        if (idx >= 0) {
+            pickerSelected.splice(idx, 1);
+        } else {
+            if (pickerSelected.length >= 2) {
+                showError('最多选择两位角色');
                 return;
             }
-            const dualRes = await fetch(`/api/characters/dual/${primary.id}/${secondary.id}`, { method: 'PUT' });
+            pickerSelected.push(id);
+        }
+        // 更新 UI
+        const items = document.querySelectorAll('.group-picker-item');
+        items.forEach(el => {
+            const elId = el.dataset.id;
+            const pos = pickerSelected.indexOf(elId);
+            el.classList.toggle('selected', pos >= 0);
+            el.querySelector('.picker-check').textContent = pos >= 0 ? '⦿' : '○';
+            el.querySelector('.picker-num').textContent = pos >= 0 ? `${pos + 1}` : '';
+        });
+        updatePickerConfirmBtn();
+    }
+
+    function updatePickerConfirmBtn() {
+        const btn = document.getElementById('group-picker-confirm');
+        if (!btn) return;
+        const disabled = pickerSelected.length < 2;
+        btn.disabled = disabled;
+        btn.textContent = disabled ? `已选 ${pickerSelected.length}/2 位角色` : '开始群聊';
+    }
+
+    async function confirmGroupChat() {
+        if (pickerSelected.length < 2) return;
+        const [id1, id2] = pickerSelected;
+        closeGroupPicker();
+
+        try {
+            const dualRes = await fetch(`/api/characters/dual/${id1}/${id2}`, { method: 'PUT' });
             const dualData = await dualRes.json();
             if (!dualRes.ok) return showError(dualData.error || '群聊设置失败');
             await setupGroupChat();
@@ -480,8 +555,8 @@ const app = (() => {
             if (elBadge) {
                 elBadge.className = 'status-badge recognizing';
             }
-            const groupBtn = document.getElementById('group-chat-btn');
-            if (groupBtn) groupBtn.textContent = '退出';
+            // 刷新角色卡片（让群聊按钮变为退出）
+            await loadCharacters();
             await loadAndRenderGroupHistory(groupCharacters[0].id, groupCharacters[1].id);
         } catch (e) {
             showError('进入群聊模式失败: ' + e.message);
@@ -495,8 +570,6 @@ const app = (() => {
         groupCharacters = [];
         if (elBadge) elBadge.className = 'status-badge idle';
         elStatus.textContent = '待机';
-        const groupBtn = document.getElementById('group-chat-btn');
-        if (groupBtn) groupBtn.textContent = '群聊';
         // 重新加载当前单人角色
         loadCharacters().then(() => {
             loadAndRenderHistory(characterId, charName);
@@ -554,7 +627,20 @@ const app = (() => {
         elCharCount.textContent = `${list.length} 个角色`;
         // 角色数 >= 2 时显示群聊按钮
         const groupBtn = document.getElementById('group-chat-btn');
-        if (groupBtn) groupBtn.style.display = list.length >= 2 ? '' : 'none';
+        if (groupBtn) {
+            groupBtn.style.display = list.length >= 2 ? '' : 'none';
+            groupBtn.textContent = isGroupChat ? '退出群聊' : '';
+            groupBtn.innerHTML = isGroupChat
+                ? '退出群聊'
+                : `<svg viewBox="0 0 20 20" fill="none" width="14" height="14">
+                     <circle cx="7" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/>
+                     <circle cx="14" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/>
+                     <path d="M2 17c0-3 2.5-5 5-5h1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                     <path d="M19 17c0-3-2.5-5-5-5h-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                     <path d="M7 12c0-2 1.5-3 3.5-3s3.5 1 3.5 3" stroke="currentColor" stroke-width="1.5"/>
+                   </svg>
+                   群聊`;
+        }
         elCharCards.innerHTML = list.map(ch => `
             <div class="char-card ${ch.isCurrent ? 'active' : ''}"
                  onclick="app.switchCharacter('${ch.id}')">
@@ -719,5 +805,6 @@ const app = (() => {
     init();
 
     return { onMicTap, sendText, onRecognizeTap, onCountSelected, closeCountModal, onImageSelected,
-             switchCharacter, deleteCharacter, exitGroupChat, startGroupChat };
+             switchCharacter, deleteCharacter, exitGroupChat,
+             openGroupPicker, closeGroupPicker, toggleGroupPickerItem, confirmGroupChat };
 })();
