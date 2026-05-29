@@ -36,7 +36,7 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "端着",
+          "emotion": "端庄",
           "text": "本宫今日出去，可要换身得体些的衣裳？若是见人，总不能失了体面。"
         },
         {
@@ -55,14 +55,14 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "自得 / 矜持",
+          "emotion": "骄傲",
           "text": "你这洋人说话虽怪，倒也算有几分见识。"
         },
         {
           "type": "dialogue",
           "speaker": "杜尚",
           "character_id": "duchamp",
-          "emotion": "邀请",
+          "emotion": "平静",
           "text": "今天请你们去我的世界参观参观吧。"
         }
       ]
@@ -101,7 +101,7 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "震惊 / 厌恶",
+          "emotion": "厌恶",
           "text": "这是什么腌臜东西？也配摆在正殿中央？"
         },
         {
@@ -115,7 +115,7 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "不解 / 恼怒",
+          "emotion": "恼怒",
           "text": "泉？你莫不是欺负本宫不识字？这哪里像泉？"
         }
       ]
@@ -141,7 +141,7 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "不耐烦 / 维护规矩",
+          "emotion": "不耐烦",
           "text": "依本宫看，你这是强词夺理。若是在宫里，早叫人撤下去了。"
         },
         {
@@ -153,7 +153,7 @@
           "type": "dialogue",
           "speaker": "Zsiga",
           "character_id": "zsiga",
-          "emotion": "认真 / 好奇",
+          "emotion": "认真",
           "text": "它原本不是被这样看的，对吗？"
         },
         {
@@ -174,7 +174,7 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "不解 / 嫌弃",
+          "emotion": "嫌弃",
           "text": "重新看见？这种东西也配被看见？"
         },
         {
@@ -217,21 +217,21 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "恼怒 / 不解",
+          "emotion": "不解",
           "text": "一把椅子也要展出来？这不是糊弄人吗！"
         },
         {
           "type": "dialogue",
           "speaker": "杜尚",
           "character_id": "duchamp",
-          "emotion": "平静 / 提问",
+          "emotion": "平静",
           "text": "如果我把它选出来，放到这里，给它一个位置，它还是原来的东西吗？"
         },
         {
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "冷笑 / 笃定",
+          "emotion": "冷笑",
           "text": "这有什么不能确定？能坐人的才是椅子。不能坐人的，便是不中用。"
         },
         {
@@ -246,15 +246,13 @@
     {
       "scene_id": "scene_06",
       "scene_title": "角色还是展品",
-      "background": "zsiga_beside_chair",
       "visual_hint": "Zsiga站在椅子旁边，忽然意识到自己也被放进了这个展厅的观看关系里。",
-      "mood": "错位 / 自我意识",
       "beats": [
         {
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "皱眉 / 不满",
+          "emotion": "皱眉",
           "text": "你这小东西，怎么也跟他一块儿胡说？"
         },
         {
@@ -266,14 +264,14 @@
           "type": "dialogue",
           "speaker": "杜尚",
           "character_id": "duchamp",
-          "emotion": "提出新问题",
+          "emotion": "平静",
           "text": "现在问题变了。"
         },
         {
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "警惕 / 不耐",
+          "emotion": "不解",
           "text": "又变什么了？"
         },
         {
@@ -297,7 +295,7 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "不安",
+          "emotion": "思考",
           "text": "若是被人摆着看，便总要有个名分。没名没分地放在那里，像什么样子？"
         }
       ]
@@ -316,7 +314,7 @@
           "type": "dialogue",
           "speaker": "杜尚",
           "character_id": "duchamp",
-          "emotion": "平静 / 引导",
+          "emotion": "平静",
           "text": "在我的世界里，你可以给任何东西重新命名。"
         },
         {
@@ -343,14 +341,14 @@
           "type": "dialogue",
           "speaker": "杜尚",
           "character_id": "duchamp",
-          "emotion": "冷静 / 看穿",
+          "emotion": "思考",
           "text": "你不是在命名一个物件。你是在命名自己。"
         },
         {
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "防御 / 慌乱",
+          "emotion": "不解",
           "text": "本宫自然是三阿哥的生母，这有什么不对？"
         }
       ]
@@ -369,7 +367,7 @@
           "type": "dialogue",
           "speaker": "Zsiga",
           "character_id": "zsiga",
-          "emotion": "直接 / 天真",
+          "emotion": "天真",
           "text": "可是这张标签贴在你身上，不在三阿哥身上。"
         },
         {
@@ -391,7 +389,7 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "嘴硬 / 自我安慰",
+          "emotion": "慌乱",
           "text": "本宫的三阿哥聪慧稳重，将来自有大造化。皇上也是看重他的。"
         }
       ]
@@ -410,28 +408,28 @@
         "type": "dialogue",
         "speaker": "齐妃",
         "character_id": "qifei",
-        "emotion": "嘴硬 / 防御",
+        "emotion": "认真",
         "text": "本宫不喜欢你这个世界。"
       },
       {
         "type": "dialogue",
         "speaker": "杜尚",
         "character_id": "duchamp",
-        "emotion": "追问",
+        "emotion": "疑惑",
         "text": "为什么？"
       },
       {
         "type": "dialogue",
         "speaker": "齐妃",
         "character_id": "qifei",
-        "emotion": "端着 / 排斥",
+        "emotion": "认真",
         "text": "太空，太白，太没有规矩。什么东西都能被摆上来，什么话都能被重新解释。若人人都如此，这世道还成什么样子？"
       },
       {
         "type": "dialogue",
         "speaker": "杜尚",
         "character_id": "duchamp",
-        "emotion": "平静 / 回答",
+        "emotion": "平静",
         "text": "成一个可以被重新看见的样子。"
       }
     ]

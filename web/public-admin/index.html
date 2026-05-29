@@ -304,68 +304,10 @@
                         <div class="settings-config-chip">配置</div>
                         <h1 class="settings-title">入住偏好调整</h1>
                     </div>
-                    <p class="settings-subtitle">自定义您的伴侣以何种方式与您互动。转化为共享空间的基本规则。</p>
+                    <p class="settings-subtitle">自定义您伙伴以何种方式与您互动。转化为共享空间的基本规则。</p>
                 </div>
 
-                <!-- 语气偏好 -->
-                <div class="settings-section settings-section--card" style="position:relative">
-                    <div class="settings-section-tag" style="right:-4px;top:-14px;transform:rotate(1.5deg)">声音与氛围</div>
-                    <div class="settings-section-title">
-                        <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
-                            <circle cx="10" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/>
-                            <path d="M3 18c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                        </svg>
-                        语气偏好
-                    </div>
-                    <div class="settings-tone-grid" id="tone-options">
-                        <label class="tone-card" data-value="calm">
-                            <input type="radio" name="tone" value="calm">
-                            <div class="tone-icon">
-                                <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
-                                    <path d="M4 10h12M7 6h6M7 14h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                </svg>
-                            </div>
-                            <div class="tone-name">安静</div>
-                            <div class="tone-desc">平静，回应简洁。只有在被问到时才说话。</div>
-                        </label>
-                        <label class="tone-card tone-card--selected" data-value="lively">
-                            <input type="radio" name="tone" value="lively" checked>
-                            <div class="tone-icon">
-                                <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
-                                    <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/>
-                                    <path d="M7 11.5c.8 1.2 5.2 1.2 6 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-                                    <circle cx="7.5" cy="8.5" r="1" fill="currentColor"/>
-                                    <circle cx="12.5" cy="8.5" r="1" fill="currentColor"/>
-                                </svg>
-                            </div>
-                            <div class="tone-name">活泼</div>
-                            <div class="tone-desc">充满活力，经常使用表情符号，主动开启玩笑。</div>
-                        </label>
-                        <label class="tone-card" data-value="gentle">
-                            <input type="radio" name="tone" value="gentle">
-                            <div class="tone-icon">
-                                <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
-                                    <path d="M10 3C6 3 3 6 3 10s3 7 7 7 7-3 7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                    <path d="M14 3l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </div>
-                            <div class="tone-name">温柔</div>
-                            <div class="tone-desc">支持性强，温暖，富有同理心的语调。</div>
-                        </label>
-                        <label class="tone-card" data-value="mysterious">
-                            <input type="radio" name="tone" value="mysterious">
-                            <div class="tone-icon">
-                                <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
-                                    <path d="M2 2l16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                    <path d="M6.7 6.7A7.2 7.2 0 003 10c1.5 3 4 5 7 5a7 7 0 003.3-.8M9 4.1A7 7 0 0117 10c-.4.9-1 1.8-1.7 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                </svg>
-                            </div>
-                            <div class="tone-name">神秘</div>
-                            <div class="tone-desc">隐秘，富有诗意，留有想象空间。</div>
-                        </label>
-                    </div>
-                </div>
-
+                
                 <!-- 互动频率 + 互动边界 -->
                 <div class="settings-two-col">
 
@@ -463,6 +405,65 @@
                         <label class="worldview-btn" data-value="light"><input type="radio" name="worldview" value="light">轻度</label>
                         <label class="worldview-btn worldview-btn--selected" data-value="medium"><input type="radio" name="worldview" value="medium" checked><span class="worldview-dot"></span>中度</label>
                         <label class="worldview-btn" data-value="deep"><input type="radio" name="worldview" value="deep">沉浸</label>
+                    </div>
+                </div>
+
+                <!-- 语气偏好 -->
+                <div class="settings-section settings-section--card" style="position:relative">
+                    <div class="settings-section-tag" style="right:-4px;top:-14px;transform:rotate(1.5deg)">声音与氛围</div>
+                    <div class="settings-section-title">
+                        <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                            <circle cx="10" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M3 18c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                        语气偏好
+                    </div>
+                    <div class="settings-tone-grid" id="tone-options">
+                        <label class="tone-card" data-value="calm">
+                            <input type="radio" name="tone" value="calm">
+                            <div class="tone-icon">
+                                <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                                    <path d="M4 10h12M7 6h6M7 14h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <div class="tone-name">安静</div>
+                            <div class="tone-desc">平静，回应简洁。只有在被问到时才说话。</div>
+                        </label>
+                        <label class="tone-card tone-card--selected" data-value="lively">
+                            <input type="radio" name="tone" value="lively" checked>
+                            <div class="tone-icon">
+                                <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                                    <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/>
+                                    <path d="M7 11.5c.8 1.2 5.2 1.2 6 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                                    <circle cx="7.5" cy="8.5" r="1" fill="currentColor"/>
+                                    <circle cx="12.5" cy="8.5" r="1" fill="currentColor"/>
+                                </svg>
+                            </div>
+                            <div class="tone-name">活泼</div>
+                            <div class="tone-desc">充满活力，经常使用表情符号，主动开启玩笑。</div>
+                        </label>
+                        <label class="tone-card" data-value="gentle">
+                            <input type="radio" name="tone" value="gentle">
+                            <div class="tone-icon">
+                                <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                                    <path d="M10 3C6 3 3 6 3 10s3 7 7 7 7-3 7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                    <path d="M14 3l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <div class="tone-name">温柔</div>
+                            <div class="tone-desc">支持性强，温暖，富有同理心的语调。</div>
+                        </label>
+                        <label class="tone-card" data-value="mysterious">
+                            <input type="radio" name="tone" value="mysterious">
+                            <div class="tone-icon">
+                                <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                                    <path d="M2 2l16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                    <path d="M6.7 6.7A7.2 7.2 0 003 10c1.5 3 4 5 7 5a7 7 0 003.3-.8M9 4.1A7 7 0 0117 10c-.4.9-1 1.8-1.7 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <div class="tone-name">神秘</div>
+                            <div class="tone-desc">隐秘，富有诗意，留有想象空间。</div>
+                        </label>
                     </div>
                 </div>
 

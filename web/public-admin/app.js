@@ -827,13 +827,6 @@ const app = (() => {
 
     // ── 设置页交互 ───────────────────────────────────────────
     function bindSettings() {
-        // 语气偏好
-        document.querySelectorAll('.tone-card').forEach(card => {
-            card.addEventListener('click', () => {
-                document.querySelectorAll('.tone-card').forEach(c => c.classList.remove('tone-card--selected'));
-                card.classList.add('tone-card--selected');
-            });
-        });
         // 互动频率
         document.querySelectorAll('.freq-item').forEach(item => {
             item.addEventListener('click', () => {
@@ -857,6 +850,13 @@ const app = (() => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.worldview-btn').forEach(b => b.classList.remove('worldview-btn--selected'));
                 btn.classList.add('worldview-btn--selected');
+            });
+        });
+        // 语气偏好
+        document.querySelectorAll('.tone-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.tone-card').forEach(c => c.classList.remove('tone-card--selected'));
+                card.classList.add('tone-card--selected');
             });
         });
     }
@@ -1194,8 +1194,8 @@ const app = (() => {
 
         story.scenes.forEach((scene, i) => {
             if (i > 0) pushConnector();
-            // 场景分隔：菱形标记，场景标题显示在左侧
-            items.push({ type: 'marker', variant: 'diamond', label: scene.scene_title });
+            // 场景分隔：图标标记 + 场景标题
+            items.push({ type: 'marker', variant: 'scene', label: scene.scene_title });
             pushConnector();
             let mediaInserted = false;
             for (let beatIndex = 0; beatIndex < scene.beats.length; beatIndex++) {
@@ -1295,6 +1295,7 @@ const app = (() => {
         tl.innerHTML = s.timeline.map(item => {
             if (item.type === 'marker') {
                 const markerHTML =
+                    item.variant === 'scene'   ? '<img class="tl-marker--scene-icon" src="/media/scene.png" alt="">' :
                     item.variant === 'diamond' ? '<div class="tl-marker--diamond"></div>' :
                     item.variant === 'star'    ? '<span class="tl-marker--star">✦</span>' :
                                                 '<div class="tl-marker--circle"></div>';
@@ -1314,7 +1315,7 @@ const app = (() => {
                     <div class="timeline-narration-text">${escapeHTML(item.text).replace(/\n/g, '<br>')}</div>
                     ${mediaHTML}
                 </div>`;
-                return tlRow('<div class="tl-line"></div><div class="tl-marker--note"></div><div class="tl-line"></div>', narHTML, 'tl-row--narration');
+                return tlRow('<div class="tl-line"></div><div class="tl-marker--diamond"></div><div class="tl-line"></div>', narHTML, 'tl-row--narration');
             }
             if (item.type === 'media') {
                 const mediaHTML = `<figure class="story-media-card">
