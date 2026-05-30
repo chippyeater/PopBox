@@ -1085,6 +1085,25 @@ const app = (() => {
     const STATUS_LABEL    = { upcoming: '未开始', ongoing: '进行中', done: '已完成' };
     const STATUS_DOT_COLOR = { upcoming: '#AAA', ongoing: '#7BC14A', done: '#FF6B35' };
     const STORY_MOOD_ANGLES = [-2, -1, 1, 2];
+    const STORY_MOOD_EMOJI = {
+        端庄:   { emoji: '💅🏼', angle: 0 },
+        骄傲:   { emoji: '👸', angle: 0 },
+        厌恶:   { emoji: '😕', angle: -8 },
+        恼怒:   { emoji: '😠', angle: 6 },
+        解释:   { emoji: '☝️', angle: -4 },
+        不耐烦: { emoji: '😒', angle: 6 },
+        认真:   { emoji: '🧐', angle: 0 },
+        认可:   { emoji: '👍', angle: 5 },
+        嫌弃:   { emoji: '🙄', angle: -4 },
+        嘴硬:   { emoji: '😕', angle: 6 },
+        不解:   { emoji: '😩', angle: -6 },
+        冷笑:   { emoji: '😏', angle: 4 },
+        皱眉:   { emoji: '🤨', angle: -8 },
+        思考:   { emoji: '🤔', angle: 5 },
+        天真:   { emoji: '😳', angle: 6 },
+        慌乱:   { emoji: '😰', angle: 6 },
+        疑惑:   { emoji: '🤨', angle: -5 },
+    };
     const STORY_SCENE_MEDIA = {
         scene_02: {
             src: '/media/duchamp-fountain.jpg',
@@ -1108,15 +1127,17 @@ const app = (() => {
     }
 
     function buildMoodTagsHTML(item, seed) {
-        const tags = Array.isArray(item.moods) ? item.moods : [];
+        const tags = Array.isArray(item.moods) ? item.moods.filter(tag => tag !== '平静') : [];
         return tags.map((tag, i) => {
             const tagSeed = seed + i * 17 + tag.length;
+            const mood = STORY_MOOD_EMOJI[tag];
             const styleParts = [
-                `right:${10 + i * 56}px`,
-                'top:-12px',
-                `transform:rotate(${STORY_MOOD_ANGLES[Math.abs(tagSeed) % STORY_MOOD_ANGLES.length]}deg)`,
+                `right:${10 + i * 76}px`,
+                `top:${mood ? -24 : -12}px`,
+                `transform:rotate(${mood?.angle ?? STORY_MOOD_ANGLES[Math.abs(tagSeed) % STORY_MOOD_ANGLES.length]}deg)`,
             ];
-            return `<span class="story-mood-tag" style="${styleParts.join(';')}">${escapeHTML(tag)}</span>`;
+            const className = mood ? 'story-mood-tag story-mood-tag--emoji' : 'story-mood-tag';
+            return `<span class="${className}" style="${styleParts.join(';')}" title="${escapeHTML(tag)}" aria-label="${escapeHTML(tag)}">${escapeHTML(mood?.emoji || tag)}</span>`;
         }).join('');
     }
 

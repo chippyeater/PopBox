@@ -153,7 +153,7 @@
           "type": "dialogue",
           "speaker": "Zsiga",
           "character_id": "zsiga",
-          "emotion": "认真",
+          "emotion": "思考",
           "text": "它原本不是被这样看的，对吗？"
         },
         {
@@ -231,14 +231,14 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "冷笑",
+          "emotion": "不耐烦",
           "text": "这有什么不能确定？能坐人的才是椅子。不能坐人的，便是不中用。"
         },
         {
           "type": "dialogue",
           "speaker": "Zsiga",
           "character_id": "zsiga",
-          "emotion": "认真",
+          "emotion": "思考",
           "text": "它还是椅子，但好像不只是椅子了。"
         }
       ]
@@ -271,7 +271,7 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "不解",
+          "emotion": "疑惑",
           "text": "又变什么了？"
         },
         {
@@ -295,7 +295,7 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "思考",
+          "emotion": "不解",
           "text": "若是被人摆着看，便总要有个名分。没名没分地放在那里，像什么样子？"
         }
       ]
@@ -341,7 +341,7 @@
           "type": "dialogue",
           "speaker": "杜尚",
           "character_id": "duchamp",
-          "emotion": "思考",
+          "emotion": "认真",
           "text": "你不是在命名一个物件。你是在命名自己。"
         },
         {
@@ -389,7 +389,7 @@
           "type": "dialogue",
           "speaker": "齐妃",
           "character_id": "qifei",
-          "emotion": "慌乱",
+          "emotion": "嘴硬",
           "text": "本宫的三阿哥聪慧稳重，将来自有大造化。皇上也是看重他的。"
         }
       ]
@@ -422,7 +422,7 @@
         "type": "dialogue",
         "speaker": "齐妃",
         "character_id": "qifei",
-        "emotion": "认真",
+        "emotion": "不解",
         "text": "太空，太白，太没有规矩。什么东西都能被摆上来，什么话都能被重新解释。若人人都如此，这世道还成什么样子？"
       },
       {
