@@ -46,6 +46,7 @@ private:
     void _onCharacterSelect(int index);
     void _processAndReply();
     void _processGroupReply();
+    void _autoContinueGroupChat();
     void _runRecognition();
     void _onCountSelect(int count);
     bool _waitForCaptureTap();
@@ -60,4 +61,6 @@ private:
 
     uint32_t _lastTapTime;
     uint8_t  _tapCount;
+    uint32_t _ttsCooldownUntil = 0;
+    static constexpr uint32_t TTS_COOLDOWN_MS = 2000;  // TTS 后忽略麦克风输入，防止回声反馈
 };

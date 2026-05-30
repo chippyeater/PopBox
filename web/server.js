@@ -409,7 +409,7 @@ function buildGroupSystemPrompt(charA, charB) {
         p += `口头禅（非常克制地用，建议每20轮对话不超过1次，只在气氛特别自然、非用不可时才用）：${charB.catchphrases.join('、')}\n`;
     }
     p += `\n=== 群聊规则 ===\n`;
-    p += `1. 每次回复生成 2~4 条消息，让对话自然流动\n`;
+    p += `1. 每次回复生成 2 条消息，每人各一句\n`;
     p += `2. 角色之间可以互相回应、讨论、吐槽、追问，像真正的朋友聊天一样\n`;
     p += `3. 每个角色的回复要严格符合其性格和世界观\n`;
     p += `4. 回复围绕用户刚才说的话，日常、随意、接地气，不要深沉、不要哲理\n`;
@@ -420,9 +420,8 @@ function buildGroupSystemPrompt(charA, charB) {
     p += `除上述白名单外，reply中禁止出现任何括号内容。\n`;
     p += `可使用<#0.5#>表示0.5秒停顿。\n`;
     p += `expression只能是：happy、thinking、idle、sad、angry。\n`;
-    p += `\n请严格按照以下 JSON 格式回复（replies 数组长度 2~4，不要固定为 2 条）：\n`;
+    p += `\n请严格按照以下 JSON 格式回复，replies 必须恰好 2 条：\n`;
     p += `{"replies":[{"characterId":"${charA.id}","name":"${charA.name}","reply":"回复内容","expression":"idle"},{"characterId":"${charB.id}","name":"${charB.name}","reply":"回复内容","expression":"idle"}]}\n`;
-    p += `如果角色间自然地继续聊下去，可以生成 3~4 条；如果用户说的话接不下去，2 条也可以。`;
     return p;
 }
 
@@ -997,7 +996,7 @@ app.post('/api/group-chat', async (req, res) => {
     let { message } = req.body;
     const isHeartbeat = message === '__heartbeat__';
     if (isHeartbeat) {
-        message = '（用户暂时没说话，你们俩继续聊吧，不用等TA）';
+        message = '（用户暂时没说话，你们俩根据刚才的话题继续聊，互相回应对方说的话，观点可以有分歧，不要各说各的）';
     } else if (!message?.trim()) {
         return res.status(400).json({ error: '消息不能为空' });
     }
@@ -1100,61 +1099,7 @@ app.post('/api/group-chat', async (req, res) => {
             replies = defaultReplies;
         }
 
-        // ── 自动延续：角色们是否自然想继续聊？ ────────────────
-        let continuationReplies = [];
-        try {
-            // 延续上下文同样不使用 assistant 角色，全部折叠进 system
-            const contContext = history.map(msg => {
-                if (msg.role === 'user') return `用户：${msg.content}`;
-                return `${msg.characterName}：${msg.content}`;
-            }).join('\n');
-            const contPrompt = buildGroupSystemPrompt(charA, charB)
-                + (contContext ? `\n\n=== 对话历史 ===\n${contContext}` : '')
-                + `\n\n用户：${message}`
-                + `\n${replies.map(r => `${r.name}：${r.reply}`).join('\n')}`
-                + `\n\n刚才说完这些，你们俩自然地想不想继续聊点什么？如果话题已经结束就给我空数组 []，如果之间还有话想接，继续说 1~2 句。注意只能接对方的话，不要再提我。直接 JSON 回复：{"replies":[...]}`;
-            const continuationContext = [
-                { role: 'system', content: contPrompt }
-            ];
-            const contRes = await fetchWithTimeout(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({ model, messages: continuationContext, max_tokens: 200, temperature: 0.9, enable_thinking: false })
-            }, 15000);
-            if (contRes.ok) {
-                const contData = await contRes.json();
-                const contRaw = contData?.choices?.[0]?.message?.content?.trim() || '';
-                const contJsonStr = contRaw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-                const contParsed = JSON.parse(contJsonStr);
-                if (contParsed.replies && Array.isArray(contParsed.replies)) {
-                    const extra = contParsed.replies
-                        .map(r => ({
-                            characterId: r.characterId,
-                            name: r.name || (r.characterId === charA.id ? charA.name : charB.name),
-                            reply: r.reply || '',
-                            expression: VALID_EXPRESSIONS.includes(r.expression) ? r.expression : 'idle'
-                        }))
-                        .filter(r => r.reply && (r.characterId === charA.id || r.characterId === charB.id));
-                    if (extra.length > 0) {
-                        console.log(`[GroupChat] 自动延续 ${extra.length} 条`);
-                        continuationReplies = extra;
-                    }
-                }
-            }
-        } catch (e) {
-            console.log('[GroupChat] 自动延续跳过:', e.message);
-        }
-        // 如果自动延续成功，追加到主回复中
-        if (continuationReplies.length > 0) {
-            // 过滤掉可能的心跳消息回声
-            const cleaned = replies.filter(r => !r.reply.includes('用户暂时没说话'));
-            replies = [...cleaned, ...continuationReplies];
-        }
-
-        // 持久化群聊历史（包含主回复 + 延续）
+        // 持久化群聊历史
         appendGroupTurn(charA.id, charB.id, message, replies);
 
         console.log(`[GroupChat] (${charA.name}+${charB.name}) 用户: ${message} | 回复数: ${replies.length} | 总耗时: ${Date.now() - t0}ms`);

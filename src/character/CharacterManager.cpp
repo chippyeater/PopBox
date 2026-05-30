@@ -8,6 +8,21 @@
 
 static const char* OFFLINE_CACHE_PATH = "/characters.json";
 
+// 中文名头像路径 → ASCII 别名映射（ESP32 HTTPClient 对百分号编码的中文路径支持不佳）
+static const char* _asciiFallback(const String& path) {
+    struct { const char* cn; const char* ascii; } map[] = {
+        { "/avatars/斯蒂芬·库里.jpg",        "/avatars/curry.jpg" },
+        { "/avatars/斯蒂芬·库里_happy.jpg",  "/avatars/curry_happy.jpg" },
+        { "/avatars/斯蒂芬·库里_sad.jpg",    "/avatars/curry_sad.jpg" },
+        { "/avatars/斯蒂芬·库里_angry.jpg",  "/avatars/curry_angry.jpg" },
+        { "/avatars/斯蒂芬·库里_thinking.jpg","/avatars/curry_thinking.jpg" },
+    };
+    for (auto& fb : map) {
+        if (path == fb.cn) return fb.ascii;
+    }
+    return nullptr;
+}
+
 // ── 从后端拉取全部角色 ────────────────────────────────────────
 bool CharacterManager::fetchAll() {
     // 先解析主机名（最多等 5s），避免 mDNS 卡死整个启动流程
@@ -76,6 +91,7 @@ bool CharacterManager::fetchAll() {
     _currentIndex = currentIdx;
     _current      = _cache[_currentIndex];
     _saveOfflineCache();
+    _ensureAvatarFiles();  // 下载头像到 SPIFFS
 
     Serial.printf("[Characters] 已加载 %d 个角色，当前: %s (%d/%d)\n",
                   (int)_cache.size(), _current.name.c_str(),
@@ -123,6 +139,8 @@ bool CharacterManager::loadFromRecognition(const uint8_t* imageData,
     _current = newChar;
     _saveOfflineCache();
     _notifyBackend(newChar.id);
+    // 下载新角色的头像（包括表情变体）
+    _ensureAvatarFiles();
     Serial.printf("[Characters] 新角色: %s，收藏夹共 %d 个\n",
                   newChar.name.c_str(), (int)_cache.size());
     return true;
@@ -267,6 +285,93 @@ bool CharacterManager::setDualMode(int idxA, int idxB) {
     Serial.printf("[Characters] 群聊模式: %s + %s (后端%s)\n",
                   _current.name.c_str(), _secondary.name.c_str(),
                   ok ? "同步成功" : "同步失败");
+    return true;
+}
+
+// ── 头像下载 ──────────────────────────────────────────────────────
+
+void CharacterManager::_ensureAvatarFiles() {
+    Serial.printf("[Avatar] 开始下载头像 (%d 个角色)...\n", (int)_cache.size());
+    static constexpr const char* expressions[] = {"happy", "sad", "angry", "thinking"};
+    int downloaded = 0, skipped = 0;
+
+    for (const auto& ch : _cache) {
+        if (ch.avatarPath.isEmpty() || ch.avatarPath == "/avatar.jpg") continue;
+        if (_downloadFile(ch.avatarPath)) downloaded++;
+
+        int dot = ch.avatarPath.lastIndexOf('.');
+        if (dot < 0) continue;
+        String prefix = ch.avatarPath.substring(0, dot);
+        String ext    = ch.avatarPath.substring(dot);
+        for (const char* expr : expressions) {
+            if (_downloadFile(prefix + "_" + expr + ext)) downloaded++;
+        }
+    }
+    Serial.printf("[Avatar] 完成: %d 个文件可用\n", downloaded);
+}
+
+bool CharacterManager::_downloadFile(const String& path) {
+    if (SPIFFS.exists(path)) return true;  // 已有
+
+    // 对路径做 URL 编码（只编码非 ASCII 字符），保证中文文件名能正确请求
+    String encoded;
+    for (int i = 0; i < (int)path.length(); i++) {
+        char c = path[i];
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+            || (c >= '0' && c <= '9') || c == '/' || c == '.'
+            || c == '-' || c == '_' || c == '~') {
+            encoded += c;
+        } else {
+            char hex[4];
+            snprintf(hex, sizeof(hex), "%%%02X", (uint8_t)c);
+            encoded += hex;
+        }
+    }
+
+    String url = String(BACKEND_URL) + encoded;
+    HTTPClient http;
+    http.begin(url);
+    http.setTimeout(5000);
+    int code = http.GET();
+    if (code != 200) {
+        http.end();
+        // 中文路径可能下载失败，尝试 ASCII 别名
+        const char* fallback = _asciiFallback(path);
+        if (fallback && strcmp(fallback, path.c_str()) != 0) {
+            return _downloadFile(fallback);
+        }
+        return false;  // 404（变体不存在）或网络错误
+    }
+
+    int contentLen = http.getSize();
+    if (contentLen == 0) { http.end(); return false; }
+
+    WiFiClient* stream = http.getStreamPtr();
+    File f = SPIFFS.open(path, "w");
+    if (!f) { http.end(); return false; }
+
+    uint8_t buf[256];
+    size_t total = 0;
+    uint32_t lastDataAt = millis();
+    while (http.connected()) {
+        int avail = stream->available();
+        if (avail > 0) {
+            int n = stream->readBytes(buf, min((size_t)avail, sizeof(buf)));
+            f.write(buf, n);
+            total += n;
+            lastDataAt = millis();
+            if (contentLen > 0 && total >= (size_t)contentLen) break;
+        } else {
+            if (contentLen > 0) break;       // 有 Content-Length 且无新数据
+            if (millis() - lastDataAt > 5000) break;  // 未知长度超时
+            delay(5);
+        }
+    }
+    f.close();
+    http.end();
+
+    if (total == 0) return false;
+    Serial.printf("[Avatar] 已下载: %s (%u 字节)\n", path.c_str(), (unsigned)total);
     return true;
 }
 

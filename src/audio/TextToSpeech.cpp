@@ -130,6 +130,8 @@ bool TextToSpeech::speak(const String& text, const String& voice) {
     }
 
     // ── 扬声器硬件初始化 ──
+    // 先开启功放（AW88298 上电 + I2C 配置），再安装 I2S 驱动。
+    // M5.Speaker.begin() 内部可能通过 I2C 访问 AW88298，功放必须先上电。
     _speaker_hw_enable();
     M5.Speaker.end();
     delay(20);

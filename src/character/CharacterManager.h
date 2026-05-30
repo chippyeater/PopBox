@@ -60,4 +60,6 @@ private:
     void _loadOfflineCache();
     bool _notifyBackend(const String& characterId);  // PUT /api/characters/current/:id
     bool _notifyDualBackend(const String& id1, const String& id2); // PUT /api/characters/dual/:id1/:id2
+    void _ensureAvatarFiles();
+    bool _downloadFile(const String& path);  // 从后端下载单个文件到 SPIFFS，true=可用
 };
