@@ -308,27 +308,11 @@ body {
     min-width: 0;
 }
 
-.char-identity-label {
-    font-size: 11px;
-    color: #888;
-    font-weight: 600;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-}
-
 .char-name {
     font-size: 42px;
     font-weight: 800;
     letter-spacing: -1.5px;
     line-height: 1.05;
-}
-
-.char-type {
-    font-size: 26px;
-    font-weight: 700;
-    color: #7AAF00;
-    margin-top: 6px;
 }
 
 .character-select {
@@ -2211,3 +2195,715 @@ body {
 }
 
 .echo-card-attr::before { content: '— '; }
+
+/* ══════════════════════════════════════════════════════════════
+   路演视觉强化：潮玩包装 / 杂志拼贴 / 物理材质
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+    --lime: #C8E600;
+    --coral: #FF6B4A;
+    --yellow: #FFD84D;
+    --purple: #A98BFF;
+    --kraft: #C9A777;
+    --paper: #FFFDF7;
+    --font: "Arial Black", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    --font-body: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    --font-mono: "Courier New", monospace;
+}
+
+body {
+    font-family: var(--font-body);
+}
+
+.logo-title,
+.char-name,
+.journal-wall-title,
+.story-title,
+.echoes-header {
+    font-family: var(--font);
+}
+
+.logo-sub,
+.photo-serial,
+.voice-log-label,
+.journal-wall-sub,
+.story-eyebrow,
+.tl-scene-title,
+.char-card-name-tag {
+    font-family: var(--font-mono);
+}
+
+/* 侧边栏：保留导航克制感，用大色块建立统一品牌识别 */
+.sidebar {
+    background: #FFFDF7;
+}
+
+.sidebar-logo {
+    min-height: 92px;
+    background: var(--yellow);
+}
+
+.logo-title {
+    font-size: 28px;
+    letter-spacing: -1px;
+}
+
+.logo-sub {
+    color: #5A431F;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.sidebar-nav {
+    gap: 12px;
+    padding-top: 26px;
+}
+
+.nav-item {
+    min-height: 44px;
+    font-weight: 800;
+}
+
+.nav-item.active,
+.nav-item.active .nav-icon {
+    color: var(--black);
+}
+
+.nav-item[data-page="home"].active::before { background: var(--lime); }
+.nav-item[data-page="notes"].active::before { background: var(--yellow); }
+.nav-item[data-page="journal"].active::before { background: var(--coral); }
+.nav-item[data-page="story"].active::before { background: var(--purple); }
+
+/* 生命仓：像潮玩包装盒，而不是普通后台卡片 */
+.main {
+    background:
+        radial-gradient(circle at 93% 11%, rgba(255, 216, 77, 0.74) 0 82px, transparent 83px),
+        linear-gradient(135deg, rgba(200, 230, 0, 0.11) 0 18%, transparent 18% 100%),
+        #FFFDF7;
+}
+
+.days-badge {
+    background: var(--purple);
+    border-radius: 0;
+    padding: 9px 16px;
+    font-family: var(--font-mono);
+    font-weight: 800;
+}
+
+.main-card {
+    border-radius: 0;
+    box-shadow: 8px 8px 0 var(--black);
+    background: var(--paper);
+}
+
+.photo-col {
+    width: 390px;
+    padding: 26px;
+    border-radius: 0;
+    background:
+        radial-gradient(circle, rgba(26, 26, 26, 0.22) 1.4px, transparent 1.7px) 0 0 / 18px 18px,
+        var(--lime);
+}
+
+.photo-frame {
+    outline-width: 3px;
+    box-shadow: 7px 7px 0 var(--black);
+    transform: rotate(-2deg);
+}
+
+.photo-caption {
+    min-height: 52px;
+    background: var(--yellow);
+}
+
+.photo-serial {
+    font-weight: 900;
+    letter-spacing: 0.04em;
+}
+
+.info-col {
+    padding: 34px 42px 30px;
+}
+
+.char-name {
+    max-width: 680px;
+    font-size: clamp(52px, 6vw, 86px);
+    letter-spacing: -4px;
+    line-height: 0.94;
+    text-transform: uppercase;
+}
+
+.character-select {
+    margin-top: 20px;
+    background: var(--paper);
+    font-family: var(--font-body);
+}
+
+.status-card {
+    min-height: 0;
+    padding: 15px;
+    box-shadow: 4px 4px 0 var(--black);
+}
+
+.status-card:nth-child(1) { background: var(--lime); }
+.status-card:nth-child(2) { background: var(--yellow); }
+.status-card:nth-child(3) { background: var(--purple); }
+
+.status-icon,
+.status-label {
+    color: var(--black);
+}
+
+.voice-log {
+    background: #F0E9FF;
+    border-left: 10px solid var(--purple);
+}
+
+.btn-primary {
+    background: var(--coral);
+    padding: 14px 28px;
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 900;
+}
+
+/* 小纸条：软木板和真实纸张 */
+.notes-board {
+    background: var(--white);
+}
+
+.notes-board::before {
+    display: none;
+}
+
+.notes-status-chip {
+    top: 34px;
+    left: 42px;
+    background: var(--yellow);
+}
+
+.note-add-btn {
+    top: 34px;
+    right: 42px;
+    background: var(--coral);
+}
+
+.note-sticky {
+    box-shadow: 5px 7px 0 rgba(26, 26, 26, 0.55);
+}
+
+.note-sticky--char { background: #FFF079; }
+.note-sticky--user { background: #F8D5DF; }
+
+.note-tape-top,
+.note-tape-deco {
+    background: rgba(242, 230, 195, 0.82);
+}
+
+/* 照片墙：相册工作台，保持照片为第一视觉焦点 */
+.journal-canvas-wrap {
+    background: var(--white);
+}
+
+.journal-topbar {
+    background: #FFF8E8;
+    box-shadow: 7px 7px 0 var(--black);
+}
+
+.journal-topbar::before {
+    background: rgba(255, 216, 77, 0.8);
+}
+
+.journal-wall-title {
+    font-size: 42px;
+    letter-spacing: -2px;
+}
+
+.btn-record-place {
+    background: var(--coral);
+}
+
+.polaroid {
+    box-shadow: 5px 6px 0 rgba(26, 26, 26, 0.62);
+}
+
+.polaroid-tape {
+    background: rgba(255, 239, 179, 0.82);
+    border-color: rgba(130, 98, 48, 0.45);
+}
+
+/* 今日同游：独立杂志拼贴 */
+.story-page {
+    background: #FFFDF7;
+}
+
+.story-header {
+    min-height: 126px;
+    padding: 24px 42px 18px;
+    background: rgba(255, 253, 247, 0.96);
+}
+
+.story-eyebrow {
+    width: fit-content;
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    border: 2px solid var(--black);
+    background: var(--yellow);
+    color: var(--black);
+    font-size: 12px;
+    font-weight: 900;
+    transform: rotate(-1deg);
+}
+
+.story-title {
+    font-size: clamp(44px, 5vw, 68px);
+    letter-spacing: -3px;
+    line-height: 0.96;
+}
+
+.story-status-badge {
+    border-radius: 0;
+    background: var(--lime);
+    font-family: var(--font-mono);
+    transform: rotate(2deg);
+}
+
+.story-scroll {
+    padding-top: 160px;
+}
+
+.story-scroll::before {
+    height: 10px;
+    margin-bottom: 36px;
+    background: repeating-linear-gradient(90deg, var(--black) 0 34px, var(--coral) 34px 68px, var(--yellow) 68px 102px, var(--purple) 102px 136px);
+}
+
+.tl-row--scene {
+    padding-top: 52px;
+}
+
+.tl-marker--scene-icon {
+    background: var(--yellow);
+}
+
+.tl-row--scene-color-0 .tl-scene-title { background: var(--lime); }
+.tl-row--scene-color-1 .tl-scene-title { background: var(--coral); }
+.tl-row--scene-color-2 .tl-scene-title { background: var(--yellow); }
+.tl-row--scene-color-3 .tl-scene-title { background: var(--purple); }
+
+.tl-scene-title {
+    padding: 7px 17px;
+    font-size: 14px;
+    box-shadow: 4px 4px 0 var(--black);
+    transform: rotate(-1deg);
+}
+
+.timeline-char-card {
+    border-width: 3px;
+    box-shadow: 6px 6px 0 var(--black);
+}
+
+.char-duchamp {
+    background: #F5F1E9;
+    border-color: var(--black);
+    box-shadow: 6px 6px 0 var(--black);
+}
+
+.char-qifei {
+    background: #FFD1DB;
+    border-color: #1A1A1A;
+    box-shadow: 6px 6px 0 #E97891;
+}
+
+.char-zsiga {
+    background: #F3FF9A;
+    border-left: 12px solid var(--lime);
+    box-shadow: 6px 6px 0 var(--black);
+}
+
+.char-card-name-tag {
+    background: var(--yellow);
+    border-width: 2px;
+    font-weight: 900;
+}
+
+.story-mood-tag--emoji {
+    font-size: 62px;
+    filter: drop-shadow(4px 5px 0 rgba(26, 26, 26, 0.28));
+}
+
+.story-media-card {
+    border-width: 3px;
+    box-shadow: 7px 7px 0 var(--black);
+    transform: rotate(-3deg);
+}
+
+.echoes-header::after {
+    background: var(--coral);
+}
+
+.echo-card {
+    border-radius: 0;
+    box-shadow: 5px 5px 0 var(--black);
+}
+
+.echo-card--qifei   { background: #FFD1DB; }
+.echo-card--zsiga   { background: var(--yellow); }
+.echo-card--duchamp { background: var(--lime); }
+
+/* 第二轮：包装正面结构 */
+.package-topline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 62px;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 18px;
+    border-bottom: 3px solid var(--black);
+    background: var(--lime);
+}
+
+.package-archive {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+}
+
+.package-hang-tab {
+    position: absolute;
+    left: 50%;
+    top: 18px;
+    width: 62px;
+    height: 20px;
+    border: 3px solid var(--black);
+    border-radius: 16px 16px 5px 5px;
+    background: #FFFDF7;
+    transform: translateX(-50%);
+}
+
+.package-hang-tab::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -11px;
+    width: 20px;
+    height: 11px;
+    border: 3px solid var(--black);
+    border-bottom: 0;
+    border-radius: 10px 10px 0 0;
+    background: #FFFDF7;
+    transform: translateX(-50%);
+}
+
+.package-archive {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border: 2px solid var(--black);
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.package-archive i {
+    display: block;
+    width: 58px;
+    height: 25px;
+    background: repeating-linear-gradient(90deg, var(--black) 0 2px, transparent 2px 4px, var(--black) 4px 5px, transparent 5px 8px);
+}
+
+.main-card > .photo-col,
+.main-card > .info-col {
+    padding-top: 86px;
+}
+
+.sticker-entered {
+    top: 114px;
+}
+
+.sticker-adapting {
+    top: 158px;
+}
+
+.package-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 22px;
+    width: 100%;
+    margin-top: 16px;
+}
+
+.package-edition {
+    width: fit-content;
+    padding: 5px 11px;
+    border: var(--border);
+    background: var(--coral);
+    box-shadow: 3px 3px 0 var(--black);
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    transform: rotate(-1deg);
+}
+
+.character-select {
+    width: min(300px, 42%);
+    margin-top: 0;
+    margin-left: auto;
+}
+
+/* 第二轮：杂志刊头和稳定错落版式 */
+.story-magazine-label {
+    width: 100%;
+    margin-bottom: 13px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #777;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+}
+
+.story-header-left {
+    flex: 1;
+    min-width: 0;
+}
+
+.story-title {
+    width: fit-content;
+    position: relative;
+}
+
+.story-title::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -18px;
+    height: 12px;
+    border-top: 5px solid var(--purple);
+    border-radius: 50%;
+    transform: rotate(-1deg);
+    pointer-events: none;
+}
+
+.story-header-right {
+    min-width: 114px;
+    margin-left: 28px;
+    text-align: right;
+    font-family: var(--font-mono);
+}
+
+.story-issue-label {
+    padding-bottom: 3px;
+    border-bottom: 1px solid #777;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+}
+
+.story-episode {
+    font-family: var(--font);
+    font-size: 50px;
+    font-weight: 900;
+    letter-spacing: -3px;
+    line-height: 0.95;
+}
+
+.story-header-right .story-status-badge {
+    width: fit-content;
+    margin: 12px 0 0 auto;
+    padding: 4px 9px;
+    font-size: 11px;
+}
+
+.story-scroll {
+    padding-top: 178px;
+    background:
+        linear-gradient(90deg, transparent 0 93%, rgba(169, 139, 255, 0.26) 93% 100%)
+        0 188px / 100% calc(100% - 188px) no-repeat;
+}
+
+.tl-scene-title {
+    gap: 9px;
+}
+
+.tl-scene-title span {
+    padding-right: 9px;
+    border-right: 2px solid var(--black);
+    font-size: 12px;
+}
+
+.tl-row--char .timeline-char-card {
+    transform-origin: center;
+}
+
+.tl-row--char:nth-of-type(3n + 1) .timeline-char-card {
+    margin-left: 18px;
+}
+
+.tl-row--char:nth-of-type(3n + 2) .timeline-char-card {
+    margin-left: 58px;
+}
+
+.tl-row--char:nth-of-type(3n) .timeline-char-card {
+    margin-left: 34px;
+}
+
+.char-qifei {
+    transform: rotate(-0.65deg);
+}
+
+.char-duchamp {
+    transform: rotate(0.45deg);
+}
+
+.char-zsiga {
+    transform: rotate(-0.35deg);
+}
+
+.story-media-card--inline {
+    width: 250px;
+    flex-basis: 250px;
+}
+
+/* 第二轮：物理页面标题贴和紧凑控制条 */
+.notes-board-title {
+    position: absolute;
+    top: 36px;
+    left: 44px;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.notes-status-chip {
+    top: auto;
+    bottom: 34px;
+    left: 48px;
+}
+
+.note-add-btn {
+    width: auto;
+    height: auto;
+    padding: 10px 15px;
+    gap: 7px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.note-add-btn span {
+    display: inline;
+}
+
+.journal-topbar {
+    min-height: 82px;
+    padding: 10px 14px 10px 18px;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+}
+
+.journal-topbar::before,
+.journal-topbar::after {
+    display: none;
+}
+
+.journal-topbar-left {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.physical-page-title {
+    position: relative;
+    padding: 9px 17px 18px;
+    border: var(--border);
+    box-shadow: 5px 5px 0 var(--black);
+    font-family: var(--font);
+    font-size: 34px;
+    letter-spacing: -2px;
+    line-height: 1;
+    transform: rotate(-2deg);
+}
+
+.physical-page-title::after {
+    content: "";
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 5px;
+    height: 10px;
+    border-top: 3px solid var(--black);
+    border-radius: 50%;
+    transform: rotate(-1deg);
+    pointer-events: none;
+}
+
+.notes-board-title {
+    position: absolute;
+    width: max-content;
+    background: var(--yellow);
+}
+
+.journal-wall-title {
+    background: var(--coral);
+}
+
+.journal-wall-sub {
+    display: none;
+}
+
+.journal-topbar-center {
+    margin-left: auto;
+    box-shadow: 4px 4px 0 var(--black);
+}
+
+.btn-explore-data {
+    min-height: 44px;
+    padding: 0 15px;
+}
+
+.journal-stat-chip {
+    min-width: 86px;
+    min-height: 44px;
+    padding: 0 14px;
+}
+
+.journal-stat-chip strong {
+    font-size: 25px;
+}
+
+.journal-topbar-right {
+    margin-left: 0;
+}
+
+.btn-record-place {
+    min-height: 48px;
+    padding: 0 18px;
+    font-size: 13px;
+}
+
+/* 隐藏滚动条但保留滚动行为 */
+.info-col,
+.journal-wall,
+.settings-scroll,
+.story-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.info-col::-webkit-scrollbar,
+.journal-wall::-webkit-scrollbar,
+.settings-scroll::-webkit-scrollbar,
+.story-scroll::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}

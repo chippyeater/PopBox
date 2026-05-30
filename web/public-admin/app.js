@@ -661,7 +661,7 @@ const app = (() => {
         if (!cur) return;
         currentCharacterId = cur.id || currentCharacterId;
         document.getElementById('char-name').textContent = cur.name || '';
-        document.getElementById('char-type').textContent = `[${cur.series || '未知系列'}]`;
+        document.getElementById('package-edition').textContent = `# ${cur.series || '未知系列'}`;
         document.getElementById('photo-serial').textContent = `SP-01 / ${cur.name || ''}`;
 
         const photo = document.getElementById('char-photo');
@@ -799,27 +799,6 @@ const app = (() => {
             await loadJournal();
             await loadNotes();
             startJournalPolling();
-            /*
-            const res  = await fetch('/api/characters');
-            const list = await res.json();
-            const cur  = list.find(c => c.isCurrent) || list[0];
-            if (!cur) return;
-
-            document.getElementById('char-name').textContent  = cur.name;
-            document.getElementById('char-type').textContent  = `[${cur.series || '未知系列'}]`;
-            document.getElementById('photo-serial').textContent = `SP-01 / ${cur.name}`;
-
-            const photo       = document.getElementById('char-photo');
-            const placeholder = document.getElementById('char-photo-placeholder');
-            if (cur.avatar) {
-                photo.onload = () => {
-                    photo.style.display = 'block';
-                    placeholder.style.display = 'none';
-                };
-                photo.onerror = () => { photo.style.display = 'none'; };
-                photo.src = cur.avatar;
-            }
-            */
         } catch (e) {
             console.error('[Admin] 角色加载失败:', e.message);
         }
@@ -1216,7 +1195,7 @@ const app = (() => {
         story.scenes.forEach((scene, i) => {
             if (i > 0) pushConnector();
             // 场景分隔：图标标记 + 场景标题
-            items.push({ type: 'marker', variant: 'scene', label: scene.scene_title });
+            items.push({ type: 'marker', variant: 'scene', label: scene.scene_title, sceneNumber: i + 1, colorIndex: i % 4 });
             pushConnector();
             let mediaInserted = false;
             for (let beatIndex = 0; beatIndex < scene.beats.length; beatIndex++) {
@@ -1321,11 +1300,11 @@ const app = (() => {
                     item.variant === 'star'    ? '<span class="tl-marker--star">✦</span>' :
                                                 '<div class="tl-marker--circle"></div>';
                 const sceneHTML = item.label
-                    ? `<div class="tl-scene-title">${escapeHTML(item.label)}</div>` : '';
+                    ? `<div class="tl-scene-title"><span>${String(item.sceneNumber || '').padStart(2, '0')}</span>${escapeHTML(item.label)}</div>` : '';
                 return tlRow(
                     `<div class="tl-line" style="min-height:6px"></div>${markerHTML}<div class="tl-line" style="min-height:6px"></div>`,
                     sceneHTML,
-                    'tl-row--scene');
+                    `tl-row--scene tl-row--scene-color-${item.colorIndex ?? 0}`);
             }
             if (item.type === 'narration') {
                 const mediaHTML = item.media ? `<figure class="story-media-card story-media-card--inline">

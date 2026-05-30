@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pop Box</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,7 +15,7 @@
             <img id="sidebar-char-avatar" class="sidebar-char-avatar" src="" alt="" style="display:none">
             <div class="logo-text">
                 <span class="logo-title">Pop Box</span>
-                <span class="logo-sub">Online · Living with you</span>
+                <span class="logo-sub">Online</span>
             </div>
         </div>
 
@@ -79,6 +76,13 @@
         <!-- ── 生命仓页面 ── -->
         <div class="page-view" id="page-home">
             <div class="main-card">
+                <div class="package-topline">
+                    <div class="package-archive">
+                        <span>ARCHIVE: PBX-2024-001</span>
+                        <i aria-hidden="true"></i>
+                    </div>
+                    <div class="package-hang-tab" aria-hidden="true"></div>
+                </div>
                 <span class="sticker sticker-entered">[已入住]</span>
                 <span class="sticker sticker-adapting" id="status-tag">正在适应你的房间</span>
 
@@ -106,10 +110,11 @@
                 </div>
 
                 <div class="info-col">
-                    <div class="char-identity-label">角色身份</div>
                     <h1 class="char-name" id="char-name">Skullpanda</h1>
-                    <div class="char-type" id="char-type">[温暖者]</div>
-                    <select id="character-select" class="character-select" aria-label="选择当前角色"></select>
+                    <div class="package-meta-row">
+                        <div class="package-edition" id="package-edition"># 未知系列</div>
+                        <select id="character-select" class="character-select" aria-label="选择当前角色"></select>
+                    </div>
 
                     <hr class="divider">
 
@@ -165,7 +170,7 @@
                 <!-- 上：顶部工具栏 -->
                 <div class="journal-topbar">
                     <div class="journal-topbar-left">
-                        <div class="journal-wall-title">出行照片墙</div>
+                        <div class="physical-page-title journal-wall-title">出行照片墙</div>
                         <div class="journal-wall-sub">旅行日志 // 物理与数字的交集</div>
                     </div>
                     <div class="journal-topbar-center">
@@ -241,6 +246,7 @@
         <div class="page-view" id="page-notes" style="display:none">
             <div class="notes-board">
 
+                <div class="physical-page-title notes-board-title">小纸条</div>
                 <div class="notes-viewport" id="notes-viewport">
                     <div class="notes-canvas" id="notes-canvas">
                         <div class="notes-list" id="notes-list"></div>
@@ -252,6 +258,7 @@
                     <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
                         <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
+                    <span>写一张小纸条</span>
                 </button>
 
                 <!-- 状态标签 -->
@@ -267,12 +274,16 @@
                 <!-- 页头 -->
                 <div class="story-header">
                     <div class="story-header-left">
-                        <div class="story-eyebrow">事件记录档案 <span id="story-episode">#842</span></div>
+                        <div class="story-magazine-label">POP BOX MAGAZINE</div>
                         <h1 class="story-title" id="story-title">今日同游：杜尚的世界</h1>
                     </div>
-                    <div class="story-status-badge" id="story-status-badge">
-                        <span class="story-status-dot"></span>
-                        <span id="story-status-text">进行中</span>
+                    <div class="story-header-right">
+                        <div class="story-issue-label">ISSUE</div>
+                        <div class="story-episode" id="story-episode">#842</div>
+                        <div class="story-status-badge" id="story-status-badge">
+                            <span class="story-status-dot"></span>
+                            <span id="story-status-text">进行中</span>
+                        </div>
                     </div>
                 </div>
 

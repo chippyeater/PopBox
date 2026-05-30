@@ -1397,7 +1397,7 @@ function buildCharacterObject(nameStr, series, searchInfo = {}) {
         name,
         series:       series || '',
         voice:        MINIMAX_VOICE_MAP[name] || MINIMAX_VOICE_FALLBACK,
-        avatar:       `/${id}.jpg`,
+        avatar:       `/avatars/${id}.jpg`,
         catchphrases: searchInfo.catchphrases || [],
         personality:  searchInfo.personality  || '',
         worldview:    searchInfo.worldview    || '',
