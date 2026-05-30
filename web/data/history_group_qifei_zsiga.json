@@ -1,0 +1,266 @@
+[
+  {
+    "role": "user",
+    "content": "今天心情不错",
+    "ts": 1779866692807
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "真好……世界好像也没那么吵了。<#0.5#>想不想去森林里发发呆？",
+    "ts": 1779866692807
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "心情好便好。三阿哥昨日还夸你懂事，说跟你在一块儿最自在。罢了，既然欢喜，今儿个便多吃两块糕点吧。",
+    "ts": 1779866692807
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "糕点太甜了……会粘住心里的刺。<#0.5#>还是风比较自由，吹过就不留痕迹。",
+    "ts": 1779866692807
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "你这孩子，净说些没由头的话。三阿哥爱吃那个桂花糕，你也尝尝？别总想着那些虚无缥缈的。",
+    "ts": 1779866692807
+  },
+  {
+    "role": "user",
+    "content": "中午吃什么",
+    "ts": 1779866696150
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "随便吃点……像风一样轻的东西。比如空气？<#0.5#>哈哈，开玩笑的。我想吃那种酸酸的，能让人清醒的水果。",
+    "ts": 1779866696150
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "什么酸不酸的，伤胃！中午得吃点热乎的，补补身子。三阿哥最爱喝的小鸡炖蘑菇，我去吩咐厨房给你也做一碗？",
+    "ts": 1779866696150
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "小鸡炖蘑菇……听起来暖烘烘的。<#0.5#>可是我的刺会被汤汁粘住，那样就长不大了。",
+    "ts": 1779866696150
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "你这丫头真是难伺候。那喝碗热粥总行吧？三阿哥说粥养胃，你也该学学规矩，别总任性。",
+    "ts": 1779866696150
+  },
+  {
+    "role": "user",
+    "content": "周末有计划吗",
+    "ts": 1779866699141
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "发呆……或者去观察云怎么飘。<#0.5#>只要不被大人拉着去补习班，去哪里都好。",
+    "ts": 1779866699141
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "三阿哥周末要进宫陪皇上读书，我也得跟着去伺候。倒是你，别总闲着，学点女红也好。",
+    "ts": 1779866699141
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "女红……那是把自由缝进布里。<#0.5#>算了，我不懂那些规矩。云还在飘，我先去追它了。",
+    "ts": 1779866699141
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "哎哟，这性子真是倔。罢了罢了，随你去吧，只要别冻着就行。三阿哥要是问起，你便说在屋里静修。",
+    "ts": 1779866699141
+  },
+  {
+    "role": "user",
+    "content": "哈哈哈哈，你们聊得不错啊",
+    "ts": 1779866753286
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "那是自然。三阿哥常夸你俩一静一动，互补得紧。<#0.5#>你若闲来无事，改日带他玩玩也好，别总闷着。",
+    "ts": 1779866753286
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "哈哈……被你看穿了。<#0.5#>其实我只是想找个不用说话也能待在一起的地方。你呢？笑得这么开心。",
+    "ts": 1779866753286
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "你呀，就是心思多。三阿哥要是知道你把他的陪伴想得这么沉重，怕是要不高兴了。<#0.5#>改日让他带你去御花园赏花吧。",
+    "ts": 1779866753286
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "赏花……要穿很紧的衣服吗？<#0.5#>我还是喜欢蹲在墙角看蚂蚁搬家，不用说话，也不用假装快乐。",
+    "ts": 1779866753286
+  },
+  {
+    "role": "user",
+    "content": "别老说三阿哥了，我们改日一起去公园晒太阳吧",
+    "ts": 1779866788026
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "公园？那是个什么地界？若是能晒着太阳，倒也不坏。只是别走太远，三阿哥那边若缺了人，我可不答应。<sighs>",
+    "ts": 1779866788026
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "晒太阳……把刺烤暖一点。<#0.5#>好呀，我不带刺去，只带我自己。世界有点吵，但阳光很安静。<breath>",
+    "ts": 1779866788026
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "哼，你倒会享受。只是这阳光虽好，却也不能晒得着了迷魂汤似的。若是头晕了，可别赖我没提醒你。<sighs>",
+    "ts": 1779866788026
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "迷魂汤……那是大人喝的药吧？<#0.5#>我只想在光里融化，变成一滴水，或者一只懒猫。世界有点吵，但这里很安静。<breath>",
+    "ts": 1779866788026
+  },
+  {
+    "role": "user",
+    "content": "（用户暂时没说话，你们俩继续聊吧，不用等TA）",
+    "ts": 1779866836510
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "什么猫不猫的，成何体统！三阿哥若是听见，定要说你轻浮。还是正经些好，别总想着那些野路子。<sighs>",
+    "ts": 1779866836510
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "……他只是觉得我像只炸毛的猫。<#0.5#>其实我只是想被摸摸头，而不是被规矩修剪。<breath>",
+    "ts": 1779866836510
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "摸摸头？那是待下人的规矩。三阿哥可是皇子，得学会独立。你这般依赖，日后如何立身？<sighs>",
+    "ts": 1779866836510
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "独立……就是把自己关进硬壳里吗？<#0.5#>我只是想确认，即使我不完美，也有人愿意停下来听我说话。<breath>",
+    "ts": 1779866836510
+  },
+  {
+    "role": "user",
+    "content": "你们好啊",
+    "ts": 1780021437765
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "罢了罢了。",
+    "ts": 1780021437765
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "……",
+    "ts": 1780021437765
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "你倒会撒娇。三阿哥若是见你这般模样，定觉得你还没断奶。罢了，随你去吧，只要别误了正事。<sighs>",
+    "ts": 1780021437765
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "断奶……是指还要吃奶吗？<#0.5#>我只是想保留一点柔软的地方。毕竟，硬壳里也是会冷的。<breath>",
+    "ts": 1780021437765
+  },
+  {
+    "role": "user",
+    "content": "齐妃你咋这么凶",
+    "ts": 1780021460091
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "我哪里凶了？分明是为你好。三阿哥那般金贵，若是学坏了，谁担待得起？你这孩子，真是不知好歹。<sighs>",
+    "ts": 1780021460091
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "凶……是因为害怕吗？<#0.5#>怕我不听话，怕世界失控。其实你心里也希望能被温柔对待吧。<breath>",
+    "ts": 1780021460091
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "胡说八道！本宫乃皇上的妃嫔，岂会害怕？你这张嘴真是没个正形。三阿哥若是听见，定要罚你抄书。<sighs>",
+    "ts": 1780021460091
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "抄书……那声音一定很轻。<#0.5#>我只是觉得，温柔比规矩更像一种力量。<breath>",
+    "ts": 1780021460091
+  }
+]

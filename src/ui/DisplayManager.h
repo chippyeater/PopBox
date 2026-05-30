@@ -4,6 +4,10 @@
 #include "../config.h"
 #include "AppState.h"
 
+// 全局配色与字体常量（DisplayManager.cpp 中实现）
+extern const uint32_t C_NEON;
+extern const lgfx::IFont* FONT_L;
+
 // ─────────────────────────────────────────────────────────────
 // DisplayManager — 屏幕布局渲染
 //
@@ -46,6 +50,9 @@ public:
     // 识别中：文字 + 进度条动画
     void drawRecognizing(int step);
 
+    // 第一位角色识别成功：展示角色名 + 提示识别第二位
+    void drawFirstRecognitionResult(const String& name);
+
     // 左右分栏：打招呼 / 交流（avatarPath 为 /avatar.jpg 等）
     void drawSplitLayout(const String& name, const String& avatarPath,
                          const String& text, const String& expression = "");
@@ -53,6 +60,9 @@ public:
     // 群聊布局：全屏显示对话文本，不显示头像
     void drawGroupLayout(const String& nameA, const String& nameB,
                          const String& conversationText);
+    // 群聊待机：双角色头像 + 名字
+    void drawGroupIdle(const String& nameA, const String& avatarPathA,
+                       const String& nameB, const String& avatarPathB);
     // 更新群聊文字（追加一行新的角色回复，保留上下文）
     void appendGroupText(const String& speakerName, const String& text);
 

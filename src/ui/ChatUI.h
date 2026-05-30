@@ -29,14 +29,14 @@ private:
     AppState _state;
     bool     _isRecording;
     int      _pendingCharCount = 0;   // 0=未选, 1或2=已选
-    bool     _capturingSecond  = false; // 双人模式正在拍第二个
     uint32_t _idleStartMs;
     String   _lastReplyText;
     String   _lastExpression;
 
     // ── 群聊状态 ──────────────────────────────────────────────
     bool     _isGroupChat     = false;
-    int      _groupReplyIndex = 0;     // 当前播放到第几条回复
+    static constexpr uint32_t IDLE_TIMEOUT_MS = 30000;
+    uint32_t _idleTimeoutMs   = IDLE_TIMEOUT_MS;  // 当前闲置超时（首次5s，之后30s）
 
     void _setState(AppState s);
     void _handleTouch();
@@ -46,13 +46,14 @@ private:
     void _onCharacterSelect(int index);
     void _processAndReply();
     void _processGroupReply();
+    void _autoContinueGroupChat();
     void _runRecognition();
     void _onCountSelect(int count);
-    void _runSecondRecognition();
     bool _waitForCaptureTap();
     void _restoreM5();
     void _showGreeting();
     void _showGroupGreeting();
+    void _showGroupIdle();
     void _onDoubleTapWake();
 
     bool _isTouchOnRecognizeButton(int32_t x, int32_t y);
@@ -60,4 +61,6 @@ private:
 
     uint32_t _lastTapTime;
     uint8_t  _tapCount;
+    uint32_t _ttsCooldownUntil = 0;
+    static constexpr uint32_t TTS_COOLDOWN_MS = 2000;  // TTS 后忽略麦克风输入，防止回声反馈
 };
