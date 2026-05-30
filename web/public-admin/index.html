@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pop Box</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+SC:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -110,11 +113,11 @@
                 </div>
 
                 <div class="info-col">
-                    <h1 class="char-name" id="char-name">Skullpanda</h1>
-                    <div class="package-meta-row">
+                    <div class="package-name-row">
+                        <h1 class="char-name" id="char-name">Skullpanda</h1>
                         <div class="package-edition" id="package-edition"># 未知系列</div>
-                        <select id="character-select" class="character-select" aria-label="选择当前角色"></select>
                     </div>
+                    <select id="character-select" class="character-select" aria-label="选择当前角色"></select>
 
                     <hr class="divider">
 
@@ -234,6 +237,11 @@
                 <!-- 下：可拖拽画布 -->
                 <div class="journal-canvas-wrap" id="journal-canvas-wrap">
                     <div class="journal-canvas" id="journal-canvas">
+                        <div class="journal-decoration-layer" aria-hidden="true">
+                            <img class="page-decoration trip-decoration trip-decoration--postcard" src="/media/trip-decorations/image%2076.png" alt="">
+                            <img class="page-decoration trip-decoration trip-decoration--camera" src="/media/trip-decorations/image%2088.png" alt="">
+                            <img class="page-decoration trip-decoration trip-decoration--stamp" src="/media/trip-decorations/image%2094.png" alt="">
+                        </div>
                         <!-- 由 JS 渲染可拖拽节点 -->
                     </div>
                     <div class="journal-canvas-hint">拖拽移动卡片 · 拖拽空白处平移画布</div>
@@ -249,6 +257,11 @@
                 <div class="physical-page-title notes-board-title">小纸条</div>
                 <div class="notes-viewport" id="notes-viewport">
                     <div class="notes-canvas" id="notes-canvas">
+                        <div class="notes-decoration-layer" aria-hidden="true">
+                            <img class="page-decoration notes-decoration notes-decoration--corner" src="/media/decorations/image%2062.png" alt="">
+                            <img class="page-decoration notes-decoration notes-decoration--side" src="/media/decorations/image%2069.png" alt="">
+                            <img class="page-decoration notes-decoration notes-decoration--bottom" src="/media/decorations/image%2081.png" alt="">
+                        </div>
                         <div class="notes-list" id="notes-list"></div>
                     </div>
                 </div>
@@ -289,6 +302,11 @@
 
                 <!-- 内容滚动区 -->
                 <div class="story-scroll">
+                    <div class="story-decoration-layer" aria-hidden="true">
+                        <img class="story-decoration story-decoration--top" src="/media/decorations/image%2063.png" alt="">
+                        <img class="story-decoration story-decoration--middle" src="/media/decorations/image%2074.png" alt="">
+                        <img class="story-decoration story-decoration--bottom" src="/media/decorations/image%2083.png" alt="">
+                    </div>
 
                     <!-- 叙事时间线 -->
                     <div class="story-timeline" id="story-timeline">

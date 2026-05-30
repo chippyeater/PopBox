@@ -8,7 +8,19 @@
     --beige:  #F5EDD4;
     --border: 2px solid #1A1A1A;
     --shadow: 4px 4px 0 #1A1A1A;
-    --font:   'Inter', system-ui, sans-serif;
+
+    /* ── 字体体系（四层） ── */
+    /* Display：超大标题，窄体冲击力（char-name、页面大标题、期号数字） */
+    --font-display: "Bebas Neue", "Arial Black", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    /* UI：导航、按钮、section 标题，粗体可读 */
+    --font-ui:      "Arial Black", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    /* Body：正文、旁白、便签，全平台覆盖中文 */
+    --font-body:    "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    /* Mono：流水号、时间戳、元数据标签 */
+    --font-mono:    "Space Mono", "Courier New", monospace;
+
+    /* 向下兼容旧引用 */
+    --font: var(--font-ui);
 }
 
 body {
@@ -683,15 +695,16 @@ body {
 }
 
 .settings-title {
-    font-size: 48px;
-    font-weight: 800;
-    letter-spacing: -2px;
-    line-height: 1.05;
+    font-size: clamp(40px, 4.5vw, 56px);
+    font-weight: 900;
+    letter-spacing: -1px;
+    line-height: 1;
     border: var(--border);
     display: block;
     padding: 4px 16px 4px 10px;
     background: var(--white);
     box-shadow: var(--shadow);
+    text-transform: uppercase;
 }
 
 .settings-subtitle {
@@ -1204,10 +1217,10 @@ body {
 /* 胶带装饰块 */
 .note-tape-deco {
     position: absolute;
-    width: 52px;
-    height: 18px;
-    background: #d8d8d8;
-    opacity: 0.55;
+    width: 64px;
+    height: 22px;
+    background: transparent center / contain no-repeat;
+    opacity: 0.82;
     z-index: 1;
 }
 
@@ -1222,7 +1235,7 @@ body {
     width: 280px;
     background: var(--lime);
     border: var(--border);
-    box-shadow: var(--shadow);
+    box-shadow: 2px 8px 10px rgba(74, 43, 24, 0.3);
     padding: 20px 18px 18px;
     display: flex;
     flex-direction: column;
@@ -1264,10 +1277,10 @@ body {
     top: -11px;
     left: 50%;
     transform: translateX(-50%) rotate(1deg);
-    width: 44px;
-    height: 18px;
-    background: #c8c8c8;
-    opacity: 0.6;
+    width: 78px;
+    height: 26px;
+    background: transparent center / contain no-repeat;
+    opacity: 0.9;
     z-index: 4;
 }
 
@@ -1494,11 +1507,11 @@ body {
 /* 胶带装饰（位置由 JS 内联样式控制） */
 .polaroid-tape {
     position: absolute;
-    width: 40px;
-    height: 18px;
-    background: #F5EDD4;
-    border: 1px solid #c8bc9a;
-    opacity: 0.9;
+    width: 70px;
+    height: 25px;
+    background: transparent center / contain no-repeat;
+    border: 0;
+    opacity: 0.92;
     z-index: 2;
 }
 
@@ -1725,6 +1738,7 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
     padding: 136px 48px 0 56px;
+    position: relative;
 }
 
 .story-scroll::before {
@@ -1937,6 +1951,7 @@ body {
     border: 2px solid var(--black);
     box-shadow: 4px 4px 0 var(--black);
     transform: rotate(-1.2deg);
+    position: relative;
 }
 
 .story-media-card--inline {
@@ -1957,6 +1972,16 @@ body {
     font-weight: 800;
     letter-spacing: 0.04em;
     color: #333;
+}
+
+.story-media-tape {
+    position: absolute;
+    top: -15px;
+    width: 78px;
+    height: 27px;
+    background: transparent center / contain no-repeat;
+    opacity: 0.92;
+    z-index: 2;
 }
 
 /* ── 角色卡片基础 ── */
@@ -2201,37 +2226,63 @@ body {
    ══════════════════════════════════════════════════════════════ */
 
 :root {
-    --lime: #C8E600;
-    --coral: #FF6B4A;
+    --coral:  #FF8F53;
     --yellow: #FFD84D;
     --purple: #A98BFF;
-    --kraft: #C9A777;
-    --paper: #FFFDF7;
-    --font: "Arial Black", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
-    --font-body: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
-    --font-mono: "Courier New", monospace;
+    --kraft:  #C9A777;
+    --paper:  #FFFDF7;
 }
 
 body {
     font-family: var(--font-body);
 }
 
-.logo-title,
+/* ── Display：超大标题 ── */
 .char-name,
+.physical-page-title,
 .journal-wall-title,
 .story-title,
-.echoes-header {
-    font-family: var(--font);
+.story-episode {
+    font-family: var(--font-display);
 }
 
+/* ── UI Bold：导航、logo、按钮、echoes ── */
+.logo-title,
+.echoes-header,
+.btn-primary,
+.btn-save-prefs,
+.btn-record-place,
+.btn-post-note,
+.settings-title {
+    font-family: var(--font-ui);
+}
+
+/* ── Mono：标签、元数据、流水号 ── */
 .logo-sub,
 .photo-serial,
 .voice-log-label,
 .journal-wall-sub,
 .story-eyebrow,
+.story-magazine-label,
+.story-issue-label,
+.story-header-right,
 .tl-scene-title,
-.char-card-name-tag {
+.char-card-name-tag,
+.days-badge,
+.package-edition,
+.package-archive {
     font-family: var(--font-mono);
+}
+
+/* ── Body：旁白、正文、便签 ── */
+.timeline-narration,
+.note-sticky-text,
+.note-draft-textarea,
+.polaroid-quote,
+.echo-card-quote,
+.settings-subtitle,
+.voice-log-text {
+    font-family: var(--font-body);
 }
 
 /* 侧边栏：保留导航克制感，用大色块建立统一品牌识别 */
@@ -2329,14 +2380,26 @@ body {
 
 .char-name {
     max-width: 680px;
-    font-size: clamp(52px, 6vw, 86px);
-    letter-spacing: -4px;
-    line-height: 0.94;
+    font-size: clamp(56px, 6.5vw, 96px);
+    letter-spacing: -2px;
+    line-height: 0.92;
     text-transform: uppercase;
 }
 
+.package-name-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+}
+
+.package-name-row .char-name {
+    flex: 0 1 auto;
+}
+
 .character-select {
-    margin-top: 20px;
+    display: block;
+    width: min(300px, 100%);
+    margin-top: 14px;
     background: var(--paper);
     font-family: var(--font-body);
 }
@@ -2371,7 +2434,7 @@ body {
 
 /* 小纸条：软木板和真实纸张 */
 .notes-board {
-    background: var(--white);
+    background: url("/media/burnt-orange-colored-background.jpg") center / cover;
 }
 
 .notes-board::before {
@@ -2391,16 +2454,11 @@ body {
 }
 
 .note-sticky {
-    box-shadow: 5px 7px 0 rgba(26, 26, 26, 0.55);
+    box-shadow: 2px 8px 10px rgba(74, 43, 24, 0.3);
 }
 
 .note-sticky--char { background: #FFF079; }
 .note-sticky--user { background: #F8D5DF; }
-
-.note-tape-top,
-.note-tape-deco {
-    background: rgba(242, 230, 195, 0.82);
-}
 
 /* 照片墙：相册工作台，保持照片为第一视觉焦点 */
 .journal-canvas-wrap {
@@ -2429,11 +2487,6 @@ body {
     box-shadow: 5px 6px 0 rgba(26, 26, 26, 0.62);
 }
 
-.polaroid-tape {
-    background: rgba(255, 239, 179, 0.82);
-    border-color: rgba(130, 98, 48, 0.45);
-}
-
 /* 今日同游：独立杂志拼贴 */
 .story-page {
     background: #FFFDF7;
@@ -2458,8 +2511,8 @@ body {
 }
 
 .story-title {
-    font-size: clamp(44px, 5vw, 68px);
-    letter-spacing: -3px;
+    font-size: clamp(42px, 5vw, 66px);
+    letter-spacing: -1px;
     line-height: 0.96;
 }
 
@@ -2631,15 +2684,6 @@ body {
     top: 158px;
 }
 
-.package-meta-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 22px;
-    width: 100%;
-    margin-top: 16px;
-}
-
 .package-edition {
     width: fit-content;
     padding: 5px 11px;
@@ -2654,9 +2698,7 @@ body {
 }
 
 .character-select {
-    width: min(300px, 42%);
-    margin-top: 0;
-    margin-left: auto;
+    margin-left: 0;
 }
 
 /* 第二轮：杂志刊头和稳定错落版式 */
@@ -2702,7 +2744,7 @@ body {
 }
 
 .story-issue-label {
-    padding-bottom: 3px;
+    padding-bottom: 6px;
     border-bottom: 1px solid #777;
     font-size: 11px;
     font-weight: 900;
@@ -2710,11 +2752,10 @@ body {
 }
 
 .story-episode {
-    font-family: var(--font);
-    font-size: 50px;
+    font-size: 56px;
     font-weight: 900;
-    letter-spacing: -3px;
-    line-height: 0.95;
+    letter-spacing: -1px;
+    line-height: 0.92;
 }
 
 .story-header-right .story-status-badge {
@@ -2826,9 +2867,8 @@ body {
     padding: 9px 17px 18px;
     border: var(--border);
     box-shadow: 5px 5px 0 var(--black);
-    font-family: var(--font);
-    font-size: 34px;
-    letter-spacing: -2px;
+    font-size: 38px;
+    letter-spacing: 0;
     line-height: 1;
     transform: rotate(-2deg);
 }
@@ -2854,6 +2894,110 @@ body {
 
 .journal-wall-title {
     background: var(--coral);
+}
+
+.notes-decoration-layer,
+.journal-decoration-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.notes-decoration-layer {
+    z-index: 1;
+}
+
+.journal-decoration-layer {
+    z-index: 0;
+}
+
+.story-decoration-layer {
+    position: absolute;
+    top: 188px;
+    right: 0;
+    left: 0;
+    height: 7200px;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.story-decoration {
+    position: absolute;
+    display: block;
+    object-fit: contain;
+    user-select: none;
+}
+
+.story-decoration--top {
+    top: 56px;
+    right: 24px;
+    width: 92px;
+    transform: rotate(7deg);
+}
+
+.story-decoration--middle {
+    top: 2580px;
+    right: 32px;
+    width: 86px;
+    transform: rotate(-5deg);
+}
+
+.story-decoration--bottom {
+    right: 20px;
+    bottom: 52px;
+    width: 104px;
+    transform: rotate(6deg);
+}
+
+.page-decoration {
+    position: absolute;
+    display: block;
+    object-fit: contain;
+    user-select: none;
+}
+
+.notes-decoration--corner {
+    top: 112px;
+    left: 1180px;
+    width: 94px;
+    transform: rotate(8deg);
+}
+
+.notes-decoration--side {
+    top: 560px;
+    left: 94px;
+    width: 72px;
+    transform: rotate(-9deg);
+}
+
+.notes-decoration--bottom {
+    top: 820px;
+    left: 1210px;
+    width: 138px;
+    transform: rotate(-4deg);
+}
+
+.trip-decoration--postcard {
+    top: 164px;
+    right: 26px;
+    width: 112px;
+    transform: rotate(6deg);
+}
+
+.trip-decoration--camera {
+    bottom: 24px;
+    left: 28px;
+    width: 92px;
+    transform: rotate(-8deg);
+}
+
+.trip-decoration--stamp {
+    right: 34px;
+    bottom: 30px;
+    width: 82px;
+    transform: rotate(5deg);
 }
 
 .journal-wall-sub {

@@ -78,6 +78,7 @@ const app = (() => {
 
     // ── 出行照片墙：可拖拽画布 ─────────────────────────────────
     const ROTATIONS = [-3, 1.5, -1, 2.5, -2, 1, -1.5];
+    const TAPE_ASSETS = Array.from({ length: 10 }, (_, i) => `/media/tapes/image%20${49 + i}.png`);
 
     // 初始散布位置（相对画布左上角，单位px）
     const INIT_POSITIONS = [
@@ -93,6 +94,31 @@ const app = (() => {
     // 画布变换状态
     const canvas = { panX: 0, panY: 0, scale: 1 };
 
+    function seededValue(value, n = 0) {
+        const seed = String(value).split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+        return ((seed * 9301 + n * 49297) % 233280) / 233280;
+    }
+
+    function tapeImageStyle(value, n = 0) {
+        const asset = TAPE_ASSETS[Math.floor(seededValue(value, n) * TAPE_ASSETS.length)];
+        return `background-image:url('${asset}')`;
+    }
+
+    function storyMediaTapeStyle(value = 'story-media') {
+        const rot = -7 + Math.floor(seededValue(value, 62) * 14);
+        const left = 38 + Math.floor(seededValue(value, 63) * 24);
+        return `${tapeImageStyle(value, 61)};left:${left}%;transform:translateX(-50%) rotate(${rot}deg)`;
+    }
+
+    function noteTapeStyle(note, i = 0) {
+        const seed = note.id || i;
+        const rot = -9 + Math.floor(seededValue(seed, 31) * 18);
+        const left = 46 + Math.floor(seededValue(seed, 32) * 9);
+        const top = -14 + Math.floor(seededValue(seed, 33) * 7);
+        const width = 74 + Math.floor(seededValue(seed, 34) * 15);
+        return `${tapeImageStyle(seed, 30)};top:${top}px;left:${left}%;width:${width}px;transform:translateX(-50%) rotate(${rot}deg)`;
+    }
+
     // 沿宝丽来四边随机生成胶带的内联样式
     function randomTapeStyle(seed) {
         // 用 seed 做伪随机，保证同一张卡每次渲染位置一致
@@ -100,10 +126,11 @@ const app = (() => {
         const edge = Math.floor(r(1) * 4); // 0=上 1=下 2=左 3=右
         const pct  = 15 + Math.floor(r(2) * 55); // 15%~70%
         const rot  = -6 + Math.floor(r(3) * 12);  // -6°~+6°
-        if (edge === 0) return `top:-10px;left:${pct}%;transform:rotate(${rot}deg)`;
-        if (edge === 1) return `bottom:-10px;left:${pct}%;transform:rotate(${rot}deg)`;
-        if (edge === 2) return `left:-10px;top:${pct}%;width:18px;height:40px;transform:rotate(${rot + 90}deg)`;
-        return              `right:-10px;top:${pct}%;width:18px;height:40px;transform:rotate(${rot + 90}deg)`;
+        const image = tapeImageStyle(seed, 40);
+        if (edge === 0) return `${image};top:-13px;left:${pct}%;transform:rotate(${rot}deg)`;
+        if (edge === 1) return `${image};bottom:-13px;left:${pct}%;transform:rotate(${rot}deg)`;
+        if (edge === 2) return `${image};left:-22px;top:${pct}%;transform:rotate(${rot + 90}deg)`;
+        return              `${image};right:-22px;top:${pct}%;transform:rotate(${rot + 90}deg)`;
     }
 
     function seededAngle(seed, n, range = 2) {
@@ -212,6 +239,7 @@ const app = (() => {
         if (!wrap || !cvs) return;
 
         // 渲染节点
+        const decorationLayer = cvs.querySelector('.journal-decoration-layer');
         cvs.innerHTML = entries.map((entry, i) => {
             const pos = INIT_POSITIONS[i] || { x: 60 + i * 260, y: 180 };
             return `<div class="canvas-node" data-idx="${i}"
@@ -219,6 +247,7 @@ const app = (() => {
                         ${polaroidHTML(entry, i)}
                     </div>`;
         }).join('');
+        if (decorationLayer) cvs.prepend(decorationLayer);
         requestAnimationFrame(() => updatePolaroidTagLayout(cvs));
 
         // 更新统计数字
@@ -507,7 +536,7 @@ const app = (() => {
             <div class="note-sticky ${isChar ? 'note-sticky--char' : 'note-sticky--user'} ${isGenerating ? 'note-sticky--generating' : ''}"
                  data-note-id="${escapeHTML(note.id)}"
                  style="${notePositionStyle(note, i)}">
-                <div class="note-tape-top"></div>
+                <div class="note-tape-top" style="${noteTapeStyle(note, i)}"></div>
                 <div class="note-sticky-header">
                     <div class="note-char-avatar">${noteAvatarHTML(note)}</div>
                     <span class="note-sticky-time">${noteTime(note.createdAt)}</span>
@@ -551,7 +580,7 @@ const app = (() => {
     function noteDraftHTML(note, i) {
         return `
             <div class="note-sticky note-sticky--user note-sticky--draft" data-note-id="${escapeHTML(note.id)}" style="${notePositionStyle(note, i)}">
-                <div class="note-tape-top"></div>
+                <div class="note-tape-top" style="${noteTapeStyle(note, i)}"></div>
                 <div class="note-sticky-header">
                     <div class="note-char-avatar">你</div>
                     <span class="note-sticky-time">正在写</span>
@@ -1308,6 +1337,7 @@ const app = (() => {
             }
             if (item.type === 'narration') {
                 const mediaHTML = item.media ? `<figure class="story-media-card story-media-card--inline">
+                    <span class="story-media-tape" style="${storyMediaTapeStyle(item.media.src)}"></span>
                     <img src="${escapeHTML(item.media.src)}" alt="${escapeHTML(item.media.alt || '')}">
                     <figcaption>${escapeHTML(item.media.caption || '')}</figcaption>
                 </figure>` : '';
@@ -1319,6 +1349,7 @@ const app = (() => {
             }
             if (item.type === 'media') {
                 const mediaHTML = `<figure class="story-media-card">
+                    <span class="story-media-tape" style="${storyMediaTapeStyle(item.src)}"></span>
                     <img src="${escapeHTML(item.src)}" alt="${escapeHTML(item.alt || '')}">
                     <figcaption>${escapeHTML(item.caption || '')}</figcaption>
                 </figure>`;
