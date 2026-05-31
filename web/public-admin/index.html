@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pop Box</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+SC:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- 国内镜像优先，Google Fonts 做备用 -->
+    <link rel="preconnect" href="https://fonts.loli.net" crossorigin>
+    <link href="https://fonts.loli.net/css2?family=Bebas+Neue&family=Noto+Sans+SC:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -130,7 +130,7 @@
                                 <circle cx="10" cy="15" r="1" fill="currentColor"/>
                             </svg>
                             <div class="status-label">连接状态</div>
-                            <div class="status-value" id="conn-status">已连接</div>
+                            <div class="status-value status-value-large" id="conn-status">已连接</div>
                         </div>
                         <div class="status-card">
                             <svg class="status-icon" viewBox="0 0 20 20" fill="none">
@@ -138,7 +138,7 @@
                                 <circle cx="10" cy="10" r="1.5" fill="currentColor"/>
                             </svg>
                             <div class="status-label">呼吸灯</div>
-                            <div class="status-value" id="breath-color">琥珀色</div>
+                            <div class="status-value status-value-large" id="breath-color">琥珀色</div>
                         </div>
                         <div class="status-card">
                             <svg class="status-icon" viewBox="0 0 20 20" fill="none">
@@ -295,7 +295,7 @@
                         <div class="story-episode" id="story-episode">#842</div>
                         <div class="story-status-badge" id="story-status-badge">
                             <span class="story-status-dot"></span>
-                            <span id="story-status-text">进行中</span>
+                            <span id="story-status-text">2026年5月29日 10:20</span>
                         </div>
                     </div>
                 </div>

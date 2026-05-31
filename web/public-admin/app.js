@@ -79,6 +79,10 @@ const app = (() => {
     // ── 出行照片墙：可拖拽画布 ─────────────────────────────────
     const ROTATIONS = [-3, 1.5, -1, 2.5, -2, 1, -1.5];
     const TAPE_ASSETS = Array.from({ length: 10 }, (_, i) => `/media/tapes/image%20${49 + i}.png`);
+    const NOTE_DECORATION_ASSETS = [
+        62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72,
+        73, 74, 75, 77, 78, 79, 80, 81, 82, 83,
+    ].map(i => `/media/decorations/image%20${i}.png`);
 
     // 初始散布位置（相对画布左上角，单位px）
     const INIT_POSITIONS = [
@@ -119,22 +123,23 @@ const app = (() => {
         return `${tapeImageStyle(seed, 30)};top:${top}px;left:${left}%;width:${width}px;transform:translateX(-50%) rotate(${rot}deg)`;
     }
 
-    // 沿宝丽来四边随机生成胶带的内联样式
+    // 胶带只贴在上边缘或右上角，避免遮挡卡片正文。
     function randomTapeStyle(seed) {
         // 用 seed 做伪随机，保证同一张卡每次渲染位置一致
-        const r  = (n) => ((seed * 9301 + n * 49297) % 233280) / 233280;
-        const edge = Math.floor(r(1) * 4); // 0=上 1=下 2=左 3=右
-        const pct  = 15 + Math.floor(r(2) * 55); // 15%~70%
-        const rot  = -6 + Math.floor(r(3) * 12);  // -6°~+6°
+        const r  = (n) => seededValue(seed, n);
         const image = tapeImageStyle(seed, 40);
-        if (edge === 0) return `${image};top:-13px;left:${pct}%;transform:rotate(${rot}deg)`;
-        if (edge === 1) return `${image};bottom:-13px;left:${pct}%;transform:rotate(${rot}deg)`;
-        if (edge === 2) return `${image};left:-22px;top:${pct}%;transform:rotate(${rot + 90}deg)`;
-        return              `${image};right:-22px;top:${pct}%;transform:rotate(${rot + 90}deg)`;
+        if (r(1) < 0.72) {
+            const left = 24 + Math.floor(r(2) * 52); // 24%~75%
+            const rot  = -7 + Math.floor(r(3) * 15); // -7°~+7°
+            return `${image};top:-13px;left:${left}%;transform:translateX(-50%) rotate(${rot}deg)`;
+        }
+        const top = -5 + Math.floor(r(2) * 15);      // -5px~9px
+        const rot = 36 + Math.floor(r(3) * 19);      // 36°~54°
+        return `${image};top:${top}px;right:-27px;transform:rotate(${rot}deg)`;
     }
 
     function seededAngle(seed, n, range = 2) {
-        const r = ((seed * 9301 + n * 49297) % 233280) / 233280;
+        const r = seededValue(seed, n);
         return ((r * range * 2) - range).toFixed(1);
     }
 
@@ -184,9 +189,9 @@ const app = (() => {
         const rot       = ROTATIONS[i % ROTATIONS.length];
         const dateStr   = entry.date ? entry.date.replace(/-/g, '.') : `2024.05.${entry.day || '01'}`;
         const tapeStyle = randomTapeStyle(entry.id);
-        const metaRot   = seededAngle(entry.id, 11);
-        const tagRotA   = seededAngle(entry.id, 12);
-        const tagRotB   = seededAngle(entry.id, 13);
+        const metaRot   = seededAngle(entry.id, 11, 3.5);
+        const tagRotA   = seededAngle(entry.id, 12, 5);
+        const tagRotB   = seededAngle(entry.id, 13, 5);
         const stateClass = entry.journalState === 'sensing' ? ' is-sensing' : '';
         const moodTags = moodTagsFromEntry(entry);
         const imageHTML = entry.imageUrl
@@ -374,6 +379,25 @@ const app = (() => {
         cvs.style.transform = `translate(${noteCanvas.panX}px,${noteCanvas.panY}px) scale(${noteCanvas.scale})`;
     }
 
+    function addRandomNoteDecoration(clientX, clientY) {
+        const viewport = document.getElementById('notes-viewport');
+        const layer = document.querySelector('.notes-decoration-layer');
+        if (!viewport || !layer) return;
+
+        const rect = viewport.getBoundingClientRect();
+        const x = (clientX - rect.left - noteCanvas.panX) / noteCanvas.scale;
+        const y = (clientY - rect.top - noteCanvas.panY) / noteCanvas.scale;
+        const size = 64 + Math.floor(Math.random() * 48);
+        const rotation = -13 + Math.floor(Math.random() * 27);
+        const asset = NOTE_DECORATION_ASSETS[Math.floor(Math.random() * NOTE_DECORATION_ASSETS.length)];
+        const sticker = document.createElement('img');
+        sticker.className = 'page-decoration notes-click-decoration';
+        sticker.src = asset;
+        sticker.alt = '';
+        sticker.style.cssText = `left:${x - size / 2}px;top:${y - size / 2}px;width:${size}px;transform:rotate(${rotation}deg)`;
+        layer.appendChild(sticker);
+    }
+
     function getNotesViewportRect() {
         const viewport = document.getElementById('notes-viewport');
         const board = document.querySelector('.notes-board');
@@ -461,6 +485,7 @@ const app = (() => {
         viewport.dataset.dragBound = '1';
         let panStart = null;
         let dragNote = null;
+        let blankPointer = null;
 
         viewport.addEventListener('mousedown', e => {
             const noteEl = e.target.closest('.note-sticky');
@@ -478,8 +503,8 @@ const app = (() => {
                 return;
             }
             if (e.target.closest('.note-add-btn, .notes-status-chip')) return;
-            viewport.classList.add('panning');
             panStart = { x: e.clientX - noteCanvas.panX, y: e.clientY - noteCanvas.panY };
+            blankPointer = { x: e.clientX, y: e.clientY, isPanning: false };
         });
 
         window.addEventListener('mousemove', e => {
@@ -494,19 +519,28 @@ const app = (() => {
                 return;
             }
             if (!panStart) return;
+            if (!blankPointer?.isPanning) {
+                const distance = Math.hypot(e.clientX - blankPointer.x, e.clientY - blankPointer.y);
+                if (distance < 6) return;
+                blankPointer.isPanning = true;
+                viewport.classList.add('panning');
+            }
             noteCanvas.panX = e.clientX - panStart.x;
             noteCanvas.panY = e.clientY - panStart.y;
             applyNoteCanvasTransform();
         });
 
-        window.addEventListener('mouseup', () => {
+        window.addEventListener('mouseup', e => {
             if (dragNote) {
                 document.querySelector(`[data-note-id="${CSS.escape(dragNote.id)}"]`)?.classList.remove('dragging');
                 dragNote = null;
             }
             if (!panStart) return;
+            const shouldAddDecoration = blankPointer && !blankPointer.isPanning;
             panStart = null;
+            blankPointer = null;
             viewport.classList.remove('panning');
+            if (shouldAddDecoration) addRandomNoteDecoration(e.clientX, e.clientY);
         });
 
         viewport.addEventListener('wheel', e => {
@@ -970,7 +1004,7 @@ const app = (() => {
             const rotIdx  = cvs.children.length % ROTATIONS.length;
             const rot     = ROTATIONS[rotIdx];
             const tapeStyle = randomTapeStyle(seed);
-            const metaRot = seededAngle(seed, 11);
+            const metaRot = seededAngle(seed, 11, 3.5);
             const imgTag  = pendingImg
                 ? `<img src="${pendingImg.dataUrl}" draggable="false" style="width:100%;height:100%;object-fit:cover;display:block">`
                 : `<svg class="polaroid-img-icon" viewBox="0 0 40 40" fill="none" width="44" height="44">

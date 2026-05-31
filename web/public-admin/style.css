@@ -1,3 +1,33 @@
+@font-face {
+    font-family: "Aa Baroque";
+    src: url("./assets/fonts/Aa巴洛克.ttf") format("truetype");
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Dazhi Qiu You Xiu Xuan Shou";
+    src: url("./assets/fonts/dazhiqiuyouxiuxuanshou.ttf") format("truetype");
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Zui Shan Liang De Xing";
+    src: url("./assets/fonts/zuishanliangdexing.ttf") format("truetype");
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "MF LiHei";
+    src: url("./assets/fonts/MFLiHei_Noncommercial-Regular.otf") format("opentype");
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Sanji Shoujin";
+    src: url("./assets/fonts/三极瘦金简体.ttf") format("truetype");
+    font-display: swap;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -9,22 +39,51 @@
     --border: 2px solid #1A1A1A;
     --shadow: 4px 4px 0 #1A1A1A;
 
-    /* ── 字体体系（四层） ── */
-    /* Display：超大标题，窄体冲击力（char-name、页面大标题、期号数字） */
-    --font-display: "Bebas Neue", "Arial Black", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-    /* UI：导航、按钮、section 标题，粗体可读 */
-    --font-ui:      "Arial Black", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-    /* Body：正文、旁白、便签，全平台覆盖中文 */
-    --font-body:    "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-    /* Mono：流水号、时间戳、元数据标签 */
-    --font-mono:    "Space Mono", "Courier New", monospace;
+    /* ── 字体体系 ── */
+    /* 基础角色：UI、正文、元数据 */
+    --font-ui:       "Arial Black", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --font-body:     "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --font-mono:     "Space Mono", "Courier New", monospace;
+    /* 品牌标题：立黑体；实体页面标题：巴洛克体 */
+    --font-display:  "Bebas Neue", "Arial Black", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --font-brand:    "MF LiHei", "Aa Baroque", var(--font-display);
+    --font-page:     "Aa Baroque", var(--font-display);
+    /* 内容字体：纸条和照片语录；今日同游角色专属字体 */
+    --font-handwritten:       "Dazhi Qiu You Xiu Xuan Shou", "Zui Shan Liang De Xing", "STKaiti", "KaiTi", "Kaiti SC", "楷体", cursive;
+    --font-story-narration:   "STKaiti", "KaiTi", "Kaiti SC", "楷体", serif;
+    --font-character-qifei:   "Sanji Shoujin", "SimSun", "Songti SC", "STSong", "宋体", serif;
+    --font-character-duchamp: var(--font-story-narration);
+    --font-character-zsiga:   "Zui Shan Liang De Xing", "STKaiti", "KaiTi", "Kaiti SC", "楷体", cursive;
+    --font-quote-mark:        "Liberation Serif", Georgia, serif;
 
-    /* 向下兼容旧引用 */
-    --font: var(--font-ui);
+    /* 常用字号 scale；展示型标题继续由组件控制 */
+    --text-2xs: 10px;
+    --text-xs:  11px;
+    --text-sm:  12px;
+    --text-md:  13px;
+    --text-lg:  14px;
+    --text-xl:  15px;
+    --text-2xl: 16px;
+    --text-3xl: 18px;
+
+    --weight-regular:   400;
+    --weight-medium:    500;
+    --weight-semibold:  600;
+    --weight-bold:      700;
+    --weight-extrabold: 800;
+    --weight-black:     900;
+
+    --leading-solid:   1;
+    --leading-snug:    1.55;
+    --leading-body:    1.7;
+    --leading-relaxed: 1.75;
+
+    --tracking-display: -1px;
+    --tracking-meta:     0.08em;
 }
 
 body {
-    font-family: var(--font);
+    font-family: var(--font-body);
     background: var(--bg);
     color: var(--black);
     height: 100vh;
@@ -73,12 +132,12 @@ body {
 
 .logo-title {
     font-size: 20px;
-    font-weight: 800;
+    font-weight: var(--weight-extrabold);
     letter-spacing: -0.5px;
 }
 
 .logo-sub {
-    font-size: 11px;
+    font-size: var(--text-xs);
     color: #888;
 }
 
@@ -94,8 +153,8 @@ body {
     align-items: center;
     gap: 10px;
     padding: 10px 14px;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: var(--text-lg);
+    font-weight: var(--weight-medium);
     color: var(--black);
     text-decoration: none;
     position: relative;
@@ -132,7 +191,7 @@ body {
 }
 
 .nav-item.active {
-    font-weight: 700;
+    font-weight: var(--weight-bold);
     border-color: transparent;
     background: transparent;
     color: #5F7400;
@@ -189,8 +248,8 @@ body {
     border: var(--border);
     border-radius: 12px;
     padding: 6px 14px;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
     box-shadow: var(--shadow);
     z-index: 10;
     transform: rotate(4deg);
@@ -213,8 +272,8 @@ body {
 /* ── 贴纸标签（卡在 photo-col 左边缘，超出卡片） ── */
 .sticker {
     position: absolute;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
     border: var(--border);
     padding: 5px 12px;
     z-index: 20;
@@ -286,7 +345,7 @@ body {
     align-items: center;
     justify-content: center;
     color: #bbb;
-    font-size: 13px;
+    font-size: var(--text-md);
 }
 
 .photo-caption {
@@ -300,8 +359,8 @@ body {
 }
 
 .photo-serial {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
 }
 
 .qr-icon {
@@ -320,12 +379,7 @@ body {
     min-width: 0;
 }
 
-.char-name {
-    font-size: 42px;
-    font-weight: 800;
-    letter-spacing: -1.5px;
-    line-height: 1.05;
-}
+/* .char-name 样式统一在路演视觉区块定义 */
 
 .character-select {
     width: min(260px, 100%);
@@ -334,9 +388,9 @@ body {
     border: var(--border);
     background: var(--white);
     color: var(--black);
-    font-family: var(--font);
-    font-size: 13px;
-    font-weight: 700;
+    font-family: var(--font-ui);
+    font-size: var(--text-md);
+    font-weight: var(--weight-bold);
     box-shadow: 3px 3px 0 var(--black);
     cursor: pointer;
 }
@@ -372,19 +426,19 @@ body {
 }
 
 .status-label {
-    font-size: 11px;
+    font-size: var(--text-xs);
     color: #888;
-    font-weight: 500;
+    font-weight: var(--weight-medium);
 }
 
 .status-value {
-    font-size: 15px;
-    font-weight: 700;
+    font-size: var(--text-xl);
+    font-weight: var(--weight-bold);
 }
 
 .status-value-large {
     font-size: 24px;
-    font-weight: 800;
+    font-weight: var(--weight-extrabold);
 }
 
 /* ── 语音日志 ── */
@@ -392,6 +446,7 @@ body {
     background: var(--beige);
     border: var(--border);
     padding: 20px 20px 16px;
+    margin-top: 16px;
     margin-bottom: 24px;
     box-shadow: var(--shadow);
     position: relative;
@@ -404,8 +459,8 @@ body {
     left: 14px;
     background: var(--black);
     color: var(--white);
-    font-size: 11px;
-    font-weight: 700;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
     letter-spacing: 1px;
     padding: 3px 10px;
     box-shadow: 2px 2px 0 rgba(0,0,0,0.35);
@@ -414,9 +469,9 @@ body {
 }
 
 .voice-log-text {
-    font-size: 15px;
-    font-weight: 500;
-    line-height: 1.75;
+    font-size: var(--text-xl);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-relaxed);
     color: var(--black);
 }
 
@@ -432,10 +487,10 @@ body {
     background: var(--lime);
     border: var(--border);
     padding: 12px 26px;
-    font-size: 14px;
-    font-weight: 700;
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
     cursor: pointer;
-    font-family: var(--font);
+    font-family: var(--font-ui);
     box-shadow: var(--shadow);
     transition: transform 0.1s, box-shadow 0.1s;
 }
@@ -520,16 +575,15 @@ body {
 
 .journal-wall-title {
     font-size: 38px;
-    font-weight: 800;
     letter-spacing: 0;
     line-height: 1.1;
 }
 
 .journal-wall-sub {
-    font-size: 15px;
+    font-size: var(--text-xl);
     color: #4b4f3d;
     margin-top: 5px;
-    font-weight: 800;
+    font-weight: var(--weight-extrabold);
 }
 
 .journal-topbar-center {
@@ -544,9 +598,9 @@ body {
 }
 
 .btn-explore-data {
-    font-family: var(--font);
-    font-size: 13px;
-    font-weight: 800;
+    font-family: var(--font-ui);
+    font-size: var(--text-md);
+    font-weight: var(--weight-extrabold);
     min-height: 50px;
     padding: 0 20px;
     background: var(--lime);
@@ -570,8 +624,8 @@ body {
 .journal-stat-chip {
     min-height: 50px;
     min-width: 104px;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
     border: 0;
     border-right: var(--border);
     padding: 0 20px;
@@ -588,8 +642,8 @@ body {
 .journal-stat-chip strong {
     color: var(--black);
     font-size: 32px;
-    font-weight: 800;
-    line-height: 1;
+    font-weight: var(--weight-extrabold);
+    line-height: var(--leading-solid);
     margin-left: 0;
 }
 
@@ -628,9 +682,9 @@ body {
     left: 50%;
     transform: translateX(-50%);
     z-index: 2;
-    font-size: 11px;
+    font-size: var(--text-xs);
     color: #aaa;
-    font-weight: 500;
+    font-weight: var(--weight-medium);
     pointer-events: none;
     white-space: nowrap;
 }
@@ -684,8 +738,8 @@ body {
     position: absolute;
     top: -13px;
     left: 8px;
-    font-size: 11px;
-    font-weight: 700;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
     letter-spacing: 1px;
     background: #3a4a00;
     color: var(--white);
@@ -696,9 +750,9 @@ body {
 
 .settings-title {
     font-size: clamp(40px, 4.5vw, 56px);
-    font-weight: 900;
-    letter-spacing: -1px;
-    line-height: 1;
+    font-weight: var(--weight-black);
+    letter-spacing: var(--tracking-display);
+    line-height: var(--leading-solid);
     border: var(--border);
     display: block;
     padding: 4px 16px 4px 10px;
@@ -708,9 +762,9 @@ body {
 }
 
 .settings-subtitle {
-    font-size: 13px;
+    font-size: var(--text-md);
     color: #555;
-    line-height: 1.7;
+    line-height: var(--leading-body);
     border-left: 4px solid #7AAF00;
     padding-left: 14px;
     max-width: 560px;
@@ -718,8 +772,8 @@ body {
 
 .settings-section-tag {
     position: absolute;
-    font-size: 11px;
-    font-weight: 700;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
     border: var(--border);
     padding: 4px 12px;
     background: var(--beige);
@@ -753,13 +807,13 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 18px;
-    font-weight: 800;
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-extrabold);
     letter-spacing: -0.3px;
 }
 
 .settings-section-sub {
-    font-size: 12px;
+    font-size: var(--text-sm);
     color: #666;
     margin-top: -8px;
 }
@@ -810,14 +864,14 @@ body {
 }
 
 .tone-name {
-    font-size: 14px;
-    font-weight: 700;
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
 }
 
 .tone-desc {
-    font-size: 11px;
+    font-size: var(--text-xs);
     color: #888;
-    line-height: 1.55;
+    line-height: var(--leading-snug);
 }
 
 .tone-card--selected .tone-desc { color: #7a3a20; }
@@ -857,8 +911,8 @@ body {
 .freq-wave { flex-shrink: 0; }
 
 .freq-label {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
 }
 
 /* 互动边界选项 */
@@ -903,12 +957,12 @@ body {
 }
 
 .boundary-name {
-    font-size: 13px;
-    font-weight: 700;
+    font-size: var(--text-md);
+    font-weight: var(--weight-bold);
 }
 
 .boundary-desc {
-    font-size: 11px;
+    font-size: var(--text-xs);
     color: #666;
     margin-top: 2px;
     line-height: 1.5;
@@ -929,9 +983,9 @@ body {
     flex: 1;
     padding: 14px;
     text-align: center;
-    font-size: 14px;
-    font-weight: 700;
-    font-family: var(--font);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    font-family: var(--font-ui);
     cursor: pointer;
     background: var(--white);
     border: none;
@@ -977,9 +1031,9 @@ body {
 }
 
 .btn-save-prefs {
-    font-family: var(--font);
-    font-size: 15px;
-    font-weight: 800;
+    font-family: var(--font-ui);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-extrabold);
     padding: 14px 32px;
     background: var(--lime);
     border: var(--border);
@@ -1025,19 +1079,19 @@ body {
 }
 
 .record-modal-title {
-    font-size: 16px;
-    font-weight: 800;
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-extrabold);
     letter-spacing: -0.3px;
 }
 
 .record-modal-close {
     background: none;
     border: none;
-    font-size: 14px;
+    font-size: var(--text-lg);
     cursor: pointer;
     color: #888;
     padding: 2px 6px;
-    font-family: var(--font);
+    font-family: var(--font-ui);
 }
 
 .record-modal-close:hover { color: var(--black); }
@@ -1065,8 +1119,8 @@ body {
     justify-content: center;
     gap: 10px;
     color: #aaa;
-    font-size: 13px;
-    font-weight: 500;
+    font-size: var(--text-md);
+    font-weight: var(--weight-medium);
     pointer-events: none;
 }
 
@@ -1088,8 +1142,8 @@ body {
 .record-field:last-child { border-bottom: none; }
 
 .record-field-label {
-    font-size: 11px;
-    font-weight: 700;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
     color: #888;
     width: 28px;
     flex-shrink: 0;
@@ -1100,14 +1154,14 @@ body {
     flex: 1;
     border: none;
     outline: none;
-    font-family: var(--font);
-    font-size: 13px;
-    font-weight: 600;
+    font-family: var(--font-ui);
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
     color: var(--black);
     background: transparent;
 }
 
-.record-field-input::placeholder { color: #ccc; font-weight: 400; }
+.record-field-input::placeholder { color: #ccc; font-weight: var(--weight-regular); }
 
 .record-modal-footer {
     padding: 16px 20px;
@@ -1138,8 +1192,8 @@ body {
     position: absolute;
     top: 28px;
     left: 28px;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
     border: var(--border);
     padding: 5px 14px;
     background: var(--beige);
@@ -1154,7 +1208,7 @@ body {
     position: absolute;
     inset: 0;
     overflow: hidden;
-    cursor: grab;
+    cursor: crosshair;
     z-index: 2;
 }
 
@@ -1180,8 +1234,8 @@ body {
     position: absolute;
     left: 32px;
     bottom: 30px;
-    font-size: 13px;
-    font-weight: 700;
+    font-size: var(--text-md);
+    font-weight: var(--weight-bold);
     color: #777;
     border: 2px dashed #999;
     background: rgba(255,255,255,0.45);
@@ -1234,8 +1288,11 @@ body {
     position: absolute;
     width: 280px;
     background: var(--lime);
-    border: var(--border);
-    box-shadow: 2px 8px 10px rgba(74, 43, 24, 0.3);
+    border: 0;
+    box-shadow:
+        0 1px 1px rgba(63, 40, 19, 0.14),
+        1px 5px 7px rgba(63, 40, 19, 0.2),
+        4px 14px 18px rgba(63, 40, 19, 0.18);
     padding: 20px 18px 18px;
     display: flex;
     flex-direction: column;
@@ -1243,6 +1300,19 @@ body {
     z-index: 3;
     cursor: grab;
     user-select: none;
+}
+
+.note-sticky::after {
+    content: "";
+    position: absolute;
+    right: 6px;
+    bottom: -4px;
+    left: 8px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(63, 40, 19, 0.12);
+    filter: blur(5px);
+    pointer-events: none;
 }
 
 .note-sticky.dragging {
@@ -1311,14 +1381,13 @@ body {
 }
 
 .note-sticky-time {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
     color: #3a3a00;
 }
 
 .note-sticky-text {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: var(--text-2xl);
     line-height: 1.65;
     color: var(--black);
 }
@@ -1330,7 +1399,7 @@ body {
     border: 0;
     background: transparent;
     font-size: 22px;
-    line-height: 1;
+    line-height: var(--leading-solid);
     color: #777;
     cursor: pointer;
 }
@@ -1342,9 +1411,9 @@ body {
     background: transparent;
     resize: none;
     outline: none;
-    font-family: var(--font);
-    font-size: 16px;
-    font-weight: 700;
+    font-family: var(--font-ui);
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
     line-height: 1.65;
     color: var(--black);
     user-select: text;
@@ -1352,8 +1421,8 @@ body {
 }
 
 .note-draft-textarea::placeholder {
-    color: #999;
-    font-weight: 700;
+    color: #3d3d3d2b;
+    font-weight: var(--weight-bold);
 }
 
 .note-draft-footer {
@@ -1384,17 +1453,17 @@ body {
 
 .note-memory-label {
     padding: 8px 12px;
-    font-size: 11px;
-    font-weight: 700;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
     background: var(--lime);
     border-top: none;
     letter-spacing: 0.5px;
 }
 
 .btn-post-note {
-    font-family: var(--font);
-    font-size: 13px;
-    font-weight: 700;
+    font-family: var(--font-ui);
+    font-size: var(--text-md);
+    font-weight: var(--weight-bold);
     padding: 9px 22px;
     background: #FDAA90;
     border: var(--border);
@@ -1411,7 +1480,7 @@ body {
 
 .btn-post-note--small {
     padding: 7px 16px;
-    font-size: 12px;
+    font-size: var(--text-sm);
     box-shadow: 3px 3px 0 var(--black);
 }
 
@@ -1419,9 +1488,9 @@ body {
 .btn-post-note:active { transform: translate(2px,2px);   box-shadow: 2px 2px 0 var(--black); }
 
 .btn-record-place {
-    font-family: var(--font);
-    font-size: 15px;
-    font-weight: 800;
+    font-family: var(--font-ui);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-extrabold);
     min-height: 58px;
     max-width: 330px;
     padding: 0 24px;
@@ -1542,40 +1611,32 @@ body {
 .polaroid-body {
     padding: 10px 2px 0;
     display: flex;
-    align-items: center;
-    justify-content: flex-start;
+    flex-direction: column;
     gap: 6px;
-    flex-wrap: wrap;
 }
 
 .polaroid-meta-box {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
     border: 1px solid var(--black);
     background: #EBE7E5;
     padding: 3px 8px;
-    white-space: nowrap;
-    flex-shrink: 0;
+    white-space: normal;
+    word-break: break-all;
+    line-height: 1.4;
 }
 
 .polaroid-tags {
     display: flex;
     gap: 4px;
-    flex-wrap: nowrap;
-    justify-content: flex-end;
-    margin-left: auto;
-    white-space: nowrap;
+    flex-wrap: wrap;
 }
 
-.polaroid-body.tags-stacked .polaroid-tags {
-    flex-basis: 100%;
-    justify-content: flex-start;
-    margin-left: 0;
-}
+/* tags-stacked 已废弃，body 改为 column 布局 */
 
 .polaroid-tag {
-    font-size: 10px;
-    font-weight: 700;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
     padding: 2px 8px;
     border: 1px solid var(--black);
     background: var(--lime);
@@ -1594,18 +1655,21 @@ body {
 /* 语录 */
 .polaroid-quote {
     padding: 8px 2px 12px;
-    font-size: 11px;
+    font-size: var(--text-2xl);
+    font-family: var(--font-handwritten);
     color: #333;
-    line-height: 1.6;
+    line-height: var(--leading-body);
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .polaroid-quote.is-sensing-text {
     color: #6F705F;
-    font-weight: 700;
+    font-weight: var(--weight-bold);
     -webkit-line-clamp: unset;
     display: flex;
     align-items: center;
@@ -1689,9 +1753,9 @@ body {
 }
 
 .story-eyebrow {
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-meta);
     color: #888;
     text-transform: uppercase;
     margin-bottom: 6px;
@@ -1699,7 +1763,6 @@ body {
 
 .story-title {
     font-size: 40px;
-    font-weight: 800;
     letter-spacing: -0.5px;
     line-height: 1.1;
 }
@@ -1712,8 +1775,8 @@ body {
     border: var(--border);
     border-radius: 20px;
     padding: 6px 14px;
-    font-size: 14px;
-    font-weight: 700;
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
     box-shadow: 2px 2px 0 var(--black);
     flex-shrink: 0;
     margin-top: 4px;
@@ -1865,8 +1928,8 @@ body {
 }
 
 .tl-marker--star {
-    font-size: 16px;
-    line-height: 1;
+    font-size: var(--text-2xl);
+    line-height: var(--leading-solid);
     flex-shrink: 0;
     position: relative;
     z-index: 1;
@@ -1917,9 +1980,9 @@ body {
     background: #FFFFFF;
     box-shadow: 3px 3px 0 var(--black);
     padding: 5px 14px;
-    font-size: 13px;
-    font-weight: 900;
-    letter-spacing: 0.08em;
+    font-size: var(--text-md);
+    font-weight: var(--weight-black);
+    letter-spacing: var(--tracking-meta);
 }
 
 /* 旁白 */
@@ -1933,10 +1996,10 @@ body {
     display: flex;
     align-items: center;
     gap: 18px;
-    font-size: 18px;
+    font-size: var(--text-3xl);
     color: #3F3F3F;
     font-style: normal;
-    line-height: 1.75;
+    line-height: var(--leading-relaxed);
 }
 
 .timeline-narration-text {
@@ -1968,8 +2031,8 @@ body {
 
 .story-media-card figcaption {
     padding: 7px 10px 8px;
-    font-size: 11px;
-    font-weight: 800;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-extrabold);
     letter-spacing: 0.04em;
     color: #333;
 }
@@ -2004,8 +2067,8 @@ body {
     border: var(--border);
     box-shadow: 3px 3px 0 var(--black);
     padding: 5px 12px;
-    font-size: 12px;
-    font-weight: 800;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-extrabold);
     letter-spacing: 0.02em;
 }
 
@@ -2017,9 +2080,9 @@ body {
     background: #FFFFFF;
     box-shadow: 3px 3px 0 var(--black);
     padding: 4px 10px;
-    font-size: 10px;
-    line-height: 1;
-    font-weight: 900;
+    font-size: var(--text-2xs);
+    line-height: var(--leading-solid);
+    font-weight: var(--weight-black);
     color: var(--black);
     white-space: nowrap;
 }
@@ -2029,7 +2092,7 @@ body {
     box-shadow: none;
     padding: 0;
     font-size: 54px;
-    line-height: 1;
+    line-height: var(--leading-solid);
     filter: drop-shadow(3px 4px 0 rgba(26, 26, 26, 0.32));
 }
 
@@ -2038,8 +2101,8 @@ body {
     max-width: 560px;
     padding-right: 104px;
     padding-left: 42px;
-    font-size: 18px;
-    font-weight: 800;
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-extrabold);
     line-height: 1.9;
     color: var(--black);
 }
@@ -2049,10 +2112,10 @@ body {
     position: absolute;
     left: 24px;
     top: 14px;
-    font-family: "Liberation Serif", Georgia, serif;
+    font-family: var(--font-quote-mark);
     font-size: 60px;
     line-height: 0.9;
-    font-weight: 700;
+    font-weight: var(--weight-bold);
     color: #CFCFCF;
     pointer-events: none;
 }
@@ -2066,9 +2129,9 @@ body {
     border: 2px solid currentColor;
     box-shadow: none;
     transform: none;
-    font-size: 13px;
-    font-weight: 400;
-    line-height: 1.55;
+    font-size: var(--text-md);
+    font-weight: var(--weight-regular);
+    line-height: var(--leading-snug);
     color: #777;
 }
 
@@ -2080,7 +2143,7 @@ body {
     box-shadow: 4px 4px 0 #1A1A1A;
 }
 
-.char-duchamp .char-card-name-tag { font-family: 'Courier New', monospace; letter-spacing: 0.08em; }
+.char-duchamp .char-card-name-tag { letter-spacing: var(--tracking-meta); }
 .char-duchamp.char-dialogue-beat::before { color: #B8B8B8; }
 
 /* 齐妃：淡粉 */
@@ -2109,14 +2172,14 @@ body {
 /* 单独 action / inner_monologue */
 .char-action-beat .char-card-text {
     color: #777;
-    font-size: 13px;
-    font-weight: 400;
+    font-size: var(--text-md);
+    font-weight: var(--weight-regular);
 }
 
 /* 场景标题标签（时间线左列） */
 .tl-scene-label {
-    font-size: 10px;
-    font-weight: 800;
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-extrabold);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: #888;
@@ -2146,8 +2209,8 @@ body {
 .echoes-header {
     width: fit-content;
     margin: 0 auto 30px;
-    font-size: 18px;
-    font-weight: 900;
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-black);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--black);
@@ -2206,16 +2269,17 @@ body {
 .echo-card--default { background: var(--white); --echo-dot-color: #CCC; }
 
 .echo-card-quote {
-    font-size: 13px;
-    line-height: 1.7;
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-body);
     color: #1A1A1A;
     margin-bottom: 14px;
     font-style: normal;
 }
 
 .echo-card-attr {
-    font-size: 13px;
-    font-weight: 800;
+    font-size: var(--text-md);
+    font-weight: var(--weight-extrabold);
     color: #1A1A1A;
 }
 
@@ -2226,9 +2290,9 @@ body {
    ══════════════════════════════════════════════════════════════ */
 
 :root {
-    --coral:  #FF8F53;
+    --coral:  #FDAA90;
     --yellow: #FFD84D;
-    --purple: #A98BFF;
+    --purple: #A795FF;
     --kraft:  #C9A777;
     --paper:  #FFFDF7;
 }
@@ -2297,13 +2361,13 @@ body {
 
 .logo-title {
     font-size: 28px;
-    letter-spacing: -1px;
+    letter-spacing: var(--tracking-display);
 }
 
 .logo-sub {
     color: #5A431F;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
     letter-spacing: 0.04em;
 }
 
@@ -2314,7 +2378,7 @@ body {
 
 .nav-item {
     min-height: 44px;
-    font-weight: 800;
+    font-weight: var(--weight-extrabold);
 }
 
 .nav-item.active,
@@ -2340,7 +2404,7 @@ body {
     border-radius: 0;
     padding: 9px 16px;
     font-family: var(--font-mono);
-    font-weight: 800;
+    font-weight: var(--weight-extrabold);
 }
 
 .main-card {
@@ -2370,7 +2434,7 @@ body {
 }
 
 .photo-serial {
-    font-weight: 900;
+    font-weight: var(--weight-black);
     letter-spacing: 0.04em;
 }
 
@@ -2378,22 +2442,24 @@ body {
     padding: 34px 42px 30px;
 }
 
-.char-name {
-    max-width: 680px;
-    font-size: clamp(56px, 6.5vw, 96px);
-    letter-spacing: -2px;
-    line-height: 0.92;
-    text-transform: uppercase;
-}
-
 .package-name-row {
     display: flex;
     align-items: flex-end;
     gap: 20px;
+    /* container 让子元素用 cqi 单位按行内宽度自动缩放 */
+    container-type: inline-size;
+    container-name: name-row;
 }
 
-.package-name-row .char-name {
-    flex: 0 1 auto;
+.char-name {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: clamp(32px, 8cqi, 90px);
+    letter-spacing: var(--tracking-display);
+    line-height: 0.96;
+    text-transform: uppercase;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .character-select {
@@ -2428,8 +2494,8 @@ body {
     background: var(--coral);
     padding: 14px 28px;
     font-family: var(--font-body);
-    font-size: 15px;
-    font-weight: 900;
+    font-size: var(--text-xl);
+    font-weight: var(--weight-black);
 }
 
 /* 小纸条：软木板和真实纸张 */
@@ -2451,10 +2517,6 @@ body {
     top: 34px;
     right: 42px;
     background: var(--coral);
-}
-
-.note-sticky {
-    box-shadow: 2px 8px 10px rgba(74, 43, 24, 0.3);
 }
 
 .note-sticky--char { background: #FFF079; }
@@ -2489,7 +2551,9 @@ body {
 
 /* 今日同游：独立杂志拼贴 */
 .story-page {
-    background: #FFFDF7;
+    /* 紫色右侧装饰条放在不滚动的容器上，全程覆盖面板高度 */
+    background:
+        linear-gradient(90deg, #FFFDF7 0 93%, rgba(169, 139, 255, 0.26) 93% 100%);
 }
 
 .story-header {
@@ -2505,14 +2569,14 @@ body {
     border: 2px solid var(--black);
     background: var(--yellow);
     color: var(--black);
-    font-size: 12px;
-    font-weight: 900;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-black);
     transform: rotate(-1deg);
 }
 
 .story-title {
     font-size: clamp(42px, 5vw, 66px);
-    letter-spacing: -1px;
+    letter-spacing: var(--tracking-display);
     line-height: 0.96;
 }
 
@@ -2548,7 +2612,7 @@ body {
 
 .tl-scene-title {
     padding: 7px 17px;
-    font-size: 14px;
+    font-size: var(--text-lg);
     box-shadow: 4px 4px 0 var(--black);
     transform: rotate(-1deg);
 }
@@ -2577,9 +2641,9 @@ body {
 }
 
 .char-card-name-tag {
-    background: var(--yellow);
+    background: var(--white);
     border-width: 2px;
-    font-weight: 900;
+    font-weight: var(--weight-black);
 }
 
 .story-mood-tag--emoji {
@@ -2624,8 +2688,8 @@ body {
 
 .package-archive {
     font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 900;
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-black);
     letter-spacing: 0.04em;
 }
 
@@ -2691,8 +2755,8 @@ body {
     background: var(--coral);
     box-shadow: 3px 3px 0 var(--black);
     font-family: var(--font-mono);
-    font-size: 18px;
-    font-weight: 900;
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-black);
     letter-spacing: 0.03em;
     transform: rotate(-1deg);
 }
@@ -2708,9 +2772,9 @@ body {
     padding-bottom: 6px;
     border-bottom: 1px solid #777;
     font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 900;
-    letter-spacing: 0.08em;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-black);
+    letter-spacing: var(--tracking-meta);
 }
 
 .story-header-left {
@@ -2746,15 +2810,16 @@ body {
 .story-issue-label {
     padding-bottom: 6px;
     border-bottom: 1px solid #777;
-    font-size: 11px;
-    font-weight: 900;
-    letter-spacing: 0.08em;
+    margin-bottom: 13px;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-black);
+    letter-spacing: var(--tracking-meta);
 }
 
 .story-episode {
     font-size: 56px;
-    font-weight: 900;
-    letter-spacing: -1px;
+    font-weight: var(--weight-black);
+    letter-spacing: var(--tracking-display);
     line-height: 0.92;
 }
 
@@ -2762,14 +2827,11 @@ body {
     width: fit-content;
     margin: 12px 0 0 auto;
     padding: 4px 9px;
-    font-size: 11px;
+    font-size: var(--text-xs);
 }
 
 .story-scroll {
-    padding-top: 178px;
-    background:
-        linear-gradient(90deg, transparent 0 93%, rgba(169, 139, 255, 0.26) 93% 100%)
-        0 188px / 100% calc(100% - 188px) no-repeat;
+    padding-top: 176px;
 }
 
 .tl-scene-title {
@@ -2779,7 +2841,7 @@ body {
 .tl-scene-title span {
     padding-right: 9px;
     border-right: 2px solid var(--black);
-    font-size: 12px;
+    font-size: var(--text-sm);
 }
 
 .tl-row--char .timeline-char-card {
@@ -2836,8 +2898,8 @@ body {
     padding: 10px 15px;
     gap: 7px;
     font-family: var(--font-body);
-    font-size: 13px;
-    font-weight: 900;
+    font-size: var(--text-md);
+    font-weight: var(--weight-black);
 }
 
 .note-add-btn span {
@@ -2864,12 +2926,12 @@ body {
 
 .physical-page-title {
     position: relative;
-    padding: 9px 17px 18px;
+    padding: 18px 17px 18px;
     border: var(--border);
     box-shadow: 5px 5px 0 var(--black);
     font-size: 38px;
     letter-spacing: 0;
-    line-height: 1;
+    line-height: var(--leading-solid);
     transform: rotate(-2deg);
 }
 
@@ -2906,6 +2968,7 @@ body {
 
 .notes-decoration-layer {
     z-index: 1;
+    overflow: visible;
 }
 
 .journal-decoration-layer {
@@ -2979,6 +3042,11 @@ body {
     transform: rotate(-4deg);
 }
 
+.notes-click-decoration {
+    z-index: 2;
+    pointer-events: none;
+}
+
 .trip-decoration--postcard {
     top: 164px;
     right: 26px;
@@ -3031,7 +3099,7 @@ body {
 .btn-record-place {
     min-height: 48px;
     padding: 0 18px;
-    font-size: 13px;
+    font-size: var(--text-md);
 }
 
 /* 隐藏滚动条但保留滚动行为 */
@@ -3050,4 +3118,90 @@ body {
     display: none;
     width: 0;
     height: 0;
+}
+
+/* 小纸条与照片墙正文：优先使用本地中文手写字体 */
+.note-sticky-text,
+.note-draft-textarea,
+.polaroid-quote {
+    font-family: var(--font-handwritten);
+}
+
+.notes-board-title,
+.journal-wall-title {
+    font-family: var(--font-page);
+}
+
+.char-name,
+.story-title {
+    font-family: var(--font-brand);
+    font-weight: var(--weight-regular);
+}
+
+/* 今日同游：稳定角色字体与标签颜色 */
+.timeline-narration,
+.timeline-narration-text {
+    font-family: var(--font-story-narration);
+    font-weight: var(--weight-regular);
+}
+
+.char-qifei,
+.char-qifei .char-card-name-tag {
+    font-family: var(--font-character-qifei);
+}
+
+.char-duchamp,
+.char-duchamp .char-card-name-tag {
+    font-family: var(--font-character-duchamp);
+}
+
+.char-duchamp .char-card-text,
+.char-duchamp .char-card-action-box {
+    font-weight: var(--weight-regular);
+}
+
+.char-zsiga,
+.char-zsiga .char-card-name-tag {
+    font-family: var(--font-character-zsiga);
+}
+
+.echo-card--qifei,
+.echo-card--qifei .echo-card-quote,
+.echo-card--qifei .echo-card-attr {
+    font-family: var(--font-character-qifei);
+}
+
+.echo-card--duchamp,
+.echo-card--duchamp .echo-card-quote,
+.echo-card--duchamp .echo-card-attr {
+    font-family: var(--font-character-duchamp);
+}
+
+.echo-card--zsiga,
+.echo-card--zsiga .echo-card-quote,
+.echo-card--zsiga .echo-card-attr {
+    font-family: var(--font-character-zsiga);
+}
+
+.char-card-name-tag,
+.char-qifei .char-card-name-tag,
+.char-duchamp .char-card-name-tag,
+.char-zsiga .char-card-name-tag {
+    color: var(--black);
+    font-weight: var(--weight-black);
+}
+
+.echo-card-attr,
+.echo-card--qifei .echo-card-attr,
+.echo-card--duchamp .echo-card-attr,
+.echo-card--zsiga .echo-card-attr {
+    font-weight: var(--weight-black);
+}
+
+.tl-scene-title,
+.tl-row--scene-color-0 .tl-scene-title,
+.tl-row--scene-color-1 .tl-scene-title,
+.tl-row--scene-color-2 .tl-scene-title,
+.tl-row--scene-color-3 .tl-scene-title {
+    background: var(--yellow);
 }
