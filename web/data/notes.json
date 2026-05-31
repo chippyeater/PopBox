@@ -34,5 +34,23 @@
     "state": "ready",
     "createdAt": 1779862271480,
     "replyTo": "note_71ede371-4f53-453f-9ccd-e9dd092d050b"
+  },
+  {
+    "id": "note_8e6cce21-2de0-4a25-b171-772e2ec9680a",
+    "characterId": "qifei",
+    "from": "user",
+    "text": "你今天有没有出门？",
+    "state": "ready",
+    "createdAt": 1780216618842,
+    "replyTo": ""
+  },
+  {
+    "id": "note_reply_c871ed68-39cc-499b-b920-77fac366914a",
+    "characterId": "qifei",
+    "from": "character",
+    "text": "本宫今日身子乏，未曾踏出永和宫半步。倒是听说外头风大，你既已回家，便好生歇着，莫要四处乱跑。三阿哥前儿还念叨着你呢。",
+    "state": "ready",
+    "createdAt": 1780216618844,
+    "replyTo": "note_8e6cce21-2de0-4a25-b171-772e2ec9680a"
   }
 ]

@@ -1,5 +1,22 @@
 [
   {
+    "id": "journal_1780216579072",
+    "characterId": "qifei",
+    "date": "2026-05-31",
+    "day": "31",
+    "month": "MAY",
+    "place": "这是我们世界的一个歌手",
+    "imageUrl": "/journal-images/journal_1780216579072.jpg",
+    "journalState": "ready",
+    "quote": "这黄底黑点的衣裳倒像本宫那件，只是这玩偶怎的这般愁眉苦脸？",
+    "description": "一个身穿灰衣黑裤的人形毛绒挂件悬挂在黄色波点背景前。挂件下方连接着金属珠链及彩色装饰物。",
+    "mood": [
+      "眼熟",
+      "疑惑"
+    ],
+    "createdAt": 1780216579082
+  },
+  {
     "id": "journal_1779795332612",
     "characterId": "qifei",
     "date": "2026-05-26",
