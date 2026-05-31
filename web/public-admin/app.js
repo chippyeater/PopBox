@@ -1124,7 +1124,7 @@ const app = (() => {
     const CHAR_AVATARS    = { duchamp: '杜', qifei: '妃', zsiga: 'Z', goodluck: 'GL' };
     const CHAR_CSS_CLASS  = { duchamp: 'char-duchamp', qifei: 'char-qifei', zsiga: 'char-zsiga' };
     const ECHO_CSS_CLASS  = { qifei: 'echo-card--qifei', zsiga: 'echo-card--zsiga', duchamp: 'echo-card--duchamp' };
-    const STATUS_LABEL    = { upcoming: '未开始', ongoing: '进行中', done: '已完成' };
+    const STATUS_LABEL    = { upcoming: '未开始', ongoing: '2026年5月29日 10:20', done: '已完成' };
     const STATUS_DOT_COLOR = { upcoming: '#AAA', ongoing: '#7BC14A', done: '#FF6B35' };
     const STORY_MOOD_ANGLES = [-2, -1, 1, 2];
     const STORY_MOOD_EMOJI = {
