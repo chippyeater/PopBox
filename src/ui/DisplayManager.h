@@ -32,7 +32,7 @@ static constexpr int AVATAR_S  = 66;
 static constexpr int SWITCH_BTN_X = 4;
 static constexpr int SWITCH_BTN_Y = 4;
 static constexpr int SWITCH_BTN_W = 76;
-static constexpr int SWITCH_BTN_H = 22;
+static constexpr int SWITCH_BTN_H = 33;
 
 class DisplayManager {
 public:

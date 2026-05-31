@@ -6,6 +6,23 @@
 #include <WiFiClient.h>
 #include <HTTPClient.h>
 
+// URL 编码（用于含中文的字符 ID → URL 路径）
+static String _urlEncode(const String& s) {
+    String out;
+    out.reserve(s.length() * 3);
+    for (size_t i = 0; i < s.length(); i++) {
+        char c = s[i];
+        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+            out += c;
+        } else {
+            char buf[4];
+            snprintf(buf, sizeof(buf), "%%%02X", (unsigned char)c);
+            out += buf;
+        }
+    }
+    return out;
+}
+
 static const char* OFFLINE_CACHE_PATH = "/characters.json";
 
 // 中文名头像路径 → ASCII 别名映射（ESP32 HTTPClient 对百分号编码的中文路径支持不佳）
@@ -259,7 +276,7 @@ void CharacterManager::_loadOfflineCache() {
 }
 
 bool CharacterManager::_notifyBackend(const String& characterId) {
-    String url = String(BACKEND_URL) + "/api/characters/current/" + characterId;
+    String url = String(BACKEND_URL) + "/api/characters/current/" + _urlEncode(characterId);
     HTTPClient http;
     http.begin(url);
     http.setTimeout(5000);
@@ -376,7 +393,7 @@ bool CharacterManager::_downloadFile(const String& path) {
 }
 
 bool CharacterManager::_notifyDualBackend(const String& id1, const String& id2) {
-    String url = String(BACKEND_URL) + "/api/characters/dual/" + id1 + "/" + id2;
+    String url = String(BACKEND_URL) + "/api/characters/dual/" + _urlEncode(id1) + "/" + _urlEncode(id2);
     HTTPClient http;
     http.begin(url);
     http.setTimeout(5000);

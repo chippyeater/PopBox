@@ -620,7 +620,7 @@ void ChatUI::_runRecognition() {
         _pendingCharCount = 0;
         _charMgr.setDualMode(idxA, idxB);
         _isGroupChat = true;
-        _showGroupGreeting();
+        _showGroupIdle();
         return;
     }
 

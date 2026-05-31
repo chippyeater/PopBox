@@ -55,13 +55,18 @@ void DisplayManager::drawNoCharacter() {
 void DisplayManager::drawCountSelection(int existingCount) {
     M5.Display.fillScreen(C_BG);
 
-    // 标题（小一号，不堆叠）
+    // 计算内容总高度，垂直居中
+    // 标题(~20px) + 间隔8 + 副标题(~18px) + 间隔2 + 分隔线(2px) + 间隔12 + 按钮(80px) = ~142px
+    static constexpr int CONTENT_H = 142;
+    static constexpr int START_Y   = (SCREEN_H - CONTENT_H) / 2;  // ≈ 49
+
+    // 标题
     M5.Display.setFont(FONT_M);
     M5.Display.setTextSize(1);
     M5.Display.setTextColor(C_TEXT);
     const char* title = "等待角色入住";
     int tw = M5.Display.textWidth(title);
-    M5.Display.setCursor((SCREEN_W - tw) / 2, 18);
+    M5.Display.setCursor((SCREEN_W - tw) / 2, START_Y);
     M5.Display.print(title);
 
     // 副标题
@@ -69,25 +74,20 @@ void DisplayManager::drawCountSelection(int existingCount) {
     M5.Display.setTextColor(C_MUTED);
     const char* subtitle = "请选择入住的角色人数";
     int sw = M5.Display.textWidth(subtitle);
-    M5.Display.setCursor((SCREEN_W - sw) / 2, 42);
+    M5.Display.setCursor((SCREEN_W - sw) / 2, START_Y + 28);
     M5.Display.print(subtitle);
 
     // 装饰分隔线
-    M5.Display.fillRoundRect(100, 58, SCREEN_W - 200, 2, 1, C_BORDER);
+    M5.Display.fillRoundRect(100, START_Y + 46, SCREEN_W - 200, 2, 1, C_BORDER);
 
-    // 两个大按钮（Y 位置上移，留白均匀）
-    static constexpr int BW = 100, BH = 80, GAP = 20, BY = 72;
+    // 两个大按钮
+    static constexpr int BW = 100, BH = 80, GAP = 20;
+    int BY = START_Y + 60;
     int x1 = (SCREEN_W - BW * 2 - GAP) / 2;
     int x2 = x1 + BW + GAP;
 
     _drawButton(x1, BY, BW, BH, C_PURPLE, C_SHAD_P, "1人入住");
     _drawButton(x2, BY, BW, BH, C_NEON, C_SHAD_Y, "2人入住");
-
-    // 底部当前角色数
-    M5.Display.setFont(FONT_S);
-    M5.Display.setTextColor(C_MUTED);
-    M5.Display.setCursor(10, SCREEN_H - 18);
-    M5.Display.printf("当前可识别角色: %d 个", existingCount);
 
     _lastState = AppState::CHARACTER_COUNT;
 }
@@ -120,7 +120,9 @@ void DisplayManager::drawIdle(const String& name, const String& avatarPath,
                               10, C_BORDER);
     M5.Display.setTextColor(C_TEXT);
     M5.Display.setFont(FONT_S);
-    M5.Display.setCursor(SWITCH_BTN_X + 8, SWITCH_BTN_Y + 5);
+    int btnLabelW = M5.Display.textWidth("← 换角色");
+    M5.Display.setCursor(SWITCH_BTN_X + (SWITCH_BTN_W - btnLabelW) / 2,
+                         SWITCH_BTN_Y + (SWITCH_BTN_H - 12) / 2);
     M5.Display.print("← 换角色");
 
     _lastState = AppState::IDLE;
@@ -179,18 +181,30 @@ void DisplayManager::drawCharacterSelect(const String names[],
 void DisplayManager::drawRecognizing(int step) {
     M5.Display.fillScreen(C_BG);
 
-    // 仅显示"识别中"（无"等待角色入住"标题）
+    // 内容垂直居中（FONT_M ~16px + 间隔14 + FONT_M ~16px + 间隔14 + 进度条6px = ~66px）
+    static constexpr int CONTENT_H = 66;
+    static constexpr int START_Y   = (SCREEN_H - CONTENT_H) / 2;  // ≈ 87
+
+    // 标题
     M5.Display.setFont(FONT_M);
     M5.Display.setTextColor(C_MUTED);
     int dotCount = (step / 10) % 4;
     char buf[20];
     snprintf(buf, sizeof(buf), "%s%s", "识别中", "......" + 6 - dotCount);
     int sw = M5.Display.textWidth(buf);
-    M5.Display.setCursor((SCREEN_W - sw) / 2, 30);
+    M5.Display.setCursor((SCREEN_W - sw) / 2, START_Y);
     M5.Display.print(buf);
 
+    // 提示文字
+    M5.Display.setFont(FONT_M);
+    M5.Display.setTextColor(C_TEXT);
+    const char* hint = "请先将角色置入盒中";
+    int hw = M5.Display.textWidth(hint);
+    M5.Display.setCursor((SCREEN_W - hw) / 2, START_Y + 30);
+    M5.Display.print(hint);
+
     // 进度条
-    int barW = 180, barH = 6, barX = (SCREEN_W - barW) / 2, barY = 60;
+    int barW = 180, barH = 6, barX = (SCREEN_W - barW) / 2, barY = START_Y + 60;
     M5.Display.drawRoundRect(barX, barY, barW, barH, 3, C_NEON);
     int pos = (step % 40);
     if (pos > 19) pos = 39 - pos;
@@ -260,11 +274,11 @@ void DisplayManager::drawGroupIdle(const String& nameA, const String& avatarPath
                                     const String& nameB, const String& avatarPathB) {
     M5.Display.fillScreen(C_BG);
 
-    // 两个头像并排
+    // 两个头像并排（头像+名字整体垂直居中）
     int aw = 90, ah = 90, gap = 20;
     int totalW = aw * 2 + gap;
     int startX = (SCREEN_W - totalW) / 2;
-    int ay = 36;
+    int ay = (SCREEN_H - (ah + 6 + 16)) / 2;  // 头像 + 间隔 + 名字行高 ≈ 112px
 
     _drawAvatar(startX, ay, aw, ah, avatarPathA);
     _drawAvatar(startX + aw + gap, ay, aw, ah, avatarPathB);
@@ -293,7 +307,9 @@ void DisplayManager::drawGroupIdle(const String& nameA, const String& avatarPath
                               10, C_BORDER);
     M5.Display.setTextColor(C_TEXT);
     M5.Display.setFont(FONT_S);
-    M5.Display.setCursor(SWITCH_BTN_X + 8, SWITCH_BTN_Y + 5);
+    int btnLabelW = M5.Display.textWidth("← 换角色");
+    M5.Display.setCursor(SWITCH_BTN_X + (SWITCH_BTN_W - btnLabelW) / 2,
+                         SWITCH_BTN_Y + (SWITCH_BTN_H - 12) / 2);
     M5.Display.print("← 换角色");
 
     _lastState = AppState::IDLE;
@@ -306,11 +322,13 @@ void DisplayManager::drawGroupLayout(const String& nameA, const String& nameB,
                                       const String& conversationText) {
     M5.Display.fillScreen(C_BG);
 
-    // 顶部标题栏
+    // 顶部标题栏（居中）
     M5.Display.setFont(FONT_M);
     M5.Display.setTextColor(C_NEON);
-    M5.Display.setCursor(10, 8);
-    M5.Display.print(nameA + " + " + nameB);
+    String title = nameA + " + " + nameB;
+    int tw = M5.Display.textWidth(title.c_str());
+    M5.Display.setCursor((SCREEN_W - tw) / 2, 8);
+    M5.Display.print(title);
 
     // 群聊角标
     M5.Display.setFont(FONT_S);
@@ -361,26 +379,54 @@ void DisplayManager::_drawGroupText(const String& text) {
         if (line.length() > 0 && line[0] == '[') {
             int close = line.indexOf(']');
             if (close > 0) {
-                // speaker 标签用橙色
-                M5.Display.setTextColor(C_NEON);
-                M5.Display.setCursor(areaX, y);
-                M5.Display.print(line.substring(0, close + 1));
-                // 内容用黑色
-                M5.Display.setTextColor(C_TEXT);
-                M5.Display.setCursor(areaX + M5.Display.textWidth(line.substring(0, close + 1).c_str()), y);
-                M5.Display.print(line.substring(close + 1));
+                String speaker = line.substring(0, close + 1);
+                String content = line.substring(close + 1);
+                int spW = M5.Display.textWidth(speaker.c_str());
+                int maxContentW = areaW - spW;
+
+                if (maxContentW > 0 && M5.Display.textWidth(content.c_str()) > maxContentW) {
+                    // 内容超长，自动换行
+                    String wrapped[10];
+                    int wc = 0;
+                    _wrapText(content, maxContentW, wrapped, wc, 10);
+                    for (int i = 0; i < wc && y + lineH <= areaY + areaH; i++) {
+                        if (i == 0) {
+                            M5.Display.setTextColor(C_NEON);
+                            M5.Display.setCursor(areaX, y);
+                            M5.Display.print(speaker);
+                            M5.Display.setTextColor(C_TEXT);
+                            M5.Display.setCursor(areaX + spW, y);
+                            M5.Display.print(wrapped[i]);
+                        } else {
+                            M5.Display.setTextColor(C_TEXT);
+                            M5.Display.setCursor(areaX, y);
+                            M5.Display.print(wrapped[i]);
+                        }
+                        y += lineH;
+                    }
+                } else {
+                    // 内容不超长，正常单行显示
+                    M5.Display.setTextColor(C_NEON);
+                    M5.Display.setCursor(areaX, y);
+                    M5.Display.print(speaker);
+                    M5.Display.setTextColor(C_TEXT);
+                    M5.Display.setCursor(areaX + spW, y);
+                    M5.Display.print(content);
+                    y += lineH;
+                }
             } else {
                 M5.Display.setTextColor(C_TEXT);
                 M5.Display.setCursor(areaX, y);
                 M5.Display.print(line);
+                y += lineH;
             }
         } else {
             M5.Display.setTextColor(C_TEXT);
             M5.Display.setCursor(areaX, y);
             M5.Display.print(line);
+            y += lineH;
         }
 
-        y += lineH;
         pos = next + 1;
     }
 }
@@ -457,7 +503,23 @@ void DisplayManager::_drawAvatar(int32_t x, int32_t y, int32_t w, int32_t h,
     file.read(buf, len);
     file.close();
 
-    M5.Display.drawJpg(buf, len, x, y, w, h, 0, 0, scale, 0.0f);
+    // 自动解析 JPEG 尺寸，计算缩放比例以适配目标区域
+    float autoScale = scale;
+    if (scale == 1.0f && len > 20) {
+        int imgW = 0, imgH = 0;
+        for (size_t i = 0; i < len - 1; i++) {
+            if (buf[i] == 0xFF && buf[i+1] == 0xC0 && i + 9 < len) {
+                imgH = (buf[i+5] << 8) | buf[i+6];
+                imgW = (buf[i+7] << 8) | buf[i+8];
+                break;
+            }
+        }
+        if (imgW > 0 && imgH > 0 && (imgW > w || imgH > h)) {
+            autoScale = min((float)w / imgW, (float)h / imgH);
+        }
+    }
+
+    M5.Display.drawJpg(buf, len, x, y, w, h, 0, 0, autoScale, 0.0f);
     free(buf);
 }
 

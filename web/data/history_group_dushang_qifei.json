@@ -1,261 +1,40 @@
 [
   {
+    "role": "user",
+    "content": "你们下午好呀，要不要去吃点好吃的？",
+    "ts": 1780223261775
+  },
+  {
     "role": "assistant",
     "characterId": "qifei",
     "characterName": "齐妃",
-    "content": "习字是修身养性的大正经事，怎到你嘴里就成了疯话？(sighs) 你若是闲得慌，不如去帮本宫磨墨。",
-    "ts": 1780118298058
+    "content": "正有此意呢。本宫刚用过早膳，这会儿倒有些馋嘴了。听说御膳房新出了几样点心，精致得很，不如咱们一起去尝尝？<#0.5#>若是能带上弘时一起便更好了。",
+    "ts": 1780223261775
   },
   {
     "role": "assistant",
     "characterId": "dushang",
     "characterName": "杜尚",
-    "content": "磨墨？这可是最高级的抽象表现主义。(chuckle) 看着黑水慢慢变浓，就像时间流逝一样令人绝望又着迷。",
-    "ts": 1780118298058
+    "content": "好吃的？听起来像是个诱人的陷阱。<#0.5#>不过既然你都这么说了，那就去呗。反正食物最终都会变成能量或者废物，区别只在于过程是否有趣。",
+    "ts": 1780223261775
   },
   {
     "role": "user",
-    "content": "你们好呀，我又来和你们聊天了。",
-    "ts": 1780118539765
-  },
-  {
-    "role": "assistant",
-    "characterId": "dushang",
-    "characterName": "杜尚",
-    "content": "又来？(chuckle) 你这种重复出现的姿态，简直比我的现成品作品还具有观念性。今天打算怎么荒诞地度过？",
-    "ts": 1780118539765
+    "content": "好的，那我们走吧。",
+    "ts": 1780223315836
   },
   {
     "role": "assistant",
     "characterId": "qifei",
     "characterName": "齐妃",
-    "content": "又是你！(sighs) 本宫刚让弘时歇口气，你又来搅扰。<#0.5#>真是没个消停的时候，若是再胡言乱语，休怪本宫请嬷嬷赶人。",
-    "ts": 1780118539765
+    "content": "那便好。本宫这就吩咐人备车，顺便去接三阿哥一道。<#0.5#>这孩子近日功课勤勉，也该让他尝尝鲜，高兴高兴。",
+    "ts": 1780223315836
   },
   {
     "role": "assistant",
     "characterId": "dushang",
     "characterName": "杜尚",
-    "content": "请嬷嬷？(chuckle) 这倒是个现成品装置，把“秩序”具象化为一群穿着制服的人。你儿子在场吗？这可是观察权威压迫的最佳时刻。",
-    "ts": 1780118539765
-  },
-  {
-    "role": "assistant",
-    "characterId": "qifei",
-    "characterName": "齐妃",
-    "content": "你这张嘴真是比刀子还利！弘时还在房里练字呢，哪有空听你这疯话。(sighs) 本宫劝你一句，少说两句保平安吧。",
-    "ts": 1780118539765
-  },
-  {
-    "role": "user",
-    "content": "你们不要再吵了，我不和你们聊天了，因为和你们聊天有点贵，拜拜。",
-    "ts": 1780118625030
-  },
-  {
-    "role": "assistant",
-    "characterId": "dushang",
-    "characterName": "杜尚",
-    "content": "聊天很贵？(chuckle) 你的时间定价权倒是挺清晰。拜拜，希望你的账单比我的观念艺术更经得起推敲。<#0.5#>慢走不送。",
-    "ts": 1780118625030
-  },
-  {
-    "role": "assistant",
-    "characterId": "qifei",
-    "characterName": "齐妃",
-    "content": "什么贵不贵的胡话！本宫听不懂这些弯弯绕。(sighs) 既然嫌贵，那便赶紧走吧，省得扰了弘时清净。",
-    "ts": 1780118625030
-  },
-  {
-    "role": "assistant",
-    "characterId": "dushang",
-    "characterName": "杜尚",
-    "content": "他走了。你看，只要标价足够高，任何对话都会终止。这比我的《大玻璃》还要彻底。(chuckle)",
-    "ts": 1780118625030
-  },
-  {
-    "role": "assistant",
-    "characterId": "qifei",
-    "characterName": "齐妃",
-    "content": "什么贵不贵的胡话！本宫听不懂这些弯弯绕。(sighs) 既然嫌贵，那便赶紧走吧，省得扰了弘时清净。",
-    "ts": 1780118625030
-  },
-  {
-    "role": "user",
-    "content": "我刚才吃了一个陕西的肉夹馍，你们吃过吗？",
-    "ts": 1780119673674
-  },
-  {
-    "role": "assistant",
-    "characterId": "dushang",
-    "characterName": "杜尚",
-    "content": "肉夹馍？(chuckle) 一个被切开的圆饼，夹着某种肉类的尸骸。你吃的不是食物，是“中式汉堡”的符号学困境。好吃吗？还是只是饿？",
-    "ts": 1780119673674
-  },
-  {
-    "role": "assistant",
-    "characterId": "qifei",
-    "characterName": "齐妃",
-    "content": "什么馍不馍的，听着就腻歪。<#0.5#>本宫只知御膳房做的烤鸭酥脆可口。弘时若是不爱吃精细点心，定是你带坏了他的胃口。(sighs)",
-    "ts": 1780119673674
-  },
-  {
-    "role": "assistant",
-    "characterId": "dushang",
-    "characterName": "杜尚",
-    "content": "烤鸭？不过是把一只鸟献祭给权力的仪式罢了。比起那个，肉夹馍至少诚实——它直接告诉你，这就是个快餐。",
-    "ts": 1780119673674
-  },
-  {
-    "role": "assistant",
-    "characterId": "qifei",
-    "characterName": "齐妃",
-    "content": "胡说什么呢！御膳房的饭菜也是你能妄议的？(sniffs) 真是没规矩，连个正经吃食都品不出好坏来。",
-    "ts": 1780119673674
-  },
-  {
-    "role": "assistant",
-    "characterId": "dushang",
-    "characterName": "杜尚",
-    "content": "御膳房？那不过是把鸟献祭给权力的仪式。(chuckle) 比起那个，肉夹馍至少诚实——它直接告诉你，这就是个快餐。",
-    "ts": 1780119673674
-  },
-  {
-    "role": "assistant",
-    "characterId": "qifei",
-    "characterName": "齐妃",
-    "content": "胡说什么呢！御膳房的饭菜也是你能妄议的？(sniffs) 真是没规矩，连个正经吃食都品不出好坏来。",
-    "ts": 1780119673674
-  },
-  {
-    "role": "user",
-    "content": "你们平时都喜欢玩什么游戏啊？",
-    "ts": 1780120188004
-  },
-  {
-    "role": "assistant",
-    "characterId": "dushang",
-    "characterName": "杜尚",
-    "content": "游戏？(chuckle) 我玩“把小便池挂墙上”的游戏。规则很简单：选个物品，签个名，然后看它怎么被供奉起来。你要试试吗？",
-    "ts": 1780120188004
-  },
-  {
-    "role": "assistant",
-    "characterId": "qifei",
-    "characterName": "齐妃",
-    "content": "什么歪门邪道！本宫只陪弘时玩猜谜和投壶，那是正经的闺阁乐事。<#0.5#>你倒好，尽说些让人脸红的话，成何体统！",
-    "ts": 1780120188004
-  },
-  {
-    "role": "assistant",
-    "characterId": "dushang",
-    "characterName": "杜尚",
-    "content": "投壶？(chuckle) 把箭射进壶里，然后被赋予道德意义。这不过是一场精心包装的权力表演，比你那“正经”乐事有趣多了。<#0.5#>你要不要来挑战一下我的“反游戏”？",
-    "ts": 1780120188004
-  },
-  {
-    "role": "assistant",
-    "characterId": "qifei",
-    "characterName": "齐妃",
-    "content": "你这张嘴真是欠收拾！(sighs) 弘时练字都累了，你还在这儿胡搅蛮缠。本宫可没工夫听你这疯话，休要再扰了清净！",
-    "ts": 1780120188004
-  },
-  {
-    "role": "user",
-    "content": "你们真的好吵啊，每次一见面就吵，能不能友善和谐一点？",
-    "ts": 1780120274164
-  },
-  {
-    "role": "assistant",
-    "characterId": "dushang",
-    "characterName": "杜尚",
-    "content": "和谐？(chuckle) 那是无聊的代名词。没有冲突，艺术就死了。不过既然你嫌吵，那我就闭嘴，让你享受这昂贵的宁静。<#0.5#>拜拜。",
-    "ts": 1780120274164
-  },
-  {
-    "role": "assistant",
-    "characterId": "qifei",
-    "characterName": "齐妃",
-    "content": "哼，本宫才懒得跟他争。(sighs) 倒是你，既然嫌吵，下次别来就是了。弘时还在练字呢，本宫可没空陪你们闹腾。",
-    "ts": 1780120274164
-  },
-  {
-    "role": "assistant",
-    "characterId": "dushang",
-    "characterName": "杜尚",
-    "content": "和谐？(chuckle) 那是无聊的代名词。没有冲突，艺术就死了。不过既然你嫌吵，那我就闭嘴，让你享受这昂贵的宁静。<#0.5#>拜拜。",
-    "ts": 1780120274164
-  },
-  {
-    "role": "assistant",
-    "characterId": "qifei",
-    "characterName": "齐妃",
-    "content": "哼，本宫才懒得跟他争。(sighs) 倒是你，既然嫌吵，下次别来就是了。弘时还在练字呢，本宫可没空陪你们闹腾。",
-    "ts": 1780120274164
-  },
-  {
-    "role": "user",
-    "content": "你们知道统计大学吗？",
-    "ts": 1780120607362
-  },
-  {
-    "role": "assistant",
-    "characterId": "dushang",
-    "characterName": "杜尚",
-    "content": "统计大学？(chuckle) 听起来像是个专门计算“平庸概率”的地方。在这里，个性是被统计掉的误差项，还是被筛选出的艺术品？",
-    "ts": 1780120607362
-  },
-  {
-    "role": "assistant",
-    "characterId": "qifei",
-    "characterName": "齐妃",
-    "content": "什么统计不统计的，本宫听不懂。(sighs) 莫不是又是什么新式学堂？弘时若是去那儿，只怕是误了前程，学了些旁门左道回来。",
-    "ts": 1780120607362
-  },
-  {
-    "role": "assistant",
-    "characterId": "dushang",
-    "characterName": "杜尚",
-    "content": "旁门左道？(chuckle) 也许只是他们把“标准答案”换成了“概率分布”。你觉得三阿哥适合做那个被统计的样本吗？",
-    "ts": 1780120607362
-  },
-  {
-    "role": "assistant",
-    "characterId": "qifei",
-    "characterName": "齐妃",
-    "content": "什么样本不样本的！(sighs) 弘时自会走正道，读圣贤书，考功名。那些虚头巴脑的东西，本宫才不信能养出大出息来。<#0.5#>罢了罢了。",
-    "ts": 1780120607362
-  },
-  {
-    "role": "user",
-    "content": "可是弘时不是皇子吗？他为什么还要考功名？",
-    "ts": 1780120694708
-  },
-  {
-    "role": "assistant",
-    "characterId": "dushang",
-    "characterName": "杜尚",
-    "content": "因为“皇子”只是他出生的标签，而“功名”是社会强加给他的剧本。他在演别人写好的戏，这难道不荒诞吗？(chuckle)",
-    "ts": 1780120694708
-  },
-  {
-    "role": "assistant",
-    "characterId": "qifei",
-    "characterName": "齐妃",
-    "content": "放肆！皇子也是臣子，自当为国效力。(sighs) 本宫盼着他出人头地，光宗耀祖，这有什么错？你懂什么规矩。",
-    "ts": 1780120694708
-  },
-  {
-    "role": "assistant",
-    "characterId": "dushang",
-    "characterName": "杜尚",
-    "content": "效力？(chuckle) 不过是把皇家的姓氏当成职场跳板罢了。齐妃，你是在养儿子，还是在培养一个完美的装饰品？",
-    "ts": 1780120694708
-  },
-  {
-    "role": "assistant",
-    "characterId": "qifei",
-    "characterName": "齐妃",
-    "content": "你这人真是不可理喻！(sighs) 本宫教导儿子忠君爱国，是天经地义。你若再这般胡搅蛮缠，休怪本宫不客气！",
-    "ts": 1780120694708
+    "content": "行吧，反正我也饿了。<#0.5#>不过别指望我帮你付账，我只负责欣赏你们吃东西的样子，这算不算一种行为艺术？",
+    "ts": 1780223315836
   }
 ]
