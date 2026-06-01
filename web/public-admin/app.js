@@ -1,12 +1,7 @@
 const app = (() => {
     // ── 假数据 ────────────────────────────────────────────────
     const MOCK = {
-        daysLiving:       7,
-        connectionStatus: '已连接',
-        breathColor:      '琥珀色',
-        interactCount:    12,
-        logIndex:         1,
-        logText:          '"今天的光落在玻璃罩上的时候，我觉得这里好像也没有那么陌生。"',
+        daysLiving: 7,
     };
 
     const MOCK_JOURNAL = [
@@ -83,6 +78,7 @@ const app = (() => {
         62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72,
         73, 74, 75, 77, 78, 79, 80, 81, 82, 83,
     ].map(i => `/media/decorations/image%20${i}.png`);
+    const NOTE_DECORATION_FALLBACKS = ['✦', '●', '★', '✿', '☻', '♥'];
 
     // 初始散布位置（相对画布左上角，单位px）
     const INIT_POSITIONS = [
@@ -390,11 +386,18 @@ const app = (() => {
         const size = 64 + Math.floor(Math.random() * 48);
         const rotation = -13 + Math.floor(Math.random() * 27);
         const asset = NOTE_DECORATION_ASSETS[Math.floor(Math.random() * NOTE_DECORATION_ASSETS.length)];
-        const sticker = document.createElement('img');
+        const sticker = document.createElement('span');
         sticker.className = 'page-decoration notes-click-decoration';
-        sticker.src = asset;
-        sticker.alt = '';
         sticker.style.cssText = `left:${x - size / 2}px;top:${y - size / 2}px;width:${size}px;transform:rotate(${rotation}deg)`;
+        const image = document.createElement('img');
+        image.src = asset;
+        image.alt = '';
+        image.onload = () => sticker.classList.add('has-image');
+        image.onerror = () => sticker.classList.add('is-fallback');
+        const fallback = document.createElement('span');
+        fallback.className = 'notes-click-decoration-fallback';
+        fallback.textContent = NOTE_DECORATION_FALLBACKS[Math.floor(Math.random() * NOTE_DECORATION_FALLBACKS.length)];
+        sticker.append(image, fallback);
         layer.appendChild(sticker);
     }
 
@@ -726,6 +729,7 @@ const app = (() => {
         document.getElementById('char-name').textContent = cur.name || '';
         document.getElementById('package-edition').textContent = `# ${cur.series || '未知系列'}`;
         document.getElementById('photo-serial').textContent = `SP-01 / ${cur.name || ''}`;
+        renderCharacterPersona(cur);
 
         const photo = document.getElementById('char-photo');
         const placeholder = document.getElementById('char-photo-placeholder');
@@ -748,6 +752,43 @@ const app = (() => {
                 if (img === photo && placeholder) placeholder.style.display = '';
             }
         });
+    }
+
+    function renderCharacterPersona(cur) {
+        const cards = document.getElementById('persona-cards');
+        if (!cards) return;
+
+        const fields = [
+            { key: 'personality', label: '性格', fallback: '还没有记录性格特征。' },
+            { key: 'worldview', label: '世界观', fallback: '还没有记录世界观。' },
+            { key: 'background', label: '背景故事', fallback: '还没有记录背景故事。' },
+        ];
+
+        cards.innerHTML = fields.map(({ key, label, fallback }) => {
+            const text = String(cur[key] || fallback).trim();
+            return `
+                <details class="status-card persona-card">
+                    <summary class="persona-card-summary">
+                        <span class="persona-card-heading">
+                            <span class="persona-card-label">${escapeHTML(label)}</span>
+                            <span class="persona-card-toggle" aria-hidden="true">+</span>
+                        </span>
+                        <span class="persona-card-preview">${escapeHTML(text)}</span>
+                    </summary>
+                    <p class="persona-card-full">${escapeHTML(text)}</p>
+                </details>
+            `;
+        }).join('');
+
+        const replyStyle = document.getElementById('reply-style');
+        if (replyStyle) replyStyle.textContent = cur.reply_style || '还没有记录说话风格。';
+
+        const catchphrase = document.getElementById('catchphrase');
+        if (catchphrase) {
+            const phrase = Array.isArray(cur.catchphrases) ? cur.catchphrases.find(Boolean) : '';
+            catchphrase.textContent = phrase ? `“${phrase}”` : '';
+            catchphrase.style.display = phrase ? '' : 'none';
+        }
     }
 
     async function loadCharacters() {
@@ -844,11 +885,6 @@ const app = (() => {
     // ── 初始化 ────────────────────────────────────────────────
     async function init() {
         document.getElementById('days-text').textContent   = `共同生活第 ${MOCK.daysLiving} 天`;
-        document.getElementById('conn-status').textContent = MOCK.connectionStatus;
-        document.getElementById('breath-color').textContent = MOCK.breathColor;
-        document.getElementById('interact-count').textContent = MOCK.interactCount + '次';
-        document.getElementById('log-index').textContent   = String(MOCK.logIndex).padStart(3, '0');
-        document.getElementById('log-text').textContent    = MOCK.logText;
 
         bindNav();
         window.addEventListener('resize', () => updatePolaroidTagLayout());

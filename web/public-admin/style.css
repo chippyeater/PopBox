@@ -141,6 +141,47 @@ body {
     color: #888;
 }
 
+.sidebar-character-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+}
+
+.sidebar-character-picker {
+    position: relative;
+    min-width: 0;
+}
+
+.sidebar-character-picker::after {
+    content: "▾";
+    position: absolute;
+    top: 50%;
+    right: 0;
+    color: #5A431F;
+    font-size: 10px;
+    line-height: 1;
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.sidebar-character-picker .character-select {
+    width: 78px;
+    margin: 0;
+    padding: 0 12px 0 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    box-shadow: none;
+    color: #5A431F;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    appearance: none;
+}
+
 .sidebar-nav {
     display: flex;
     flex-direction: column;
@@ -296,9 +337,9 @@ body {
 
 /* ── 照片栏（整体倾斜 1°，hover 回正 + 图片放大） ── */
 .photo-col {
-    width: 340px;
-    min-width: 280px;
-    border-right: var(--border);
+    width: 280px;
+    min-width: 240px;
+    border-right: none;
     padding: 18px;
     display: flex;
     flex-direction: column;
@@ -398,7 +439,7 @@ body {
 .divider {
     border: none;
     border-top: var(--border);
-    margin: 22px 0;
+    margin: 18px 0;
 }
 
 /* ── 状态卡片（无阴影） ── */
@@ -441,6 +482,121 @@ body {
     font-weight: var(--weight-extrabold);
 }
 
+/* ── 入住档案 ── */
+.persona-section-label {
+    margin-bottom: 10px;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-black);
+    letter-spacing: 0.08em;
+}
+
+.persona-card {
+    padding: 0;
+    min-width: 0;
+}
+
+.persona-card-summary {
+    min-height: 132px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.persona-card-summary::-webkit-details-marker {
+    display: none;
+}
+
+.persona-card-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.persona-card-label {
+    width: fit-content;
+    padding: 2px 7px;
+    border: 2px solid var(--black);
+    background: var(--paper);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-black);
+    box-shadow: 2px 2px 0 rgba(26, 26, 26, 0.22);
+}
+
+.persona-card-preview {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--black);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    line-height: 1.55;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.persona-card-toggle {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--black);
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, 0.3);
+    font-family: var(--font-mono);
+    font-size: 17px;
+    font-weight: var(--weight-black);
+    line-height: 1;
+}
+
+.persona-card-summary::after {
+    margin-top: auto;
+    color: rgba(26, 26, 26, 0.58);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-black);
+    letter-spacing: 0.08em;
+}
+
+.persona-card:nth-child(1) .persona-card-summary::after { content: "PROFILE / 01"; }
+.persona-card:nth-child(2) .persona-card-summary::after { content: "PROFILE / 02"; }
+.persona-card:nth-child(3) .persona-card-summary::after { content: "PROFILE / 03"; }
+
+.persona-card[open] {
+    grid-column: 1 / -1;
+}
+
+.persona-card[open] .persona-card-summary {
+    min-height: auto;
+}
+
+.persona-card[open] .persona-card-preview {
+    display: none;
+}
+
+.persona-card[open] .persona-card-summary::after {
+    display: none;
+}
+
+.persona-card[open] .persona-card-toggle {
+    font-size: 0;
+}
+
+.persona-card[open] .persona-card-toggle::after {
+    content: "−";
+    font-size: 17px;
+}
+
+.persona-card-full {
+    margin: 0;
+    padding: 0 15px 15px;
+    color: var(--black);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    line-height: 1.75;
+}
+
 /* ── 语音日志 ── */
 .voice-log {
     background: var(--beige);
@@ -473,6 +629,22 @@ body {
     font-weight: var(--weight-medium);
     line-height: var(--leading-relaxed);
     color: var(--black);
+}
+
+.persona-note-style {
+    margin: 0;
+    color: var(--black);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    line-height: 1.65;
+}
+
+.persona-catchphrase {
+    margin: 12px 0 0;
+    padding-top: 10px;
+    border-top: 2px dashed rgba(26, 26, 26, 0.3);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
 }
 
 /* ── 操作行 ── */
@@ -511,6 +683,18 @@ body {
 .page-view .main-card {
     margin-top: 0;
     max-height: 100%;
+}
+
+/* 生命仓尽量占满主内容区，减少包装卡上下的空白。 */
+#page-home {
+    margin-top: 8px;
+    max-height: none;
+}
+
+#page-home .main-card {
+    min-height: 0;
+    height: 100%;
+    max-height: none;
 }
 
 /* ── 出行日志 v2（撑满 main，topbar 浮层）── */
@@ -2393,6 +2577,7 @@ body {
 
 /* 生命仓：像潮玩包装盒，而不是普通后台卡片 */
 .main {
+    padding: 16px 20px;
     background:
         radial-gradient(circle at 93% 11%, rgba(255, 216, 77, 0.74) 0 82px, transparent 83px),
         linear-gradient(135deg, rgba(200, 230, 0, 0.11) 0 18%, transparent 18% 100%),
@@ -2400,7 +2585,7 @@ body {
 }
 
 .days-badge {
-    background: var(--purple);
+    background: var(--lime);
     border-radius: 0;
     padding: 9px 16px;
     font-family: var(--font-mono);
@@ -2414,12 +2599,11 @@ body {
 }
 
 .photo-col {
-    width: 390px;
-    padding: 26px;
+    width: 280px;
+    padding: 32px;
     border-radius: 0;
     background:
-        radial-gradient(circle, rgba(26, 26, 26, 0.22) 1.4px, transparent 1.7px) 0 0 / 18px 18px,
-        var(--lime);
+        var(--paper);
 }
 
 .photo-frame {
@@ -2472,8 +2656,18 @@ body {
 
 .status-card {
     min-height: 0;
-    padding: 15px;
+    padding: 10px;
     box-shadow: 4px 4px 0 var(--black);
+}
+
+.status-card.persona-card {
+    padding: 0;
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.status-card.persona-card:hover {
+    box-shadow: 6px 6px 0 var(--black);
+    transform: translate(-2px, -2px);
 }
 
 .status-card:nth-child(1) { background: var(--lime); }
@@ -3043,9 +3237,42 @@ body {
 }
 
 .notes-click-decoration {
+    aspect-ratio: 1;
     z-index: 2;
     pointer-events: none;
 }
+
+.notes-click-decoration img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+    opacity: 0;
+}
+
+.notes-click-decoration.has-image img {
+    opacity: 1;
+}
+
+.notes-click-decoration-fallback {
+    position: absolute;
+    inset: 6%;
+    border: 3px solid var(--black);
+    display: grid;
+    place-items: center;
+    background: var(--coral);
+    color: var(--black);
+    font-family: var(--font-ui);
+    font-size: 36px;
+    font-weight: var(--weight-black);
+    line-height: 1;
+    box-shadow: 4px 4px 0 var(--black);
+    transform: rotate(-5deg);
+}
+
+.notes-click-decoration:nth-child(3n + 1) .notes-click-decoration-fallback { background: var(--lime); }
+.notes-click-decoration:nth-child(3n + 2) .notes-click-decoration-fallback { background: var(--yellow); }
+.notes-click-decoration.has-image .notes-click-decoration-fallback { display: none; }
 
 .trip-decoration--postcard {
     top: 164px;
@@ -3242,10 +3469,10 @@ body {
         top: 20px;
     }
 
-    /* photo-col：340px → 260px，给 info-col 更多空间 */
+    /* 平板进一步收窄照片栏，给 info-col 更多空间 */
     .photo-col {
-        width: 260px;
-        min-width: 200px;
+        width: 220px;
+        min-width: 180px;
     }
 
     /* info-col 内边距收紧 */
@@ -3256,6 +3483,10 @@ body {
     /* 状态卡片：3列 → 2列 */
     .status-cards {
         grid-template-columns: repeat(2, 1fr);
+    }
+
+    .persona-card-summary {
+        min-height: 136px;
     }
 
     /* 语气偏好：4列 → 2列 */
@@ -3425,6 +3656,10 @@ body {
         grid-template-columns: repeat(2, 1fr);
     }
 
+    .persona-card-summary {
+        min-height: 136px;
+    }
+
     /* 语气偏好：4列 → 2列 */
     .settings-tone-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -3556,6 +3791,10 @@ body {
     /* 状态卡片：2列 → 1列 */
     .status-cards {
         grid-template-columns: 1fr;
+    }
+
+    .persona-card-summary {
+        min-height: 124px;
     }
 
     /* photo-col 高度再压缩 */
