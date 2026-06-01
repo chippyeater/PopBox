@@ -1,0 +1,11 @@
+{
+  "name": "popmart-ip-pixel-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Zero-dependency MVP web demo for generating POP MART IP pixel characters on a virtual M5Stack CoreS3 screen.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}
