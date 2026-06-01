@@ -14,3 +14,5 @@ web/server.log
 *.pyc
 __pycache__/
 web/data/debug_*
+ip-cache/
+web/data/history_group_*.json

@@ -57,14 +57,17 @@ public:
     void drawSplitLayout(const String& name, const String& avatarPath,
                          const String& text, const String& expression = "");
 
-    // 群聊布局：全屏显示对话文本，不显示头像
-    void drawGroupLayout(const String& nameA, const String& nameB,
-                         const String& conversationText);
+    // 群聊布局：绘制顶部标题栏（不绘制消息），消息通过 appendGroupText 逐条添加
+    void drawGroupLayout(const String& nameA, const String& avatarA,
+                         const String& nameB, const String& avatarB);
     // 群聊待机：双角色头像 + 名字
     void drawGroupIdle(const String& nameA, const String& avatarPathA,
                        const String& nameB, const String& avatarPathB);
-    // 更新群聊文字（追加一行新的角色回复，保留上下文）
+    // 追加一条消息（说话人头像 + 名字 + 文字），逐条追加不重绘历史
     void appendGroupText(const String& speakerName, const String& text);
+
+    // 清空群聊消息区域（保留顶部栏），供每条新回复独占全屏
+    void clearGroupMessages();
 
     // 更新右侧文字（不刷新左半）
     void updateRightText(const String& text);
@@ -92,7 +95,11 @@ private:
     void _wrapText(const String& text, int32_t maxWidth,
                    String* lines, int& lineCount, int maxLines);
     String _resolveAvatarPath(const String& basePath, const String& expression);
-    void _drawGroupText(const String& text);  // 群聊文本区域绘制
+
+    // 群聊消息渲染状态
+    int     _groupMsgY = 36;
+    String  _groupNameA, _groupNameB;
+    String  _groupAvatarA, _groupAvatarB;
 
     String   _lastRightText;
     AppState _lastState = AppState::NO_CHARACTER;

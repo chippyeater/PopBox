@@ -3,7 +3,7 @@
 #include <M5Unified.h>
 #include <driver/periph_ctrl.h>
 
-// 过滤 TTS 标记，仅用于屏幕显示
+// 过滤 TTS 标记和 XML/HTML 标签，仅用于屏幕显示
 static String stripTtsMarkers(const String& text) {
     String result = text;
     // 括号语气词：(laughs) (sighs) (gasps) (cries) (whispers) 等
@@ -16,14 +16,12 @@ static String stripTtsMarkers(const String& text) {
         if (c == ')') { inParen = false; continue; }
         if (!inParen) cleaned += c;
     }
-    // 停顿标记 <#数字#>
+    // 所有 <> 标签（停顿标记 <#数字#>、XML 标签 <speaker> 等）
     String out;
     out.reserve(cleaned.length());
     bool inTag = false;
     for (int i = 0; i < (int)cleaned.length(); i++) {
-        if (cleaned[i] == '<' && i + 1 < (int)cleaned.length() && cleaned[i+1] == '#') {
-            inTag = true; continue;
-        }
+        if (cleaned[i] == '<') { inTag = true; continue; }
         if (inTag && cleaned[i] == '>') { inTag = false; continue; }
         if (!inTag) out += cleaned[i];
     }
@@ -281,7 +279,7 @@ void ChatUI::_processAndReply() {
     _display.showBottomBar(false);
 
     _recorder.pauseMic();
-    _tts.speak(reply, ch.voice);
+    _tts.speak(_lastReplyText, ch.voice);
     _recorder.resumeMic();
     _ttsCooldownUntil = millis() + TTS_COOLDOWN_MS;
 
@@ -302,7 +300,8 @@ void ChatUI::_processGroupReply() {
         return;
     }
 
-    _display.drawGroupLayout(charA.name, charB.name, "……");
+    _display.drawGroupLayout(charA.name, charA.avatarPath, charB.name, charB.avatarPath);
+    _display.appendGroupText("系统", "……");
     _display.showBottomBar(false);
 
     size_t samples = _recorder.getSampleCount();
@@ -313,9 +312,10 @@ void ChatUI::_processGroupReply() {
     _recorder.clearBuffer();
 
     if (userText.isEmpty()) {
-        String errMsg = "[系统]没听清楚，再说一遍？";
-        _lastReplyText = errMsg;
-        _display.drawGroupLayout(charA.name, charB.name, errMsg);
+        String errMsg = "没听清楚，再说一遍？";
+        _lastReplyText = "[系统]" + errMsg;
+        _display.drawGroupLayout(charA.name, charA.avatarPath, charB.name, charB.avatarPath);
+        _display.appendGroupText("系统", errMsg);
         _idleTimeoutMs = IDLE_TIMEOUT_MS;
         _setState(AppState::CHATTING);
         _recorder.startListening();
@@ -341,6 +341,7 @@ void ChatUI::_processGroupReply() {
     _recorder.pauseMic();
 
     // 逐条回复：依次显示文字 + 播放语音（串行，一条播完再播下一条）
+    // 每条新回复前清空消息区域，避免多条堆叠溢出
     _lastReplyText = "";
     for (size_t i = 0; i < replies.size(); i++) {
         const auto& reply = replies[i];
@@ -348,7 +349,8 @@ void ChatUI::_processGroupReply() {
         _lastReplyText += "[" + reply.name + "]" + reply.reply;
         if (i < replies.size() - 1) _lastReplyText += "\n";
 
-        // 先显示本条回复
+        // 清空后显示本条回复（独占全屏）
+        _display.clearGroupMessages();
         _display.appendGroupText(reply.name, clean);
 
         // 再播语音：speak 内部自行管理 I2S 初始化和 AW88298 功放配置
@@ -356,7 +358,7 @@ void ChatUI::_processGroupReply() {
         if (reply.characterId == charA.id) voiceId = charA.voice;
         else if (reply.characterId == charB.id) voiceId = charB.voice;
         if (voiceId.length() > 0) {
-            _tts.speak(reply.reply, voiceId);
+            _tts.speak(clean, voiceId);
         }
     }
 
@@ -404,13 +406,15 @@ void ChatUI::_autoContinueGroupChat() {
         String clean = stripTtsMarkers(reply.reply);
         _lastReplyText += "\n[" + reply.name + "]" + reply.reply;
 
+        // 清空后显示本条回复，独占全屏
+        _display.clearGroupMessages();
         _display.appendGroupText(reply.name, clean);
 
         String voiceId;
         if (reply.characterId == charA.id) voiceId = charA.voice;
         else if (reply.characterId == charB.id) voiceId = charB.voice;
         if (voiceId.length() > 0) {
-            _tts.speak(reply.reply, voiceId);
+            _tts.speak(clean, voiceId);
         }
     }
 
@@ -431,12 +435,13 @@ void ChatUI::_showGroupGreeting() {
     _lastExpression = "happy";
 
     // 角色 A 先打招呼
-    String greetA = a.name + " 来啦！\n你好呀～我是" + a.name + "！";
-    _display.drawGroupLayout(a.name, b.name, greetA);
+    _display.drawGroupLayout(a.name, a.avatarPath, b.name, b.avatarPath);
+    _display.appendGroupText(a.name, "来啦！\n你好呀～我是" + a.name + "！");
     _display.showBottomBar(false);
 
     // 角色 B 再打招呼
-    String greetB = greetA + "\n" + b.name + " 也到了！\n嗨～我是" + b.name + "！";
+    String greetB = "[" + a.name + "]" + "来啦！\n你好呀～我是" + a.name + "！\n"
+                  + "[" + b.name + "]" + "嗨～我是" + b.name + "！";
     _display.appendGroupText(b.name, "嗨～我是" + b.name + "！");
     _lastReplyText = greetB;
 
@@ -473,7 +478,8 @@ void ChatUI::_onDoubleTapWake() {
         const auto& a = _charMgr.current();
         const auto& b = _charMgr.secondary();
         _lastReplyText = "开始聊天吧！请说话～";
-        _display.drawGroupLayout(a.name, b.name, _lastReplyText);
+        _display.drawGroupLayout(a.name, a.avatarPath, b.name, b.avatarPath);
+        _display.appendGroupText("系统", _lastReplyText);
         _display.showBottomBar(false);
         _idleTimeoutMs = IDLE_TIMEOUT_MS;
         _state = AppState::CHATTING;
