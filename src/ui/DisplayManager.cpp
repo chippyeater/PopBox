@@ -316,13 +316,18 @@ void DisplayManager::drawGroupIdle(const String& nameA, const String& avatarPath
 }
 
 // ── 群聊布局 ────────────────────────────────────────────────────
-static String _groupConv;  // 累积的群聊全文
 
-void DisplayManager::drawGroupLayout(const String& nameA, const String& nameB,
-                                      const String& conversationText) {
+void DisplayManager::drawGroupLayout(const String& nameA, const String& avatarA,
+                                      const String& nameB, const String& avatarB) {
     M5.Display.fillScreen(C_BG);
 
-    // 顶部标题栏（居中）
+    // 存储角色信息供 appendGroupText 使用
+    _groupNameA   = nameA;
+    _groupNameB   = nameB;
+    _groupAvatarA = avatarA;
+    _groupAvatarB = avatarB;
+
+    // 顶部标题栏
     M5.Display.setFont(FONT_M);
     M5.Display.setTextColor(C_NEON);
     String title = nameA + " + " + nameB;
@@ -346,89 +351,112 @@ void DisplayManager::drawGroupLayout(const String& nameA, const String& nameB,
     M5.Display.setCursor(7, 7);
     M5.Display.print("< 退出");
 
-    _groupConv = conversationText;
-    _drawGroupText(conversationText);
+    // 清空消息区域，重置 Y 位置
+    M5.Display.fillRect(0, 32, SCREEN_W, BTN_Y - 32 - 2, C_BG);
+    _groupMsgY = 34;
 }
 
 void DisplayManager::appendGroupText(const String& speakerName, const String& text) {
-    if (_groupConv.length() > 0) _groupConv += "\n";
-    _groupConv += "[" + speakerName + "]" + text;
-    _drawGroupText(_groupConv);
-}
+    const int AVATAR_S  = 20;
+    const int AVATAR_X  = 5;
+    const int TEXT_X    = AVATAR_X + AVATAR_S + 6;  // 31
+    const int LINE_H    = 18;
+    const int AREA_TOP  = 32;
+    const int AREA_BOT  = BTN_Y - 4;                 // 210
+    const int MSG_GAP   = 4;
 
-void DisplayManager::_drawGroupText(const String& text) {
-    const int areaX = 10;
-    const int areaY = 32;
-    const int areaW = SCREEN_W - 20;
-    const int areaH = BTN_Y - areaY - 4;
-
-    M5.Display.fillRect(0, areaY, SCREEN_W, areaH, C_BG);
-    if (text.isEmpty()) return;
+    bool isCharacter = (speakerName == _groupNameA || speakerName == _groupNameB);
+    bool isSystem    = (speakerName == "系统");
+    bool isMe        = (speakerName == "我");
 
     M5.Display.setFont(FONT_M);
     M5.Display.setTextWrap(false);
 
-    int y = areaY + 4;
-    const int lineH = 20;
-    int pos = 0;
-    while (pos < text.length() && y + lineH <= areaY + areaH) {
-        int next = text.indexOf('\n', pos);
-        if (next < 0) next = text.length();
-        String line = text.substring(pos, next);
+    // ── 确定名字的 X 起始位置 ──
+    int nameX;
+    String avatarPath;
+    if (isCharacter) {
+        avatarPath = (speakerName == _groupNameA) ? _groupAvatarA : _groupAvatarB;
+        nameX = TEXT_X;
+    } else {
+        nameX = AVATAR_X;
+    }
 
-        if (line.length() > 0 && line[0] == '[') {
-            int close = line.indexOf(']');
-            if (close > 0) {
-                String speaker = line.substring(0, close + 1);
-                String content = line.substring(close + 1);
-                int spW = M5.Display.textWidth(speaker.c_str());
-                int maxContentW = areaW - spW;
+    // ── 名字宽度和文本区域 ──
+    int nameW = M5.Display.textWidth(speakerName + " ");
+    int textX = nameX + nameW;
+    int remainW = SCREEN_W - textX - 5;   // 首行（跟在名字后面，最窄）
+    int fullW   = SCREEN_W - nameX - 5;   // 续行（无名字，更宽）
+    if (remainW < 60) remainW = 60;
+    if (fullW   < 60) fullW   = 60;
 
-                if (maxContentW > 0 && M5.Display.textWidth(content.c_str()) > maxContentW) {
-                    // 内容超长，自动换行
-                    String wrapped[10];
-                    int wc = 0;
-                    _wrapText(content, maxContentW, wrapped, wc, 10);
-                    for (int i = 0; i < wc && y + lineH <= areaY + areaH; i++) {
-                        if (i == 0) {
-                            M5.Display.setTextColor(C_NEON);
-                            M5.Display.setCursor(areaX, y);
-                            M5.Display.print(speaker);
-                            M5.Display.setTextColor(C_TEXT);
-                            M5.Display.setCursor(areaX + spW, y);
-                            M5.Display.print(wrapped[i]);
-                        } else {
-                            M5.Display.setTextColor(C_TEXT);
-                            M5.Display.setCursor(areaX, y);
-                            M5.Display.print(wrapped[i]);
-                        }
-                        y += lineH;
-                    }
-                } else {
-                    // 内容不超长，正常单行显示
-                    M5.Display.setTextColor(C_NEON);
-                    M5.Display.setCursor(areaX, y);
-                    M5.Display.print(speaker);
-                    M5.Display.setTextColor(C_TEXT);
-                    M5.Display.setCursor(areaX + spW, y);
-                    M5.Display.print(content);
-                    y += lineH;
+    // ── 文本换行：首行用窄宽度，续行用完整宽度 ──
+    String lines[10];
+    int lineCount = 0;
+    {
+        // 首行：以 remainW 换行得到第一段
+        String firstBatch[2];
+        int firstN = 0;
+        _wrapText(text, remainW, firstBatch, firstN, 2);
+        if (firstN > 0) {
+            lines[lineCount++] = firstBatch[0];
+            // 剩余文本以 fullW 换行（续行没有名字占位，可用空间更大）
+            int consumed = firstBatch[0].length();
+            String rest = text.substring(consumed);
+            rest.trim();
+            if (rest.length() > 0) {
+                String restLines[9];
+                int restN = 0;
+                _wrapText(rest, fullW, restLines, restN, 9);
+                for (int i = 0; i < restN && lineCount < 10; i++) {
+                    lines[lineCount++] = restLines[i];
                 }
-            } else {
-                M5.Display.setTextColor(C_TEXT);
-                M5.Display.setCursor(areaX, y);
-                M5.Display.print(line);
-                y += lineH;
             }
         } else {
-            M5.Display.setTextColor(C_TEXT);
-            M5.Display.setCursor(areaX, y);
-            M5.Display.print(line);
-            y += lineH;
+            _wrapText(text, remainW, lines, lineCount, 10);
         }
-
-        pos = next + 1;
     }
+    int numLines = max(lineCount, 1);
+    int msgH = numLines * LINE_H + MSG_GAP;
+
+    // ── 超出消息区域 → 清空从头开始 ──
+    if (_groupMsgY + msgH > AREA_BOT) {
+        M5.Display.fillRect(0, AREA_TOP, SCREEN_W, AREA_BOT - AREA_TOP, C_BG);
+        _groupMsgY = AREA_TOP + 2;
+    }
+
+    // ── 画头像 ──
+    if (isCharacter) {
+        _drawAvatar(AVATAR_X, _groupMsgY, AVATAR_S, AVATAR_S, avatarPath);
+    }
+
+    // ── 画说话人名字 ──
+    uint32_t nameColor;
+    if (isSystem)       nameColor = C_MUTED;
+    else if (isMe)      nameColor = C_PURPLE;
+    else                nameColor = C_NEON;
+    M5.Display.setTextColor(nameColor);
+    M5.Display.setCursor(nameX, _groupMsgY);
+    M5.Display.print(speakerName + " ");
+
+    // ── 画消息文本 ──
+    M5.Display.setTextColor(C_TEXT);
+    int curY = _groupMsgY;
+    for (int i = 0; i < lineCount; i++) {
+        if (curY + LINE_H > AREA_BOT) break;
+        M5.Display.setCursor(i == 0 ? textX : nameX, curY);
+        M5.Display.print(lines[i]);
+        curY += LINE_H;
+    }
+
+    _groupMsgY = curY + MSG_GAP;
+}
+
+void DisplayManager::clearGroupMessages() {
+    const int AREA_TOP = 32;
+    const int AREA_BOT = BTN_Y - 4;
+    M5.Display.fillRect(0, AREA_TOP, SCREEN_W, AREA_BOT - AREA_TOP, C_BG);
+    _groupMsgY = AREA_TOP + 2;
 }
 
 // ══════════════════════════════════════════════════════════════════

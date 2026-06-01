@@ -44,7 +44,7 @@
       "clothes": "#2F3A45",
       "blush": "#C98A82"
     },
-    "isCurrent": false
+    "isCurrent": true
   },
   {
     "id": "qifei",
@@ -66,7 +66,7 @@
       "clothes": "#8B3A62",
       "blush": "#D98A8A"
     },
-    "isCurrent": true
+    "isCurrent": false
   },
   {
     "id": "斯蒂芬·库里",
