@@ -8,6 +8,7 @@ const { randomUUID } = require('crypto');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
+const STT_REPLAY_INTERVAL_MS = Math.max(0, parseInt(process.env.STT_REPLAY_INTERVAL_MS || '10', 10));
 
 // 原始二进制流：PCM 音频 & JPEG 图片
 // 注意：精确匹配路径，避免影响子路径（如 /api/recognize/upload）
@@ -816,7 +817,7 @@ function runRealtimeStt(pcmBuf, sampleRate, apiKey) {
                 const end = Math.min(offset + bytesPer100ms, pcmBuf.length);
                 ws.send(pcmBuf.subarray(offset, end));
                 offset = end;
-                audioTimer = setTimeout(sendNext, 100);
+                audioTimer = setTimeout(sendNext, STT_REPLAY_INTERVAL_MS);
             };
 
             sendNext();
@@ -1722,8 +1723,8 @@ app.listen(PORT, '0.0.0.0', () => {
     try {
         const { Bonjour } = require('bonjour-service');
         const bonjour = new Bonjour();
-        bonjour.publish({ name: 'PopBox', type: 'http', port: PORT, host: 'popbox.local' });
-        console.log('   mDNS 广播:   http://popbox.local:' + PORT + '  (CoreS3 使用此地址)');
+        bonjour.publish({ name: 'PopBox', type: 'http', port: PORT, txt: { app: 'popbox' } });
+        console.log('   mDNS 服务:   PopBox._http._tcp.local:' + PORT + '  (CoreS3 自动发现)');
     } catch (e) {
         console.warn('   mDNS 广播失败，CoreS3 请手动填写 IP:', localIP);
     }

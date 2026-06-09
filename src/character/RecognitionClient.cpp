@@ -1,5 +1,5 @@
 #include "RecognitionClient.h"
-#include "../config.h"
+#include "../net/BackendResolver.h"
 #include <WiFiClient.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
@@ -8,7 +8,7 @@ bool RecognitionClient::recognize(const uint8_t* jpegData, size_t jpegLen,
                                    Character& outCharacter) {
     if (!jpegData || jpegLen == 0) return false;
 
-    String url = String(BACKEND_URL) + "/api/recognize";
+    String url = BackendResolver::url("/api/recognize");
 
     HTTPClient http;
     http.begin(url);

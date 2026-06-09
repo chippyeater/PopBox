@@ -13,6 +13,7 @@
 #include "camera/CameraManager.h"
 #include "ui/DisplayManager.h"
 #include "ui/ChatUI.h"
+#include "net/BackendResolver.h"
 
 // ── 全局模块实例 ─────────────────────────────────────────────
 CharacterManager charMgr;
@@ -37,9 +38,10 @@ static void connectWiFi() {
     }
     if (WiFi.status() == WL_CONNECTED) {
         Serial.printf("\n[WiFi] 已连接，IP: %s\n", WiFi.localIP().toString().c_str());
-        // 启用 mDNS，使 ESP32 能解析 popbox.local
+        // 启用 mDNS，并通过 _http._tcp 服务发现 PopBox 后端
         if (MDNS.begin("popboxclient")) {
-            Serial.println("[mDNS] 已启动，可解析 popbox.local");
+            Serial.println("[mDNS] 已启动，开始发现 PopBox 后端服务");
+            BackendResolver::resolve();
         }
     } else {
         Serial.println("\n[WiFi] 连接失败！请检查 config.h 中的 WiFi 配置");

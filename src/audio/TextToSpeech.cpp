@@ -1,5 +1,6 @@
 #include "TextToSpeech.h"
 #include "../config.h"
+#include "../net/BackendResolver.h"
 #include <WiFi.h>
 #include <M5Unified.h>
 #include <HTTPClient.h>
@@ -75,7 +76,7 @@ bool TextToSpeech::speak(const String& text, const String& voice) {
     serializeJson(req, body);
 
     HTTPClient http;
-    http.begin(String(BACKEND_URL) + "/api/tts");
+    http.begin(BackendResolver::url("/api/tts"));
     http.addHeader("Content-Type", "application/json");
     http.setTimeout(30000);
 

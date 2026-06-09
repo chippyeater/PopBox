@@ -1,5 +1,6 @@
 #include "LLMClient.h"
 #include "../config.h"
+#include "../net/BackendResolver.h"
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <WiFiClient.h>
@@ -29,7 +30,7 @@ LLMResponse LLMClient::chat(const Character& character, const String& userMessag
     if (!character.isValid() || userMessage.isEmpty()) return resp;
     if (!_ensureWiFi()) return resp;
 
-    String url = String(BACKEND_URL) + "/api/chat";
+    String url = BackendResolver::url("/api/chat");
 
     JsonDocument req;
     req["message"]     = userMessage;
@@ -82,7 +83,7 @@ std::vector<GroupReply> LLMClient::groupChat(const Character& charA,
     if (!charA.isValid() || !charB.isValid() || userMessage.isEmpty()) return replies;
     if (!_ensureWiFi()) return replies;
 
-    String url = String(BACKEND_URL) + "/api/group-chat";
+    String url = BackendResolver::url("/api/group-chat");
 
     JsonDocument req;
     req["message"] = userMessage;

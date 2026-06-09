@@ -1,5 +1,6 @@
 #include "SpeechToText.h"
 #include "../config.h"
+#include "../net/BackendResolver.h"
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <HTTPClient.h>
@@ -28,7 +29,7 @@ String SpeechToText::recognize(const int16_t* pcmData, size_t sampleCount,
     if (!pcmData || sampleCount == 0) return "";
     if (!_ensureWiFi()) return "";
 
-    String url = String(BACKEND_URL) + "/api/stt";
+    String url = BackendResolver::url("/api/stt");
 
     HTTPClient http;
     http.begin(url);
