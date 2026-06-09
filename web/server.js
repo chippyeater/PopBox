@@ -246,6 +246,10 @@ const MINIMAX_VOICE_MAP = {
 
 // 无匹配时的 fallback 音色
 const MINIMAX_VOICE_FALLBACK = 'Chinese (Mandarin)_Cute_Spirit';
+const MINIMAX_VOICE_VOL_MAP = {
+    'Zsiga': 0.8,
+    '齐妃': 0.8,
+};
 
 // ── 角色库 ────────────────────────────────────────────────────
 // 单一 JSON 数组文件，与硬件端 data/characters.json 共用同一份
@@ -1400,6 +1404,7 @@ function buildCharacterObject(nameStr, series, searchInfo = {}) {
         name,
         series:       series || '',
         voice:        MINIMAX_VOICE_MAP[name] || MINIMAX_VOICE_FALLBACK,
+        vol:          MINIMAX_VOICE_VOL_MAP[name] || 1.0,
         avatar:       `/avatars/${id}.jpg`,
         catchphrases: searchInfo.catchphrases || [],
         personality:  searchInfo.personality  || '',
@@ -1638,6 +1643,9 @@ app.post('/api/recognize/upload', rawImage, async (req, res) => {
 // 返回: audio/mp3 二进制流
 app.post('/api/tts', async (req, res) => {
     const { text, voice } = req.body;
+    let vol = Number(req.body?.vol);
+    if (!Number.isFinite(vol) || vol <= 0) vol = 1.0;
+    vol = Math.min(Math.max(vol, 0.1), 2.0);
     if (!text?.trim()) return res.status(400).json({ error: 'text 不能为空' });
     if (!voice)        return res.status(400).json({ error: 'voice 不能为空' });
 
@@ -1660,7 +1668,7 @@ app.post('/api/tts', async (req, res) => {
                 voice_setting: {
                     voice_id: voice,
                     speed: 1.0,
-                    vol:   1.0,
+                    vol,
                     pitch: 0,
                 },
                 audio_setting: { format: 'wav', sample_rate: 24000 },
@@ -1668,7 +1676,7 @@ app.post('/api/tts', async (req, res) => {
         }, 30000);
 
         const data = await response.json();
-        console.log(`[TTS] 合成请求: ${Date.now() - t0}ms | voice=${voice}`);
+        console.log(`[TTS] 合成请求: ${Date.now() - t0}ms | voice=${voice} vol=${vol}`);
 
         if (!response.ok || data.base_resp?.status_code !== 0) {
             console.error('[TTS] 错误:', JSON.stringify(data));

@@ -65,13 +65,16 @@ static uint8_t* allocAudioBuffer(size_t len) {
     return p;
 }
 
-bool TextToSpeech::speak(const String& text, const String& voice) {
+bool TextToSpeech::speak(const String& text, const String& voice, float vol) {
     if (text.isEmpty()) return false;
     if (!_ensureWiFi()) return false;
+    if (vol <= 0.0f) vol = 1.0f;
+    if (vol > 2.0f) vol = 2.0f;
 
     JsonDocument req;
     req["text"] = text;
     if (voice.length() > 0) req["voice"] = voice;
+    req["vol"] = vol;
     String body;
     serializeJson(req, body);
 

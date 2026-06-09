@@ -47,6 +47,7 @@ bool RecognitionClient::_parseCharacterJson(const String& json,
     out.name        = doc["name"].as<String>();
     out.avatarPath  = doc["avatar"] | String("/avatar.jpg");
     out.voice       = doc["voice"] | String("");
+    out.vol         = doc["vol"] | 1.0f;
     out.personality = doc["personality"].as<String>();
     out.worldview   = doc["worldview"].as<String>();
     out.replyStyle  = doc["reply_style"].as<String>();

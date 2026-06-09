@@ -279,7 +279,7 @@ void ChatUI::_processAndReply() {
     _display.showBottomBar(false);
 
     _recorder.pauseMic();
-    _tts.speak(_lastReplyText, ch.voice);
+    _tts.speak(_lastReplyText, ch.voice, ch.vol);
     _recorder.resumeMic();
     _ttsCooldownUntil = millis() + TTS_COOLDOWN_MS;
 
@@ -355,10 +355,16 @@ void ChatUI::_processGroupReply() {
 
         // 再播语音：speak 内部自行管理 I2S 初始化和 AW88298 功放配置
         String voiceId;
-        if (reply.characterId == charA.id) voiceId = charA.voice;
-        else if (reply.characterId == charB.id) voiceId = charB.voice;
+        float vol = 1.0f;
+        if (reply.characterId == charA.id) {
+            voiceId = charA.voice;
+            vol = charA.vol;
+        } else if (reply.characterId == charB.id) {
+            voiceId = charB.voice;
+            vol = charB.vol;
+        }
         if (voiceId.length() > 0) {
-            _tts.speak(clean, voiceId);
+            _tts.speak(clean, voiceId, vol);
         }
     }
 
@@ -411,10 +417,16 @@ void ChatUI::_autoContinueGroupChat() {
         _display.appendGroupText(reply.name, clean);
 
         String voiceId;
-        if (reply.characterId == charA.id) voiceId = charA.voice;
-        else if (reply.characterId == charB.id) voiceId = charB.voice;
+        float vol = 1.0f;
+        if (reply.characterId == charA.id) {
+            voiceId = charA.voice;
+            vol = charA.vol;
+        } else if (reply.characterId == charB.id) {
+            voiceId = charB.voice;
+            vol = charB.vol;
+        }
         if (voiceId.length() > 0) {
-            _tts.speak(clean, voiceId);
+            _tts.speak(clean, voiceId, vol);
         }
     }
 
@@ -448,10 +460,10 @@ void ChatUI::_showGroupGreeting() {
     // TODO: TTS 在此处崩溃（spk_task stack），摄像头操作后 I2S 状态异常，
     //       先跳过 TTS 验证群聊流程，后续修复音频后再恢复
     // _recorder.pauseMic();
-    // _tts.speak("你好呀～我是" + a.name + "！", a.voice);
+    // _tts.speak("你好呀～我是" + a.name + "！", a.voice, a.vol);
     // _recorder.resumeMic();
     // _recorder.pauseMic();
-    // _tts.speak("嗨～我是" + b.name + "，我们一起聊天吧！", b.voice);
+    // _tts.speak("嗨～我是" + b.name + "，我们一起聊天吧！", b.voice, b.vol);
     // _recorder.resumeMic();
 
     // 问候完后进入待机，等待双击唤醒
@@ -659,7 +671,7 @@ void ChatUI::_showGreeting() {
     _display.drawSplitLayout(ch.name, ch.avatarPath, _lastReplyText, _lastExpression);
     _display.showBottomBar(false);
     _recorder.pauseMic();
-    _tts.speak(_lastReplyText, ch.voice);
+    _tts.speak(_lastReplyText, ch.voice, ch.vol);
     _recorder.resumeMic();
     // 问候完后进入待机，等待双击唤醒
     _lastExpression = "idle";

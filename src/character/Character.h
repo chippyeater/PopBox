@@ -29,6 +29,7 @@ struct Character {
     String              name;
     String              avatarPath;
     String              voice;          // MiniMax 音色 ID
+    float               vol = 1.0f;     // TTS 合成音量，默认不调整
     std::vector<String> catchphrases;
     String              personality;
     String              worldview;
