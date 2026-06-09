@@ -1255,7 +1255,7 @@ function buildVlPrompt() {
         .map(c => c.name)
         .filter(Boolean);
     const hint = knownNames.length > 0
-        ? `\n提示：以下是本地已知角色列表，如果图中角色匹配其中之一请优先输出：${knownNames.join('、')}`
+        ? `提示：以下是本地已知角色列表，如果图中角色匹配其中之一请优先输出：${knownNames.join('、')}`
         : '';
     return `请识别图中角色，只返回以下 JSON，不加任何其他文字或代码块标记：
 {
@@ -1265,7 +1265,9 @@ function buildVlPrompt() {
 要求：
 - name 必须是角色自身的名字，不能只写作品名
 - 如果图中有多个角色，只写最主要的那一个
-- 不确定时填写最佳推测，不要留空${hint}`;
+- 不确定时填写最佳推测，不要留空`
+// - `${hint}`
+;
 }
 
 // 带超时的 fetch 封装（防止 API 无响应时永久挂起）
