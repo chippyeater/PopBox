@@ -51,7 +51,9 @@ void ChatUI::update() {
     _recorder.update();
 
     // ── 新版日常/辩论 UI 动画 ───────────────────────────────
-    if (_state == AppState::DAILY_STAGE || _state == AppState::DEBATE_TOPIC) {
+    if (_state == AppState::DAILY_STAGE) {
+        _display.drawDailyUserWave(_recorder.getAudioLevel());
+    } else if (_state == AppState::DEBATE_TOPIC) {
         _display.drawWaveIcon(_recorder.getAudioLevel());
     } else if (_state == AppState::DEBATE_TURN) {
         int elapsed = (int)((millis() - _debateTurnStartedMs) / 1000);
@@ -434,8 +436,8 @@ void ChatUI::_handleTouch() {
 
     if (_state == AppState::DAILY_INVITE || _state == AppState::DEBATE_ENTRY) {
         if (_redIndex >= 0 && _blueIndex >= 0 && _redIndex != _blueIndex
-            && t.x >= (SCREEN_W - 84) / 2 && t.x <= (SCREEN_W + 84) / 2
-            && t.y >= 211 && t.y <= 234) {
+            && t.x >= (SCREEN_W - 104) / 2 && t.x <= (SCREEN_W + 104) / 2
+            && t.y >= 207 && t.y <= 237) {
             _charMgr.setDualMode(_redIndex, _blueIndex);
             if (_state == AppState::DAILY_INVITE) {
                 _startDailyStage();
@@ -455,7 +457,7 @@ void ChatUI::_handleTouch() {
     }
 
     if (_state == AppState::DAILY_STAGE) {
-        if (t.x >= 10 && t.x <= 82 && t.y >= 196 && t.y <= 230) {
+        if (t.x >= 10 && t.x <= 82 && t.y >= 207 && t.y <= 237) {
             _recorder.stopListening();
             _enterModeSelect();
         }

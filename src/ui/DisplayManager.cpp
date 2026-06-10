@@ -43,9 +43,8 @@ void DisplayManager::drawModeSelect() {
     M5.Display.fillScreen(C_BG);
     _drawPngAsset("/u/bg0.png", 0, 0, SCREEN_W, SCREEN_H);
 
-    _drawPngAsset("/u/md.png", 42, 84, 112, 122, 1.0f);
-    _drawPngAsset("/u/mb.png", 166, 84, 112, 122, 1.0f);
-    _drawPromptBox((SCREEN_W - 143) / 2, 210, 143, 23, "请选择模式", false);
+    _drawPngAsset("/u/md.png", 15, 76, 142, 155, 1.0f);
+    _drawPngAsset("/u/mb.png", 163, 76, 142, 155, 1.0f);
     _lastState = AppState::MODE_SELECT;
 }
 
@@ -70,10 +69,10 @@ void DisplayManager::drawPartyEntry(bool debate, bool redReady, bool blueReady) 
     } else {
         statePath = debate ? "/u/pk-plain.png" : "/u/ct-plain.png";
     }
-    _drawPngAsset(statePath, 0, 62, 320, 146, 1.0f);
+    _drawPngAsset(statePath, 0, 55, 320, 146, 1.0f);
 
     if (redReady && blueReady) {
-        _drawPromptBox((SCREEN_W - 84) / 2, 211, 84, 23,
+        _drawPromptBox((SCREEN_W - 104) / 2, 187, 122, 37,
                        debate ? "进入辩论" : "进入群聊", true);
     } else {
         _drawPromptBox((SCREEN_W - 217) / 2, 211, 217, 23,
@@ -88,21 +87,24 @@ void DisplayManager::drawDailyStage(const String& redExpression,
                                     StageSide speaker, int audioLevel) {
     M5.Display.fillScreen(C_BG);
     _drawPngAsset("/u/chat-2.png", 0, 0, SCREEN_W, SCREEN_H);
+    _drawPromptBox(19, 184, 78, 37, "退出", true);
 
     if (speaker == StageSide::Red) {
-        _drawPngAsset("/u/rsp.png", 122, 88, 76, 58, 0.42f);
+        _drawPngAsset("/u/rsp.png", 122, 88, 76, 58, 1.0f);
     } else if (speaker == StageSide::Blue) {
-        _drawPngAsset("/u/bsp.png", 122, 88, 76, 58, 0.42f);
+        _drawPngAsset("/u/bsp.png", 122, 88, 76, 58, 1.0f);
     } else {
-        _drawPngAsset("/u/bp.png", 126, 88, 68, 54, 0.36f);
+        _drawPngAsset("/u/bp.png", 13, 88, 130, 54, 1.0f);
+        if (audioLevel > 0) {
+            _drawWaveBars(78, 120, 16, audioLevel, C_NEON, false);
+        }
     }
 
     _drawStageExpression(StageSide::Red, speaker == StageSide::Red ? "speaking" : "silent",
-                         38, 86, 76, 76);
+                         29, 73, 70, 71.42);
     _drawStageExpression(StageSide::Blue, speaker == StageSide::Blue ? "speaking" : "silent",
-                         212, 88, 76, 76);
-    _drawPngAsset("/u/ua.png", 132, 150, 56, 56, 0.28f);
-    drawWaveIcon(audioLevel);
+                         220, 71.88, 70, 71.42);
+    _drawPngAsset("/u/ua.png", 130, 154, 60, 60, 1.0f);
 }
 
 void DisplayManager::drawDebateTopic(const String& redName, const String& blueName,
@@ -115,7 +117,7 @@ void DisplayManager::drawDebateTopicEntry(bool topicReady, int audioLevel) {
     M5.Display.fillScreen(C_BG);
     _drawPngAsset("/u/debate-2.png", 0, 0, SCREEN_W, SCREEN_H);
     if (topicReady) {
-        _drawPromptBox((SCREEN_W - 84) / 2, 211, 84, 23, "开始辩论", true);
+        _drawPromptBox((SCREEN_W - 112) / 2, 207, 112, 30, "开始辩论", true);
         _drawDebateProgress(DEBATE_INITIAL_SCORE, 196);
     } else {
         _drawPromptBox((SCREEN_W - 121) / 2, 211, 121, 23, "说出今日辩题", false);
@@ -132,15 +134,20 @@ void DisplayManager::drawDebateTurn(const String& redName, const String& blueNam
 
     const bool redSpeaking = speaker == StageSide::Red;
     _drawPngAsset(redSpeaking ? "/u/tr.png" : "/u/tb.png",
-                  0, 0, 150, 40, 0.42f);
+                  0, 0, 150, 40, 1.0f);
     M5.Display.setFont(FONT_L);
     M5.Display.setTextColor(0xFFFFFF);
-    String label = (redSpeaking ? redName : blueName) + " 发言中";
-    String lines[2];
-    int lineCount = 0;
-    _wrapText(label, 130, lines, lineCount, 1);
-    M5.Display.setCursor(10, 12);
-    M5.Display.print(lines[0]);
+    String speakerName = redSpeaking ? redName : blueName;
+    String nameLines[2];
+    int nameLineCount = 0;
+    _wrapText(speakerName, 82, nameLines, nameLineCount, 1);
+    String displayName = nameLineCount > 0 ? nameLines[0] : speakerName;
+    M5.Display.setCursor(10, 10);
+    M5.Display.print(displayName);
+    int nameW = M5.Display.textWidth(displayName.c_str());
+    M5.Display.setFont(FONT_S);
+    M5.Display.setCursor(12 + nameW, 16);
+    M5.Display.print("发言中...");
 
     _drawPngAsset("/u/tt.png", 232, 6, 78, 28, 0.34f);
     char tbuf[8];
@@ -187,7 +194,7 @@ void DisplayManager::drawDebateResult(StageSide winner, int winCount) {
     M5.Display.setFont(FONT_S);
     M5.Display.setTextColor(0x000000);
     String msg1 = String("这是") + (winner == StageSide::Red ? "红方" : "蓝方")
-               + "第" + String(winCount) + "次胜利";
+               + "第" + String(winCount) + "次胜利✌";
     M5.Display.setCursor(84, 184);
     M5.Display.print(msg1);
     M5.Display.setCursor(84, 201);
@@ -639,15 +646,25 @@ void DisplayManager::hideBottomBar() {
 
 // ── 声波动画指示器 ──────────────────────────────────────────────
 void DisplayManager::drawWaveIcon(int level) {
-    // 只重绘声波区域，不刷全屏
-    const int barW = 4, gap = 5, n = 3;
-    const int totalW = n * barW + (n - 1) * gap;  // 22px
-    const int startX = (SCREEN_W - totalW) / 2;
-    const int baseY  = BTN_Y + BTN_H - 5;
-    const int maxH   = 14;
+    _drawWaveBars(SCREEN_W / 2, BTN_Y + BTN_H - 5, 14, level, C_NEON, true);
+}
 
-    // 清除声波区域（稍微大一点避免残影）
-    M5.Display.fillRect(startX - 2, baseY - maxH - 2, totalW + 4, maxH + 8, C_BG);
+void DisplayManager::drawDailyUserWave(int level) {
+    _drawPngAsset("/u/bp.png", 13, 88, 130, 54, 1.0f);
+    if (level > 0) {
+        _drawWaveBars(78, 120, 16, level, C_NEON, false);
+    }
+}
+
+void DisplayManager::_drawWaveBars(int centerX, int baseY, int maxH, int level,
+                                   uint32_t color, bool clearBackground) {
+    const int barW = 4, gap = 5, n = 3;
+    const int totalW = n * barW + (n - 1) * gap;
+    const int startX = centerX - totalW / 2;
+
+    if (clearBackground) {
+        M5.Display.fillRect(startX - 2, baseY - maxH - 2, totalW + 4, maxH + 8, C_BG);
+    }
 
     for (int i = 0; i < n; i++) {
         float breathe = sinf(millis() / 600.0f + i * 2.1f) * 0.35f + 0.5f;
@@ -668,7 +685,7 @@ void DisplayManager::drawWaveIcon(int level) {
 
         int x = startX + i * (barW + gap);
         int y = baseY - h;
-        M5.Display.fillRoundRect(x, y, barW, h, 2, C_NEON);
+        M5.Display.fillRoundRect(x, y, barW, h, 2, color);
     }
 }
 
@@ -809,21 +826,18 @@ void DisplayManager::_drawDebateProgress(int score, int y) {
 void DisplayManager::_drawPromptBox(int32_t x, int32_t y, int32_t w, int32_t h,
                                     const String& text, bool button) {
     if (button) {
-        M5.Display.fillRoundRect(x + 2, y + 2, w, h, 20, 0xFFFFFF);
-        M5.Display.drawRoundRect(x + 2, y + 2, w, h, 20, 0xFFFFFF);
+        M5.Display.fillRoundRect(x + 2, y + 4, w, h, 20, 0xFFFFFF);
+        M5.Display.drawRoundRect(x + 2, y + 4, w, h, 20, 0xFFFFFF);
         M5.Display.fillRoundRect(x, y, w, h, 20, C_ACTION);
         M5.Display.drawRoundRect(x, y, w, h, 20, 0x000000);
-    } else {
-        M5.Display.fillRoundRect(x, y, w, h, 8, C_PROMPT);
-        M5.Display.drawRoundRect(x, y, w, h, 8, 0x000000);
+        M5.Display.drawRoundRect(x + 1, y + 1, w - 2, h - 2, 19, 0x000000);
     }
-
-    M5.Display.setFont(FONT_S);
+    M5.Display.setFont(FONT_L);
     M5.Display.setTextSize(1);
     M5.Display.setTextColor(0x000000);
     String lines[2];
     int lineCount = 0;
-    _wrapText(text, w - 8, lines, lineCount, 1);
+    _wrapText(text, w, lines, lineCount, 1);
     const String& line = lineCount > 0 ? lines[0] : text;
     int tw = M5.Display.textWidth(line.c_str());
     int th = M5.Display.fontHeight();

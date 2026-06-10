@@ -95,6 +95,7 @@ public:
 
     // 声波动画指示器（level 0-100，0 = 待机呼吸，>0 = 音频能量）
     void drawWaveIcon(int level);
+    void drawDailyUserWave(int level);
 
     // 识别进度条动画步进（内部用）
     int  progressStep;
@@ -110,6 +111,8 @@ private:
     void _drawStageExpression(StageSide side, const String& expression,
                               int32_t x, int32_t y, int32_t w, int32_t h);
     void _drawDebateProgress(int score, int y);
+    void _drawWaveBars(int centerX, int baseY, int maxH, int level,
+                       uint32_t color, bool clearBackground);
     void _drawPromptBox(int32_t x, int32_t y, int32_t w, int32_t h,
                         const String& text, bool button);
     void _drawBottomPrompt(const String& text);
