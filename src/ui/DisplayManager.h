@@ -38,7 +38,24 @@ class DisplayManager {
 public:
     void begin();
 
+    enum class StageSide { None, Red, Blue };
+
     // 全屏状态：无人入住 / 角色数量选择 / 待机
+    void drawModeSelect();
+    void drawPartyEntry(const String& title, const String& redName,
+                        const String& blueName, const String& bottomText);
+    void drawPartyEntry(bool debate, bool redReady, bool blueReady);
+    void drawDailyStage(const String& redExpression, const String& blueExpression,
+                        StageSide speaker, int audioLevel);
+    void drawDebateTopic(const String& redName, const String& blueName,
+                         const String& topic, const String& bottomText,
+                         int audioLevel);
+    void drawDebateTopicEntry(bool topicReady, int audioLevel);
+    void drawDebateTurn(const String& redName, const String& blueName,
+                        StageSide speaker, int secondsLeft, int score,
+                        const String& redExpression, const String& blueExpression);
+    void drawDebateBoom(StageSide target, int score, int secondsLeft);
+    void drawDebateResult(StageSide winner, int winCount);
     void drawNoCharacter();
     void drawCountSelection(int existingCount);
     void drawIdle(const String& name, const String& avatarPath,
@@ -88,6 +105,14 @@ private:
                      const String& avatarPath, float scale = 1.0f);
     void _drawAvatarTransparent(int32_t x, int32_t y, int32_t w, int32_t h,
                                 const String& avatarPath, float scale = 1.0f);
+    void _drawPngAsset(const String& path, int32_t x, int32_t y, int32_t w,
+                       int32_t h, float scale = 1.0f);
+    void _drawStageExpression(StageSide side, const String& expression,
+                              int32_t x, int32_t y, int32_t w, int32_t h);
+    void _drawDebateProgress(int score, int y);
+    void _drawPromptBox(int32_t x, int32_t y, int32_t w, int32_t h,
+                        const String& text, bool button);
+    void _drawBottomPrompt(const String& text);
     void _drawNameAt(int32_t x, int32_t y, const String& name);
     void _drawButton(int32_t x, int32_t y, int32_t w, int32_t h,
                      uint32_t col, uint32_t shadowCol, const char* label,

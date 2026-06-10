@@ -16,8 +16,11 @@ public:
 
     void begin();
     void update();
+    void triggerDebateBoom(DisplayManager::StageSide side);
 
 private:
+    enum class FlowMode { None, Daily, Debate };
+
     CharacterManager& _charMgr;
     AudioRecorder&    _recorder;
     SpeechToText&     _stt;
@@ -40,6 +43,17 @@ private:
 
     void _setState(AppState s);
     void _handleTouch();
+    void _enterModeSelect();
+    void _enterInvite(FlowMode mode);
+    void _onModeSelect(int32_t x);
+    bool _recognizeStageSide(DisplayManager::StageSide side);
+    void _afterStageRecognition();
+    void _startDailyStage();
+    void _processDailyStageSpeech();
+    void _processDebateTopic();
+    void _startDebate();
+    void _requestDebateTurn();
+    void _finishDebateIfNeeded();
     void _onMicButtonTap();
     void _onRecognizeTap();
     void _enterCharacterSelect();
@@ -63,4 +77,25 @@ private:
     uint8_t  _tapCount;
     uint32_t _ttsCooldownUntil = 0;
     static constexpr uint32_t TTS_COOLDOWN_MS = 2000;  // TTS 后忽略麦克风输入，防止回声反馈
+
+    FlowMode _flowMode = FlowMode::None;
+    int      _redIndex = -1;
+    int      _blueIndex = -1;
+    String   _redName;
+    String   _blueName;
+    String   _dailyRedExpression = "silent";
+    String   _dailyBlueExpression = "silent";
+    DisplayManager::StageSide _dailySpeaker = DisplayManager::StageSide::None;
+
+    String   _debateTopic;
+    String   _debateSessionId;
+    DisplayManager::StageSide _debateSpeaker = DisplayManager::StageSide::Red;
+    String   _debateRedExpression = "silent";
+    String   _debateBlueExpression = "speechless";
+    int      _debateScore = DEBATE_INITIAL_SCORE; // 0=蓝方胜, 100=红方胜
+    int      _redWinCount = 0;
+    int      _blueWinCount = 0;
+    uint32_t _debateTurnStartedMs = 0;
+    uint32_t _debateBoomShownAtMs = 0;
+    int      _lastDebateSecond = -1;
 };

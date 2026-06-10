@@ -1,5 +1,6 @@
 #include "DisplayManager.h"
 #include <SPIFFS.h>
+#include <esp_heap_caps.h>
 
 // 前置声明
 static int32_t utf8Next(const String& s, int32_t i);
@@ -20,6 +21,8 @@ static const uint32_t C_SHD_DIS = 0xC0C0C0;
 static const uint32_t C_TXT_DIS = 0x999999;
 static const uint32_t C_CARD    = 0xFFF5EE;  // 卡片暖白
 static const uint32_t BTN_R     = 8;          // 按钮圆角
+static const uint32_t C_PROMPT  = 0xFCF4E6;
+static const uint32_t C_ACTION  = 0xFFD85F;
 
 static const lgfx::IFont* FONT_S = &lgfx::v1::fonts::efontCN_12;
 static const lgfx::IFont* FONT_M = &lgfx::v1::fonts::efontCN_14;
@@ -34,6 +37,161 @@ void DisplayManager::begin() {
     M5.Display.setTextWrap(false);
     M5.Display.fillScreen(C_BG);
     progressStep = 0;
+}
+
+void DisplayManager::drawModeSelect() {
+    M5.Display.fillScreen(C_BG);
+    _drawPngAsset("/u/bg0.png", 0, 0, SCREEN_W, SCREEN_H);
+
+    _drawPngAsset("/u/md.png", 42, 84, 112, 122, 1.0f);
+    _drawPngAsset("/u/mb.png", 166, 84, 112, 122, 1.0f);
+    _drawPromptBox((SCREEN_W - 143) / 2, 210, 143, 23, "请选择模式", false);
+    _lastState = AppState::MODE_SELECT;
+}
+
+void DisplayManager::drawPartyEntry(const String& title, const String& redName,
+                                    const String& blueName,
+                                    const String& bottomText) {
+    bool debate = title.indexOf("辩") >= 0 || bottomText.indexOf("辩") >= 0;
+    drawPartyEntry(debate, redName.length() > 0, blueName.length() > 0);
+}
+
+void DisplayManager::drawPartyEntry(bool debate, bool redReady, bool blueReady) {
+    M5.Display.fillScreen(C_BG);
+    _drawPngAsset(debate ? "/u/debate-1.png" : "/u/chat-1.png", 0, 0, SCREEN_W, SCREEN_H);
+
+    const char* statePath;
+    if (redReady && blueReady) {
+        statePath = debate ? "/u/pk-ready.png" : "/u/ct-ready.png";
+    } else if (redReady) {
+        statePath = debate ? "/u/pk-red.png" : "/u/ct-red.png";
+    } else if (blueReady) {
+        statePath = debate ? "/u/pk-blue.png" : "/u/ct-blue.png";
+    } else {
+        statePath = debate ? "/u/pk-plain.png" : "/u/ct-plain.png";
+    }
+    _drawPngAsset(statePath, 0, 62, 320, 146, 1.0f);
+
+    if (redReady && blueReady) {
+        _drawPromptBox((SCREEN_W - 84) / 2, 211, 84, 23,
+                       debate ? "进入辩论" : "进入群聊", true);
+    } else {
+        _drawPromptBox((SCREEN_W - 217) / 2, 211, 217, 23,
+                       debate ? "点击红蓝区域识别今日辩手"
+                              : "点击红蓝区域识别你的群聊伙伴",
+                       false);
+    }
+}
+
+void DisplayManager::drawDailyStage(const String& redExpression,
+                                    const String& blueExpression,
+                                    StageSide speaker, int audioLevel) {
+    M5.Display.fillScreen(C_BG);
+    _drawPngAsset("/u/chat-2.png", 0, 0, SCREEN_W, SCREEN_H);
+
+    if (speaker == StageSide::Red) {
+        _drawPngAsset("/u/rsp.png", 122, 88, 76, 58, 0.42f);
+    } else if (speaker == StageSide::Blue) {
+        _drawPngAsset("/u/bsp.png", 122, 88, 76, 58, 0.42f);
+    } else {
+        _drawPngAsset("/u/bp.png", 126, 88, 68, 54, 0.36f);
+    }
+
+    _drawStageExpression(StageSide::Red, speaker == StageSide::Red ? "speaking" : "silent",
+                         38, 86, 76, 76);
+    _drawStageExpression(StageSide::Blue, speaker == StageSide::Blue ? "speaking" : "silent",
+                         212, 88, 76, 76);
+    _drawPngAsset("/u/ua.png", 132, 150, 56, 56, 0.28f);
+    drawWaveIcon(audioLevel);
+}
+
+void DisplayManager::drawDebateTopic(const String& redName, const String& blueName,
+                                     const String& topic, const String& bottomText,
+                                     int audioLevel) {
+    drawDebateTopicEntry(topic.length() > 0 || bottomText.indexOf("开始") >= 0, audioLevel);
+}
+
+void DisplayManager::drawDebateTopicEntry(bool topicReady, int audioLevel) {
+    M5.Display.fillScreen(C_BG);
+    _drawPngAsset("/u/debate-2.png", 0, 0, SCREEN_W, SCREEN_H);
+    if (topicReady) {
+        _drawPromptBox((SCREEN_W - 84) / 2, 211, 84, 23, "开始辩论", true);
+        _drawDebateProgress(DEBATE_INITIAL_SCORE, 196);
+    } else {
+        _drawPromptBox((SCREEN_W - 121) / 2, 211, 121, 23, "说出今日辩题", false);
+    }
+    if (audioLevel > 0) drawWaveIcon(audioLevel);
+}
+
+void DisplayManager::drawDebateTurn(const String& redName, const String& blueName,
+                                    StageSide speaker, int secondsLeft, int score,
+                                    const String& redExpression,
+                                    const String& blueExpression) {
+    M5.Display.fillScreen(C_BG);
+    _drawPngAsset("/u/debate-2.png", 0, 0, SCREEN_W, SCREEN_H);
+
+    const bool redSpeaking = speaker == StageSide::Red;
+    _drawPngAsset(redSpeaking ? "/u/tr.png" : "/u/tb.png",
+                  0, 0, 150, 40, 0.42f);
+    M5.Display.setFont(FONT_L);
+    M5.Display.setTextColor(0xFFFFFF);
+    String label = (redSpeaking ? redName : blueName) + " 发言中";
+    String lines[2];
+    int lineCount = 0;
+    _wrapText(label, 130, lines, lineCount, 1);
+    M5.Display.setCursor(10, 12);
+    M5.Display.print(lines[0]);
+
+    _drawPngAsset("/u/tt.png", 232, 6, 78, 28, 0.34f);
+    char tbuf[8];
+    snprintf(tbuf, sizeof(tbuf), "00:%02d", constrain(secondsLeft, 0, 99));
+    M5.Display.setFont(FONT_M);
+    M5.Display.setTextColor(0xFFE15A);
+    M5.Display.setCursor(260, 14);
+    M5.Display.print(tbuf);
+
+    _drawStageExpression(StageSide::Red, redSpeaking ? "speaking" : redExpression,
+                         40, 74, 86, 86);
+    _drawStageExpression(StageSide::Blue, redSpeaking ? blueExpression : "speaking",
+                         208, 74, 68, 68);
+    _drawPngAsset(redSpeaking ? "/u/rsp.png" : "/u/bsp.png",
+                  136, 90, 56, 42, 0.31f);
+    _drawDebateProgress(score, 196);
+}
+
+void DisplayManager::drawDebateBoom(StageSide target, int score, int secondsLeft) {
+    M5.Display.fillScreen(C_BG);
+    _drawPngAsset("/u/debate-2.png", 0, 0, SCREEN_W, SCREEN_H);
+    _drawPngAsset("/u/tt.png", 232, 6, 78, 28, 0.34f);
+    char tbuf[8];
+    snprintf(tbuf, sizeof(tbuf), "00:%02d", constrain(secondsLeft, 0, 99));
+    M5.Display.setFont(FONT_M);
+    M5.Display.setTextColor(0xFFE15A);
+    M5.Display.setCursor(260, 14);
+    M5.Display.print(tbuf);
+
+    _drawPromptBox((SCREEN_W - 131) / 2, 170, 131, 23,
+                   target == StageSide::Red ? "红方收获一次爆灯!" : "蓝方收获一次爆灯!",
+                   false);
+    _drawDebateProgress(score, 196);
+}
+
+void DisplayManager::drawDebateResult(StageSide winner, int winCount) {
+    M5.Display.fillScreen(C_BG);
+    _drawPngAsset("/u/debate-3.png", 0, 0, SCREEN_W, SCREEN_H);
+    _drawPngAsset(winner == StageSide::Red ? "/u/red-win.png" : "/u/blue-win.png",
+                  70, 66, 180, 132, 1.0f);
+    _drawPngAsset(winner == StageSide::Red ? "/u/red-flower.png" : "/u/blue-flower.png",
+                  76, 163, 163, 60, 1.0f);
+
+    M5.Display.setFont(FONT_S);
+    M5.Display.setTextColor(0x000000);
+    String msg1 = String("这是") + (winner == StageSide::Red ? "红方" : "蓝方")
+               + "第" + String(winCount) + "次胜利";
+    M5.Display.setCursor(84, 184);
+    M5.Display.print(msg1);
+    M5.Display.setCursor(84, 201);
+    M5.Display.print("你们越来越有默契了!");
 }
 
 // ── 无人入住 ────────────────────────────────────────────────────
@@ -578,6 +736,103 @@ void DisplayManager::_drawAvatarTransparent(int32_t x, int32_t y, int32_t w,
     }
     // 无 PNG 则退回 JPG
     _drawAvatar(x, y, w, h, avatarPath, scale);
+}
+
+void DisplayManager::_drawPngAsset(const String& path, int32_t x, int32_t y,
+                                   int32_t w, int32_t h, float scale) {
+    if (!SPIFFS.exists(path)) {
+        Serial.printf("[UI] PNG missing: %s\n", path.c_str());
+        return;
+    }
+    fs::File file = SPIFFS.open(path, "r");
+    if (!file) {
+        Serial.printf("[UI] PNG open failed: %s\n", path.c_str());
+        return;
+    }
+
+    size_t len = file.size();
+    uint8_t* buf = (uint8_t*)heap_caps_malloc(len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!buf) buf = (uint8_t*)malloc(len);
+    if (!buf) {
+        Serial.printf("[UI] PNG alloc failed: %s (%u bytes)\n",
+                      path.c_str(), (unsigned)len);
+        file.close();
+        return;
+    }
+
+    file.read(buf, len);
+    file.close();
+    M5.Display.drawPng(buf, len, x, y, w, h, 0, 0, scale);
+    free(buf);
+}
+
+void DisplayManager::_drawStageExpression(StageSide side, const String& expression,
+                                          int32_t x, int32_t y, int32_t w,
+                                          int32_t h) {
+    String sideName = side == StageSide::Blue ? "blue" : "red";
+    String expr = expression.length() ? expression : "silent";
+    String prefix = side == StageSide::Blue ? "b" : "r";
+    String suffix = "si";
+    if (expr == "angry") suffix = "a2";
+    else if (expr == "approve") suffix = "ap";
+    else if (expr == "disagree") suffix = "di";
+    else if (expr == "disdain") suffix = "dn";
+    else if (expr == "doubt") suffix = "do";
+    else if (expr == "shocked") suffix = "sh";
+    else if (expr == "speaking") suffix = "spk";
+    else if (expr == "speechless") suffix = "sl";
+    else if (expr == "thinking") suffix = "th";
+    String path = "/u/" + prefix + suffix + ".png";
+    if (!SPIFFS.exists(path)) path = "/u/" + prefix + "si.png";
+    _drawPngAsset(path, x, y, w, h, 0.35f);
+}
+
+void DisplayManager::_drawDebateProgress(int score, int y) {
+    score = constrain(score, 0, 100);
+    int x = 24, w = SCREEN_W - 48, h = 18;
+    M5.Display.fillRoundRect(x, y, w, h, 9, 0xFFFFFF);
+    M5.Display.drawRoundRect(x, y, w, h, 9, 0x000000);
+
+    int innerX = x + 3;
+    int innerY = y + 3;
+    int innerW = w - 6;
+    int innerH = h - 6;
+    int redW = map(score, 0, 100, 0, innerW);
+    M5.Display.fillRect(innerX, innerY, redW, innerH, 0xF0524D);
+    M5.Display.fillRect(innerX + redW, innerY, innerW - redW, innerH, 0x61A9FF);
+    M5.Display.drawLine(innerX + innerW / 2, y - 2, innerX + innerW / 2, y + h + 5, 0x000000);
+    int starX = innerX + redW - 10;
+    starX = constrain(starX, innerX - 2, innerX + innerW - 18);
+    _drawPngAsset("/u/est.png", starX, y - 8, 20, 20, 0.18f);
+}
+
+void DisplayManager::_drawPromptBox(int32_t x, int32_t y, int32_t w, int32_t h,
+                                    const String& text, bool button) {
+    if (button) {
+        M5.Display.fillRoundRect(x + 2, y + 2, w, h, 20, 0xFFFFFF);
+        M5.Display.drawRoundRect(x + 2, y + 2, w, h, 20, 0xFFFFFF);
+        M5.Display.fillRoundRect(x, y, w, h, 20, C_ACTION);
+        M5.Display.drawRoundRect(x, y, w, h, 20, 0x000000);
+    } else {
+        M5.Display.fillRoundRect(x, y, w, h, 8, C_PROMPT);
+        M5.Display.drawRoundRect(x, y, w, h, 8, 0x000000);
+    }
+
+    M5.Display.setFont(FONT_S);
+    M5.Display.setTextSize(1);
+    M5.Display.setTextColor(0x000000);
+    String lines[2];
+    int lineCount = 0;
+    _wrapText(text, w - 8, lines, lineCount, 1);
+    const String& line = lineCount > 0 ? lines[0] : text;
+    int tw = M5.Display.textWidth(line.c_str());
+    int th = M5.Display.fontHeight();
+    M5.Display.setCursor(x + (w - tw) / 2, y + (h - th) / 2);
+    M5.Display.print(line);
+}
+
+void DisplayManager::_drawBottomPrompt(const String& text) {
+    _drawPromptBox((SCREEN_W - 143) / 2, 210, 143, 23, text, false);
 }
 
 void DisplayManager::_drawRightText(const String& text) {

@@ -136,6 +136,91 @@ std::vector<GroupReply> LLMClient::groupChat(const Character& charA,
     return replies;
 }
 
+DebateStartResponse LLMClient::startDebate(const Character& red,
+                                           const Character& blue,
+                                           const String& topic) {
+    DebateStartResponse out;
+    if (!red.isValid() || !blue.isValid() || topic.isEmpty()) return out;
+    if (!_ensureWiFi()) return out;
+
+    JsonDocument req;
+    req["redId"] = red.id;
+    req["blueId"] = blue.id;
+    req["topic"] = topic;
+    String body;
+    serializeJson(req, body);
+
+    HTTPClient http;
+    http.begin(BackendResolver::url("/api/debate/start"));
+    http.addHeader("Content-Type", "application/json");
+    http.setTimeout(15000);
+    int code = http.POST(body);
+    if (code != 200) {
+        Serial.printf("[LLM] Debate start backend error: %d - %s\n",
+                      code, http.getString().c_str());
+        http.end();
+        return out;
+    }
+
+    JsonDocument res;
+    DeserializationError err = deserializeJson(res, http.getStream());
+    http.end();
+    if (err) {
+        Serial.printf("[LLM] Debate start JSON parse failed: %s\n", err.c_str());
+        return out;
+    }
+
+    out.ok = true;
+    out.sessionId = res["sessionId"].as<String>();
+    out.speaker = res["speaker"] | String("red");
+    out.score = res["score"] | 50;
+    out.durationSec = res["durationSec"] | 60;
+    return out;
+}
+
+DebateTurnResponse LLMClient::nextDebateTurn(const String& sessionId,
+                                             const String& event) {
+    DebateTurnResponse out;
+    if (sessionId.isEmpty()) return out;
+    if (!_ensureWiFi()) return out;
+
+    JsonDocument req;
+    req["sessionId"] = sessionId;
+    req["event"] = event;
+    String body;
+    serializeJson(req, body);
+
+    HTTPClient http;
+    http.begin(BackendResolver::url("/api/debate/turn"));
+    http.addHeader("Content-Type", "application/json");
+    http.setTimeout(25000);
+    int code = http.POST(body);
+    if (code != 200) {
+        Serial.printf("[LLM] Debate turn backend error: %d - %s\n",
+                      code, http.getString().c_str());
+        http.end();
+        return out;
+    }
+
+    JsonDocument res;
+    DeserializationError err = deserializeJson(res, http.getStream());
+    http.end();
+    if (err) {
+        Serial.printf("[LLM] Debate turn JSON parse failed: %s\n", err.c_str());
+        return out;
+    }
+
+    out.ok = true;
+    out.speaker = res["speaker"] | String("red");
+    out.text = res["text"].as<String>();
+    out.text.trim();
+    out.redReaction = res["redReaction"] | String("silent");
+    out.blueReaction = res["blueReaction"] | String("speechless");
+    out.score = res["score"] | 50;
+    out.winner = res["winner"] | String("");
+    return out;
+}
+
 String LLMClient::_buildRequestBody(const Character&, const String&) {
     return ""; // 已由后端负责，此方法不再使用
 }

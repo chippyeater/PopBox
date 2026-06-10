@@ -430,6 +430,53 @@ function buildGroupSystemPrompt(charA, charB) {
     return p;
 }
 
+function buildDebateSystemPrompt(session) {
+    const red = session.red;
+    const blue = session.blue;
+    const speaker = session.nextSpeaker === 'blue' ? blue : red;
+    const opponent = session.nextSpeaker === 'blue' ? red : blue;
+    const speakerSide = session.nextSpeaker === 'blue' ? 'blue' : 'red';
+    const opponentSide = session.nextSpeaker === 'blue' ? 'red' : 'blue';
+
+    return [
+        '你是一个双人辩论控制器。每次只生成当前发言方的一段发言。',
+        `辩题：${session.topic}`,
+        '',
+        '红方：',
+        `姓名：${red.name}`,
+        `性格：${red.personality || ''}`,
+        `世界观：${red.worldview || ''}`,
+        `背景：${red.background || ''}`,
+        `回复风格：${red.reply_style || ''}`,
+        '',
+        '蓝方：',
+        `姓名：${blue.name}`,
+        `性格：${blue.personality || ''}`,
+        `世界观：${blue.worldview || ''}`,
+        `背景：${blue.background || ''}`,
+        `回复风格：${blue.reply_style || ''}`,
+        '',
+        `当前发言方：${speakerSide === 'red' ? '红方' : '蓝方'} ${speaker.name}`,
+        `对手：${opponentSide === 'red' ? '红方' : '蓝方'} ${opponent.name}`,
+        '',
+        '规则：',
+        '- 发言必须站在当前发言方立场，围绕辩题明确表达观点。',
+        '- 要像限时辩论，不要闲聊，不要旁白，不要写动作。',
+        '- 发言控制在 80 字以内，适合 TTS 播放。',
+        '- reaction 只能从 silent、speechless、angry、thinking、doubt、disagree、approve、disdain、shocked 中选。',
+        '- 只返回 JSON，不要代码块。',
+        `{"speaker":"${speakerSide}","text":"当前发言方要说的话","redReaction":"${speakerSide === 'red' ? 'speaking' : 'speechless'}","blueReaction":"${speakerSide === 'blue' ? 'speaking' : 'speechless'}"}`
+    ].join('\n');
+}
+
+function normalizeDebateReaction(value, fallback) {
+    const allowed = new Set(['silent', 'speechless', 'angry', 'thinking', 'doubt', 'disagree', 'approve', 'disdain', 'shocked', 'speaking']);
+    const v = String(value || '').trim().toLowerCase();
+    return allowed.has(v) ? v : fallback;
+}
+
+const debateSessions = new Map();
+
 // ══════════════════════════════════════════════════════════════
 // 对话历史管理
 // ══════════════════════════════════════════════════════════════
@@ -1114,6 +1161,157 @@ app.post('/api/group-chat', async (req, res) => {
         console.error('[GroupChat] 请求失败:', err.message);
         res.status(500).json({ error: '网络请求失败' });
     }
+});
+
+// ── POST /api/debate/start ─────────────────────────────────────
+// Body: { redId, blueId, topic }
+app.post('/api/debate/start', (req, res) => {
+    const redId = String(req.body?.redId || '');
+    const blueId = String(req.body?.blueId || '');
+    const topic = String(req.body?.topic || '').trim();
+    if (!redId || !blueId || !topic) {
+        return res.status(400).json({ error: 'redId、blueId、topic 不能为空' });
+    }
+    if (redId === blueId) return res.status(400).json({ error: '红蓝方不能是同一角色' });
+
+    const red = characterLibrary.get(redId);
+    const blue = characterLibrary.get(blueId);
+    if (!red) return res.status(404).json({ error: `红方角色 ${redId} 不存在` });
+    if (!blue) return res.status(404).json({ error: `蓝方角色 ${blueId} 不存在` });
+
+    const sessionId = `debate_${randomUUID()}`;
+    const session = {
+        id: sessionId,
+        red,
+        blue,
+        topic,
+        score: 50,
+        nextSpeaker: 'red',
+        turns: [],
+        createdAt: Date.now()
+    };
+    debateSessions.set(sessionId, session);
+    res.json({
+        sessionId,
+        speaker: session.nextSpeaker,
+        state: 'speaking',
+        score: session.score,
+        redScore: session.score,
+        blueScore: 100 - session.score,
+        durationSec: 60
+    });
+});
+
+// ── POST /api/debate/turn ──────────────────────────────────────
+// Body: { sessionId, event?: "next" }
+app.post('/api/debate/turn', async (req, res) => {
+    const sessionId = String(req.body?.sessionId || '');
+    const session = debateSessions.get(sessionId);
+    if (!session) return res.status(404).json({ error: '辩论 session 不存在或已结束' });
+
+    const apiKey = process.env.DASHSCOPE_API_KEY;
+    const speaker = session.nextSpeaker;
+    const speakerChar = speaker === 'red' ? session.red : session.blue;
+    const otherSide = speaker === 'red' ? 'blue' : 'red';
+
+    let payload = {
+        speaker,
+        text: `${speakerChar.name}认为，${session.topic}这件事不能只看表面，关键要看谁的理由更站得住。`,
+        redReaction: speaker === 'red' ? 'speaking' : 'speechless',
+        blueReaction: speaker === 'blue' ? 'speaking' : 'speechless'
+    };
+
+    if (apiKey && apiKey !== 'your_dashscope_api_key_here') {
+        const model = process.env.QWEN_CHAT_MODEL || 'qwen-turbo';
+        const url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+        const history = session.turns
+            .slice(-6)
+            .map(t => `${t.speaker === 'red' ? '红方' : '蓝方'}：${t.text}`)
+            .join('\n');
+        const messages = [
+            { role: 'system', content: buildDebateSystemPrompt(session) },
+            { role: 'user', content: history ? `最近发言：\n${history}\n请继续下一轮。` : '请开始第一轮发言。' }
+        ];
+
+        try {
+            const response = await fetchWithTimeout(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({ model, messages, max_tokens: 180, temperature: 0.8, enable_thinking: false })
+            }, 20000);
+
+            if (!response.ok) {
+                const t = await response.text();
+                console.error('[Debate] LLM 错误:', t);
+            } else {
+                const data = await response.json();
+                const raw = data?.choices?.[0]?.message?.content?.trim() || '';
+                try {
+                    const jsonStr = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+                    const parsed = JSON.parse(jsonStr);
+                    payload = {
+                        speaker: parsed.speaker === 'blue' ? 'blue' : 'red',
+                        text: String(parsed.text || '').trim() || payload.text,
+                        redReaction: normalizeDebateReaction(parsed.redReaction, payload.redReaction),
+                        blueReaction: normalizeDebateReaction(parsed.blueReaction, payload.blueReaction)
+                    };
+                } catch (e) {
+                    console.error('[Debate] JSON 解析失败:', e.message, '| raw:', raw.slice(0, 120));
+                }
+            }
+        } catch (err) {
+            console.error('[Debate] 请求失败:', err.message);
+        }
+    }
+
+    payload.speaker = speaker;
+    payload.redReaction = speaker === 'red'
+        ? 'speaking'
+        : normalizeDebateReaction(payload.redReaction, 'speechless');
+    payload.blueReaction = speaker === 'blue'
+        ? 'speaking'
+        : normalizeDebateReaction(payload.blueReaction, 'speechless');
+
+    session.turns.push({ speaker, text: payload.text, ts: Date.now() });
+    session.nextSpeaker = otherSide;
+
+    const winner = session.score >= 100 ? 'red' : session.score <= 0 ? 'blue' : null;
+    res.json({
+        state: winner ? 'finished' : 'speaking',
+        speaker: payload.speaker,
+        text: payload.text,
+        redReaction: payload.redReaction,
+        blueReaction: payload.blueReaction,
+        score: session.score,
+        redScore: session.score,
+        blueScore: 100 - session.score,
+        winner
+    });
+});
+
+// ── POST /api/debate/boom ─────────────────────────────────────
+// Body: { sessionId, target: "red" | "blue", delta?: number }
+app.post('/api/debate/boom', (req, res) => {
+    const sessionId = String(req.body?.sessionId || '');
+    const target = req.body?.target === 'blue' ? 'blue' : 'red';
+    const delta = Number.isFinite(Number(req.body?.delta)) ? Number(req.body.delta) : 15;
+    const session = debateSessions.get(sessionId);
+    if (!session) return res.status(404).json({ error: '辩论 session 不存在或已结束' });
+
+    session.score += target === 'red' ? delta : -delta;
+    session.score = Math.max(0, Math.min(100, session.score));
+    const winner = session.score >= 100 ? 'red' : session.score <= 0 ? 'blue' : null;
+    res.json({
+        state: winner ? 'finished' : 'boom',
+        target,
+        score: session.score,
+        redScore: session.score,
+        blueScore: 100 - session.score,
+        winner
+    });
 });
 
 // ── GET /api/group-history/:id1/:id2 ────────────────────────────

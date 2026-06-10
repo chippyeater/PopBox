@@ -40,9 +40,7 @@ ChatUI::ChatUI(CharacterManager& charMgr, AudioRecorder& recorder,
 
 void ChatUI::begin() {
     _display.begin();
-    // 开机第一屏：选择 1 人或 2 人入住 → 拍照识别
-    _display.drawCountSelection(_charMgr.count());
-    _state = AppState::CHARACTER_COUNT;
+    _enterModeSelect();
     _idleStartMs = millis();
 }
 
@@ -51,6 +49,30 @@ void ChatUI::update() {
 
     // ── 音频泵（驱动录音和 VAD 监听）──
     _recorder.update();
+
+    // ── 新版日常/辩论 UI 动画 ───────────────────────────────
+    if (_state == AppState::DAILY_STAGE || _state == AppState::DEBATE_TOPIC) {
+        _display.drawWaveIcon(_recorder.getAudioLevel());
+    } else if (_state == AppState::DEBATE_TURN) {
+        int elapsed = (int)((millis() - _debateTurnStartedMs) / 1000);
+        int left = max(0, DEBATE_TURN_SECONDS - elapsed);
+        if (left != _lastDebateSecond) {
+            _lastDebateSecond = left;
+            _display.drawDebateTurn(_redName, _blueName, _debateSpeaker, left,
+                                    _debateScore, _debateRedExpression,
+                                    _debateBlueExpression);
+        }
+        if (left <= 0) {
+            _requestDebateTurn();
+            return;
+        }
+    } else if (_state == AppState::DEBATE_BOOM
+               && millis() - _debateBoomShownAtMs > 1500) {
+        _state = AppState::DEBATE_TURN;
+        _debateTurnStartedMs = millis();
+        _lastDebateSecond = -1;
+        return;
+    }
 
     // ── 声波动画（CHATTING 状态始终显示呼吸指示器）──
     if (_state == AppState::CHATTING) {
@@ -73,7 +95,11 @@ void ChatUI::update() {
                       (int)_state, (int)WiFi.status());
         _recorder.stopListening();
 
-        if (_state == AppState::CHATTING) {
+        if (_state == AppState::DAILY_STAGE) {
+            _processDailyStageSpeech();
+        } else if (_state == AppState::DEBATE_TOPIC) {
+            _processDebateTopic();
+        } else if (_state == AppState::CHATTING) {
             _processAndReply();
         }
         return;
@@ -117,12 +143,334 @@ void ChatUI::_setState(AppState s) {
     _idleStartMs = millis();
 }
 
+void ChatUI::_enterModeSelect() {
+    _flowMode = FlowMode::None;
+    _redIndex = -1;
+    _blueIndex = -1;
+    _redName = "";
+    _blueName = "";
+    _debateTopic = "";
+    _debateSessionId = "";
+    _dailySpeaker = DisplayManager::StageSide::None;
+    _lastDebateSecond = -1;
+    _display.drawModeSelect();
+    _state = AppState::MODE_SELECT;
+    _idleStartMs = millis();
+}
+
+void ChatUI::_enterInvite(FlowMode mode) {
+    _flowMode = mode;
+    _redIndex = -1;
+    _blueIndex = -1;
+    _redName = "";
+    _blueName = "";
+    _debateTopic = "";
+    _debateScore = DEBATE_INITIAL_SCORE;
+    _dailyRedExpression = "silent";
+    _dailyBlueExpression = "silent";
+    _debateRedExpression = "silent";
+    _debateBlueExpression = "speechless";
+    const bool daily = mode == FlowMode::Daily;
+    _display.drawPartyEntry(!daily, false, false);
+    _state = daily ? AppState::DAILY_INVITE : AppState::DEBATE_ENTRY;
+    _idleStartMs = millis();
+}
+
+void ChatUI::_onModeSelect(int32_t x) {
+    _enterInvite(x < SCREEN_W / 2 ? FlowMode::Daily : FlowMode::Debate);
+}
+
+bool ChatUI::_recognizeStageSide(DisplayManager::StageSide side) {
+    if (side == DisplayManager::StageSide::None) return false;
+
+    _recorder.pauseMic();
+    if (!_camera.isReady() && !_camera.begin()) {
+        _recorder.resumeMic();
+        _afterStageRecognition();
+        return false;
+    }
+
+    if (!_waitForCaptureTap()) {
+        _camera.end();
+        _restoreM5();
+        _recorder.resumeMic();
+        _afterStageRecognition();
+        return false;
+    }
+
+    CameraFrame frame = _camera.capture();
+    if (!frame.valid) {
+        frame.release();
+        _camera.end();
+        _restoreM5();
+        _recorder.resumeMic();
+        _afterStageRecognition();
+        return false;
+    }
+
+    size_t len = frame.len;
+    uint8_t* buf = (uint8_t*)malloc(len);
+    if (buf) memcpy(buf, frame.data, len);
+    frame.release();
+    _camera.end();
+    _restoreM5();
+    _recorder.resumeMic();
+
+    if (!buf) {
+        _afterStageRecognition();
+        return false;
+    }
+
+    _display.drawRecognizing(0);
+    for (int i = 0; i < 60; i++) {
+        _display.drawRecognizing(i);
+        delay(25);
+    }
+
+    bool ok = _charMgr.loadFromRecognition(buf, len);
+    free(buf);
+    if (!ok) {
+        _afterStageRecognition();
+        return false;
+    }
+
+    int idx = _charMgr.currentIndex();
+    const auto& ch = _charMgr.current();
+    if (side == DisplayManager::StageSide::Red) {
+        _redIndex = idx;
+        _redName = ch.name;
+    } else {
+        _blueIndex = idx;
+        _blueName = ch.name;
+    }
+    _afterStageRecognition();
+    return true;
+}
+
+void ChatUI::_afterStageRecognition() {
+    const bool daily = _flowMode == FlowMode::Daily;
+    _display.drawPartyEntry(!daily, _redIndex >= 0, _blueIndex >= 0);
+    _state = daily ? AppState::DAILY_INVITE : AppState::DEBATE_ENTRY;
+}
+
+void ChatUI::_startDailyStage() {
+    _isGroupChat = true;
+    _dailySpeaker = DisplayManager::StageSide::None;
+    _dailyRedExpression = "silent";
+    _dailyBlueExpression = "silent";
+    _display.drawDailyStage(_dailyRedExpression, _dailyBlueExpression, _dailySpeaker, 0);
+    _state = AppState::DAILY_STAGE;
+    _idleStartMs = millis();
+    _recorder.startListening();
+}
+
+void ChatUI::_processDailyStageSpeech() {
+    const auto& red = _charMgr.current();
+    const auto& blue = _charMgr.secondary();
+    if (!blue.isValid()) {
+        _enterModeSelect();
+        return;
+    }
+
+    _recorder.stopListening();
+    size_t samples = _recorder.getSampleCount();
+    String userText = _stt.recognize(_recorder.getBuffer(), samples);
+    _recorder.clearBuffer();
+
+    if (userText.isEmpty()) {
+        _recorder.startListening();
+        return;
+    }
+
+    auto replies = _llm.groupChat(red, blue, userText);
+    if (replies.empty()) {
+        _recorder.startListening();
+        return;
+    }
+
+    _recorder.pauseMic();
+    for (const auto& reply : replies) {
+        bool isRed = reply.characterId == red.id;
+        _dailySpeaker = isRed ? DisplayManager::StageSide::Red : DisplayManager::StageSide::Blue;
+        if (isRed) {
+            _dailyRedExpression = "speaking";
+            _dailyBlueExpression = reply.expression.length() ? reply.expression : "silent";
+        } else {
+            _dailyBlueExpression = "speaking";
+            _dailyRedExpression = reply.expression.length() ? reply.expression : "silent";
+        }
+        _display.drawDailyStage(_dailyRedExpression, _dailyBlueExpression, _dailySpeaker, 80);
+
+        String clean = stripTtsMarkers(reply.reply);
+        String voiceId = isRed ? red.voice : blue.voice;
+        float vol = isRed ? red.vol : blue.vol;
+        if (voiceId.length() > 0) _tts.speak(clean, voiceId, vol);
+    }
+    _recorder.resumeMic();
+    _ttsCooldownUntil = millis() + TTS_COOLDOWN_MS;
+
+    _dailySpeaker = DisplayManager::StageSide::None;
+    _dailyRedExpression = "silent";
+    _dailyBlueExpression = "silent";
+    _display.drawDailyStage(_dailyRedExpression, _dailyBlueExpression, _dailySpeaker, 0);
+    _state = AppState::DAILY_STAGE;
+    _recorder.startListening();
+}
+
+void ChatUI::_processDebateTopic() {
+    _recorder.stopListening();
+    size_t samples = _recorder.getSampleCount();
+    String topic = _stt.recognize(_recorder.getBuffer(), samples);
+    _recorder.clearBuffer();
+    topic.trim();
+    if (topic.isEmpty()) {
+        _recorder.startListening();
+        return;
+    }
+    _debateTopic = topic;
+    _display.drawDebateTopicEntry(true, 0);
+    _state = AppState::DEBATE_READY;
+}
+
+void ChatUI::_startDebate() {
+    const auto& red = _charMgr.current();
+    const auto& blue = _charMgr.secondary();
+    auto started = _llm.startDebate(red, blue, _debateTopic);
+    if (!started.ok) {
+        _display.drawDebateTopicEntry(true, 0);
+        _state = AppState::DEBATE_READY;
+        return;
+    }
+
+    _debateSessionId = started.sessionId;
+    _debateScore = started.score;
+    _debateSpeaker = started.speaker == "blue"
+        ? DisplayManager::StageSide::Blue
+        : DisplayManager::StageSide::Red;
+    _requestDebateTurn();
+}
+
+void ChatUI::_requestDebateTurn() {
+    if (_debateSessionId.isEmpty()) return;
+    auto turn = _llm.nextDebateTurn(_debateSessionId);
+    if (!turn.ok) {
+        _debateTurnStartedMs = millis();
+        return;
+    }
+
+    _debateScore = constrain(turn.score, 0, 100);
+    if (turn.winner == "red" || turn.winner == "blue") {
+        _debateSpeaker = turn.winner == "blue"
+            ? DisplayManager::StageSide::Blue
+            : DisplayManager::StageSide::Red;
+        _finishDebateIfNeeded();
+        return;
+    }
+
+    _debateSpeaker = turn.speaker == "blue"
+        ? DisplayManager::StageSide::Blue
+        : DisplayManager::StageSide::Red;
+    _debateRedExpression = turn.redReaction.length() ? turn.redReaction : "silent";
+    _debateBlueExpression = turn.blueReaction.length() ? turn.blueReaction : "speechless";
+    _display.drawDebateTurn(_redName, _blueName, _debateSpeaker,
+                            DEBATE_TURN_SECONDS, _debateScore,
+                            _debateRedExpression, _debateBlueExpression);
+    _lastDebateSecond = DEBATE_TURN_SECONDS;
+
+    const auto& red = _charMgr.current();
+    const auto& blue = _charMgr.secondary();
+    const bool redSpeaking = _debateSpeaker == DisplayManager::StageSide::Red;
+    _recorder.pauseMic();
+    _tts.speak(stripTtsMarkers(turn.text),
+               redSpeaking ? red.voice : blue.voice,
+               redSpeaking ? red.vol : blue.vol);
+    _recorder.resumeMic();
+
+    _debateTurnStartedMs = millis();
+    _lastDebateSecond = -1;
+    _state = AppState::DEBATE_TURN;
+}
+
+void ChatUI::triggerDebateBoom(DisplayManager::StageSide side) {
+    if (_state != AppState::DEBATE_TURN || side == DisplayManager::StageSide::None) return;
+    if (side == DisplayManager::StageSide::Red) {
+        _debateScore = min(100, _debateScore + DEBATE_BOOM_DELTA);
+    } else {
+        _debateScore = max(0, _debateScore - DEBATE_BOOM_DELTA);
+    }
+
+    int elapsed = (int)((millis() - _debateTurnStartedMs) / 1000);
+    int left = max(0, DEBATE_TURN_SECONDS - elapsed);
+    _display.drawDebateBoom(side, _debateScore, left);
+    _lastDebateSecond = -1;
+    _debateBoomShownAtMs = millis();
+    _state = AppState::DEBATE_BOOM;
+    _finishDebateIfNeeded();
+}
+
+void ChatUI::_finishDebateIfNeeded() {
+    if (_debateScore >= DEBATE_WIN_SCORE) {
+        _redWinCount++;
+        _display.drawDebateResult(DisplayManager::StageSide::Red, _redWinCount);
+        _state = AppState::DEBATE_RESULT;
+    } else if (_debateScore <= 100 - DEBATE_WIN_SCORE) {
+        _blueWinCount++;
+        _display.drawDebateResult(DisplayManager::StageSide::Blue, _blueWinCount);
+        _state = AppState::DEBATE_RESULT;
+    }
+}
+
 // ── 触摸处理 ──────────────────────────────────────────────────────
 
 void ChatUI::_handleTouch() {
     if (M5.Touch.getCount() == 0) return;
     auto t = M5.Touch.getDetail(0);
     if (!t.wasPressed()) return;
+
+    if (_state == AppState::MODE_SELECT) {
+        _onModeSelect(t.x);
+        return;
+    }
+
+    if (_state == AppState::DAILY_INVITE || _state == AppState::DEBATE_ENTRY) {
+        if (_redIndex >= 0 && _blueIndex >= 0 && _redIndex != _blueIndex
+            && t.x >= (SCREEN_W - 84) / 2 && t.x <= (SCREEN_W + 84) / 2
+            && t.y >= 211 && t.y <= 234) {
+            _charMgr.setDualMode(_redIndex, _blueIndex);
+            if (_state == AppState::DAILY_INVITE) {
+                _startDailyStage();
+            } else {
+                _display.drawDebateTopicEntry(false, 0);
+                _state = AppState::DEBATE_TOPIC;
+                _recorder.startListening();
+            }
+            return;
+        }
+        if (t.x < SCREEN_W / 2) {
+            _recognizeStageSide(DisplayManager::StageSide::Red);
+        } else {
+            _recognizeStageSide(DisplayManager::StageSide::Blue);
+        }
+        return;
+    }
+
+    if (_state == AppState::DAILY_STAGE) {
+        if (t.x >= 10 && t.x <= 82 && t.y >= 196 && t.y <= 230) {
+            _recorder.stopListening();
+            _enterModeSelect();
+        }
+        return;
+    }
+
+    if (_state == AppState::DEBATE_READY) {
+        _startDebate();
+        return;
+    }
+
+    if (_state == AppState::DEBATE_RESULT) {
+        _enterModeSelect();
+        return;
+    }
 
     // ── 角色数量选择（点左半＝1人，右半＝2人）──
     if (_state == AppState::CHARACTER_COUNT) {

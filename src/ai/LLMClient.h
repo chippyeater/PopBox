@@ -21,6 +21,24 @@ struct GroupReply {
     String expression;  // "idle" | "happy" | "thinking" | "sad" | "angry"
 };
 
+struct DebateStartResponse {
+    bool ok = false;
+    String sessionId;
+    String speaker;  // "red" | "blue"
+    int score = 50;
+    int durationSec = 60;
+};
+
+struct DebateTurnResponse {
+    bool ok = false;
+    String speaker;       // "red" | "blue"
+    String text;
+    String redReaction;
+    String blueReaction;
+    int score = 50;       // 0=blue wins, 100=red wins
+    String winner;        // "" | "red" | "blue"
+};
+
 // ─────────────────────────────────────────────────────────────
 // LLMClient — 调用后端 API 生成角色回复
 //
@@ -38,6 +56,12 @@ public:
     std::vector<GroupReply> groupChat(const Character& charA,
                                        const Character& charB,
                                        const String& userMessage);
+
+    DebateStartResponse startDebate(const Character& red,
+                                     const Character& blue,
+                                     const String& topic);
+    DebateTurnResponse nextDebateTurn(const String& sessionId,
+                                       const String& event = "next");
 
 private:
     String _buildRequestBody(const Character& character,
