@@ -60,9 +60,7 @@ void ChatUI::update() {
         int left = max(0, DEBATE_TURN_SECONDS - elapsed);
         if (left != _lastDebateSecond) {
             _lastDebateSecond = left;
-            _display.drawDebateTurn(_redName, _blueName, _debateSpeaker, left,
-                                    _debateScore, _debateRedExpression,
-                                    _debateBlueExpression);
+            _display.updateDebateTimer(left);
         }
         if (left <= 0) {
             _requestDebateTurn();
@@ -173,9 +171,36 @@ void ChatUI::_enterInvite(FlowMode mode) {
     _debateRedExpression = "silent";
     _debateBlueExpression = "speechless";
     const bool daily = mode == FlowMode::Daily;
-    _display.drawPartyEntry(!daily, false, false);
+    bool ready = _prefillTestCharacters();
+    _display.drawPartyEntry(!daily, ready, ready);
     _state = daily ? AppState::DAILY_INVITE : AppState::DEBATE_ENTRY;
     _idleStartMs = millis();
+}
+
+bool ChatUI::_prefillTestCharacters() {
+    static constexpr const char* RED_TEST_ID = "sunwukong";
+    static constexpr const char* BLUE_TEST_ID = "lindaiyu";
+
+    int redIdx = -1;
+    int blueIdx = -1;
+    for (int i = 0; i < _charMgr.count(); i++) {
+        const auto& ch = _charMgr.characterAt(i);
+        if (ch.id == RED_TEST_ID || ch.name == "孙悟空") redIdx = i;
+        if (ch.id == BLUE_TEST_ID || ch.name == "林黛玉") blueIdx = i;
+    }
+
+    if (redIdx < 0 || blueIdx < 0 || redIdx == blueIdx) {
+        Serial.println("[ChatUI] 测试角色预填失败，回退到手动识别");
+        return false;
+    }
+
+    _redIndex = redIdx;
+    _blueIndex = blueIdx;
+    _redName = _charMgr.characterAt(redIdx).name;
+    _blueName = _charMgr.characterAt(blueIdx).name;
+    Serial.printf("[ChatUI] 测试角色预填: 红方=%s 蓝方=%s\n",
+                  _redName.c_str(), _blueName.c_str());
+    return true;
 }
 
 void ChatUI::_onModeSelect(int32_t x) {
@@ -306,6 +331,8 @@ void ChatUI::_processDailyStageSpeech() {
         String clean = stripTtsMarkers(reply.reply);
         String voiceId = isRed ? red.voice : blue.voice;
         float vol = isRed ? red.vol : blue.vol;
+        Serial.printf("[Daily] %s: %s | voice=%s vol=%.2f\n",
+                      reply.name.c_str(), clean.c_str(), voiceId.c_str(), vol);
         if (voiceId.length() > 0) _tts.speak(clean, voiceId, vol);
     }
     _recorder.resumeMic();
@@ -382,10 +409,14 @@ void ChatUI::_requestDebateTurn() {
     const auto& red = _charMgr.current();
     const auto& blue = _charMgr.secondary();
     const bool redSpeaking = _debateSpeaker == DisplayManager::StageSide::Red;
+    String debateClean = stripTtsMarkers(turn.text);
+    String debateVoice = redSpeaking ? red.voice : blue.voice;
+    float debateVol = redSpeaking ? red.vol : blue.vol;
+    Serial.printf("[Debate] %s: %s | voice=%s vol=%.2f\n",
+                  (redSpeaking ? red.name : blue.name).c_str(),
+                  debateClean.c_str(), debateVoice.c_str(), debateVol);
     _recorder.pauseMic();
-    _tts.speak(stripTtsMarkers(turn.text),
-               redSpeaking ? red.voice : blue.voice,
-               redSpeaking ? red.vol : blue.vol);
+    _tts.speak(debateClean, debateVoice, debateVol);
     _recorder.resumeMic();
 
     _debateTurnStartedMs = millis();
@@ -436,8 +467,8 @@ void ChatUI::_handleTouch() {
 
     if (_state == AppState::DAILY_INVITE || _state == AppState::DEBATE_ENTRY) {
         if (_redIndex >= 0 && _blueIndex >= 0 && _redIndex != _blueIndex
-            && t.x >= (SCREEN_W - 104) / 2 && t.x <= (SCREEN_W + 104) / 2
-            && t.y >= 207 && t.y <= 237) {
+            && t.x >= 80 && t.x <= 260
+            && t.y >= 170 && t.y <= SCREEN_H) {
             _charMgr.setDualMode(_redIndex, _blueIndex);
             if (_state == AppState::DAILY_INVITE) {
                 _startDailyStage();
@@ -457,7 +488,7 @@ void ChatUI::_handleTouch() {
     }
 
     if (_state == AppState::DAILY_STAGE) {
-        if (t.x >= 10 && t.x <= 82 && t.y >= 207 && t.y <= 237) {
+        if (t.x >= 0 && t.x <= 120 && t.y >= 160 && t.y <= SCREEN_H) {
             _recorder.stopListening();
             _enterModeSelect();
         }

@@ -54,6 +54,7 @@ public:
     void drawDebateTurn(const String& redName, const String& blueName,
                         StageSide speaker, int secondsLeft, int score,
                         const String& redExpression, const String& blueExpression);
+    void updateDebateTimer(int secondsLeft);
     void drawDebateBoom(StageSide target, int score, int secondsLeft);
     void drawDebateResult(StageSide winner, int winCount);
     void drawNoCharacter();

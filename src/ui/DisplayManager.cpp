@@ -75,7 +75,7 @@ void DisplayManager::drawPartyEntry(bool debate, bool redReady, bool blueReady) 
         _drawPromptBox((SCREEN_W - 104) / 2, 187, 122, 37,
                        debate ? "进入辩论" : "进入群聊", true);
     } else {
-        _drawPromptBox((SCREEN_W - 217) / 2, 211, 217, 23,
+        _drawPromptBox((SCREEN_W - 217) / 2, 211, 268, 28,
                        debate ? "点击红蓝区域识别今日辩手"
                               : "点击红蓝区域识别你的群聊伙伴",
                        false);
@@ -120,7 +120,7 @@ void DisplayManager::drawDebateTopicEntry(bool topicReady, int audioLevel) {
         _drawPromptBox((SCREEN_W - 112) / 2, 207, 112, 30, "开始辩论", true);
         _drawDebateProgress(DEBATE_INITIAL_SCORE, 196);
     } else {
-        _drawPromptBox((SCREEN_W - 121) / 2, 211, 121, 23, "说出今日辩题", false);
+        _drawPromptBox((SCREEN_W - 121) / 2, 211, 121, 28, "说出今日辩题", false);
     }
     if (audioLevel > 0) drawWaveIcon(audioLevel);
 }
@@ -134,7 +134,7 @@ void DisplayManager::drawDebateTurn(const String& redName, const String& blueNam
 
     const bool redSpeaking = speaker == StageSide::Red;
     _drawPngAsset(redSpeaking ? "/u/tr.png" : "/u/tb.png",
-                  0, 0, 150, 40, 1.0f);
+                  0, 0, 160, 49, 1.0f);
     M5.Display.setFont(FONT_L);
     M5.Display.setTextColor(0xFFFFFF);
     String speakerName = redSpeaking ? redName : blueName;
@@ -149,27 +149,31 @@ void DisplayManager::drawDebateTurn(const String& redName, const String& blueNam
     M5.Display.setCursor(12 + nameW, 16);
     M5.Display.print("发言中...");
 
-    _drawPngAsset("/u/tt.png", 232, 6, 78, 28, 0.34f);
-    char tbuf[8];
-    snprintf(tbuf, sizeof(tbuf), "00:%02d", constrain(secondsLeft, 0, 99));
-    M5.Display.setFont(FONT_M);
-    M5.Display.setTextColor(0xFFE15A);
-    M5.Display.setCursor(260, 14);
-    M5.Display.print(tbuf);
+    updateDebateTimer(secondsLeft);
 
     _drawStageExpression(StageSide::Red, redSpeaking ? "speaking" : redExpression,
                          40, 74, 86, 86);
     _drawStageExpression(StageSide::Blue, redSpeaking ? blueExpression : "speaking",
                          208, 74, 68, 68);
     _drawPngAsset(redSpeaking ? "/u/rsp.png" : "/u/bsp.png",
-                  136, 90, 56, 42, 0.31f);
+                  136, 90, 56, 42, 1.0f);
     _drawDebateProgress(score, 196);
+}
+
+void DisplayManager::updateDebateTimer(int secondsLeft) {
+    _drawPngAsset("/u/tt.png", 201, 0, 119.01, 41.33, 1.0f);
+    char tbuf[8];
+    snprintf(tbuf, sizeof(tbuf), "00:%02d", constrain(secondsLeft, 0, 99));
+    M5.Display.setFont(FONT_M);
+    M5.Display.setTextColor(0xFFE15A);
+    M5.Display.setCursor(260, 14);
+    M5.Display.print(tbuf);
 }
 
 void DisplayManager::drawDebateBoom(StageSide target, int score, int secondsLeft) {
     M5.Display.fillScreen(C_BG);
     _drawPngAsset("/u/debate-2.png", 0, 0, SCREEN_W, SCREEN_H);
-    _drawPngAsset("/u/tt.png", 232, 6, 78, 28, 0.34f);
+    _drawPngAsset("/u/tt.png", 232, 6, 78, 28, 1.0f);
     char tbuf[8];
     snprintf(tbuf, sizeof(tbuf), "00:%02d", constrain(secondsLeft, 0, 99));
     M5.Display.setFont(FONT_M);
@@ -177,7 +181,7 @@ void DisplayManager::drawDebateBoom(StageSide target, int score, int secondsLeft
     M5.Display.setCursor(260, 14);
     M5.Display.print(tbuf);
 
-    _drawPromptBox((SCREEN_W - 131) / 2, 170, 131, 23,
+    _drawPromptBox((SCREEN_W - 131) / 2, 170, 131, 28,
                    target == StageSide::Red ? "红方收获一次爆灯!" : "蓝方收获一次爆灯!",
                    false);
     _drawDebateProgress(score, 196);
@@ -320,7 +324,7 @@ void DisplayManager::drawCharacterSelect(const String names[],
 
         // 头像（透明底，缩放适配卡片大小）
         int ax = cx + (CARD_W - AVATAR_S) / 2;
-        _drawAvatarTransparent(ax, CARD_Y + 8, AVATAR_S, AVATAR_S, avatarPaths[i], 0.52f);
+        _drawAvatarTransparent(ax, CARD_Y + 8, AVATAR_S, AVATAR_S, avatarPaths[i], 1.0f);
 
         // 名字
         String name = names[i];
@@ -820,7 +824,7 @@ void DisplayManager::_drawDebateProgress(int score, int y) {
     M5.Display.drawLine(innerX + innerW / 2, y - 2, innerX + innerW / 2, y + h + 5, 0x000000);
     int starX = innerX + redW - 10;
     starX = constrain(starX, innerX - 2, innerX + innerW - 18);
-    _drawPngAsset("/u/est.png", starX, y - 8, 20, 20, 0.18f);
+    _drawPngAsset("/u/est.png", starX, y - 8, 20, 20, 1.0f);
 }
 
 void DisplayManager::_drawPromptBox(int32_t x, int32_t y, int32_t w, int32_t h,
@@ -846,7 +850,7 @@ void DisplayManager::_drawPromptBox(int32_t x, int32_t y, int32_t w, int32_t h,
 }
 
 void DisplayManager::_drawBottomPrompt(const String& text) {
-    _drawPromptBox((SCREEN_W - 143) / 2, 210, 143, 23, text, false);
+    _drawPromptBox((SCREEN_W - 143) / 2, 210, 143, 28, text, false);
 }
 
 void DisplayManager::_drawRightText(const String& text) {

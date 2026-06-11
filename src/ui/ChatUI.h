@@ -45,6 +45,7 @@ private:
     void _handleTouch();
     void _enterModeSelect();
     void _enterInvite(FlowMode mode);
+    bool _prefillTestCharacters();
     void _onModeSelect(int32_t x);
     bool _recognizeStageSide(DisplayManager::StageSide side);
     void _afterStageRecognition();

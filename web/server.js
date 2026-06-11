@@ -711,8 +711,78 @@ function loadAllGroupHistory() {
     } catch (e) { console.warn('[History] 加载群聊历史失败:', e.message); }
 }
 
+// ── 辩论历史管理 ────────────────────────────────────────────────
+const debateHistoryCache = {};
+
+function debateHistoryFile(redId, blueId) {
+    return path.join(DATA_DIR, `history_debate_${redId}_${blueId}.json`);
+}
+
+function debateHistoryKey(redId, blueId) {
+    return `${redId}_${blueId}`;
+}
+
+function getDebateHistory(redId, blueId) {
+    const key = debateHistoryKey(redId, blueId);
+    if (!debateHistoryCache[key]) {
+        try {
+            const raw = fs.readFileSync(debateHistoryFile(redId, blueId), 'utf-8').trim();
+            debateHistoryCache[key] = raw ? JSON.parse(raw) : [];
+        } catch {
+            debateHistoryCache[key] = [];
+        }
+    }
+    return debateHistoryCache[key];
+}
+
+function saveDebateHistory(redId, blueId) {
+    const key = debateHistoryKey(redId, blueId);
+    try {
+        fs.writeFileSync(
+            debateHistoryFile(redId, blueId),
+            JSON.stringify(debateHistoryCache[key] || [], null, 2),
+            'utf-8'
+        );
+    } catch (e) {
+        console.error('[DebateHistory] 保存失败:', e.message);
+    }
+}
+
+function appendDebateEvent(session, event) {
+    if (!session?.red?.id || !session?.blue?.id) return;
+    const hist = getDebateHistory(session.red.id, session.blue.id);
+    hist.push({
+        sessionId: session.id,
+        topic: session.topic,
+        redId: session.red.id,
+        redName: session.red.name,
+        blueId: session.blue.id,
+        blueName: session.blue.name,
+        ts: Date.now(),
+        ...event,
+    });
+    while (hist.length > MAX_TURNS * 8) hist.shift();
+    saveDebateHistory(session.red.id, session.blue.id);
+}
+
+function loadAllDebateHistory() {
+    try {
+        const files = fs.readdirSync(DATA_DIR)
+            .filter(f => f.startsWith('history_debate_') && f.endsWith('.json'));
+        for (const f of files) {
+            const key = f.replace('history_debate_', '').replace('.json', '');
+            const raw = fs.readFileSync(path.join(DATA_DIR, f), 'utf-8').trim();
+            debateHistoryCache[key] = raw ? JSON.parse(raw) : [];
+            console.log(`[History] 已加载辩论 ${key}：${debateHistoryCache[key]?.length || 0} 条事件`);
+        }
+    } catch (e) {
+        console.warn('[History] 加载辩论历史失败:', e.message);
+    }
+}
+
 loadAllHistory();
 loadAllGroupHistory();
+loadAllDebateHistory();
 loadCharacterLibrary();
 loadJournal(currentCharacterId);
 loadNotes();
@@ -1155,6 +1225,9 @@ app.post('/api/group-chat', async (req, res) => {
         appendGroupTurn(charA.id, charB.id, message, replies);
 
         console.log(`[GroupChat] (${charA.name}+${charB.name}) 用户: ${message} | 回复数: ${replies.length} | 总耗时: ${Date.now() - t0}ms`);
+        for (const r of replies) {
+            console.log(`[GroupChat] ${r.name}: ${r.reply} [${r.expression}]`);
+        }
         res.json({ replies });
 
     } catch (err) {
@@ -1191,6 +1264,11 @@ app.post('/api/debate/start', (req, res) => {
         createdAt: Date.now()
     };
     debateSessions.set(sessionId, session);
+    appendDebateEvent(session, {
+        type: 'start',
+        speaker: session.nextSpeaker,
+        score: session.score,
+    });
     res.json({
         sessionId,
         speaker: session.nextSpeaker,
@@ -1279,6 +1357,17 @@ app.post('/api/debate/turn', async (req, res) => {
     session.nextSpeaker = otherSide;
 
     const winner = session.score >= 100 ? 'red' : session.score <= 0 ? 'blue' : null;
+    console.log(`[Debate] ${speaker === 'red' ? session.red.name : session.blue.name}: ${payload.text} | score=${session.score}`);
+    appendDebateEvent(session, {
+        type: 'turn',
+        speaker,
+        speakerName: speaker === 'red' ? session.red.name : session.blue.name,
+        text: payload.text,
+        redReaction: payload.redReaction,
+        blueReaction: payload.blueReaction,
+        score: session.score,
+        winner,
+    });
     res.json({
         state: winner ? 'finished' : 'speaking',
         speaker: payload.speaker,
@@ -1304,6 +1393,13 @@ app.post('/api/debate/boom', (req, res) => {
     session.score += target === 'red' ? delta : -delta;
     session.score = Math.max(0, Math.min(100, session.score));
     const winner = session.score >= 100 ? 'red' : session.score <= 0 ? 'blue' : null;
+    appendDebateEvent(session, {
+        type: 'boom',
+        target,
+        delta,
+        score: session.score,
+        winner,
+    });
     res.json({
         state: winner ? 'finished' : 'boom',
         target,
@@ -1312,6 +1408,11 @@ app.post('/api/debate/boom', (req, res) => {
         blueScore: 100 - session.score,
         winner
     });
+});
+
+// ── GET /api/debate-history/:redId/:blueId ─────────────────────
+app.get('/api/debate-history/:redId/:blueId', (req, res) => {
+    res.json(getDebateHistory(req.params.redId, req.params.blueId));
 });
 
 // ── GET /api/group-history/:id1/:id2 ────────────────────────────
@@ -1854,27 +1955,38 @@ app.post('/api/tts', async (req, res) => {
 
     try {
         const t0 = Date.now();
-        const response = await fetchWithTimeout(url, {
-            method:  'POST',
-            headers: {
-                'Content-Type':  'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-                model: 'speech-2.8-hd',
-                text:  text.trim(),
-                voice_setting: {
-                    voice_id: voice,
-                    speed: 1.0,
-                    vol,
-                    pitch: 0,
+        const synth = async (voiceId) => {
+            const response = await fetchWithTimeout(url, {
+                method:  'POST',
+                headers: {
+                    'Content-Type':  'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
                 },
-                audio_setting: { format: 'wav', sample_rate: 24000 },
-            })
-        }, 30000);
+                body: JSON.stringify({
+                    model: 'speech-2.8-hd',
+                    text:  text.trim(),
+                    voice_setting: {
+                        voice_id: voiceId,
+                        speed: 1.0,
+                        vol,
+                        pitch: 0,
+                    },
+                    audio_setting: { format: 'wav', sample_rate: 24000 },
+                })
+            }, 30000);
+            const data = await response.json();
+            return { response, data, voiceId };
+        };
 
-        const data = await response.json();
-        console.log(`[TTS] 合成请求: ${Date.now() - t0}ms | voice=${voice} vol=${vol}`);
+        let result = await synth(voice);
+        console.log(`[TTS] 合成请求: ${Date.now() - t0}ms | voice=${result.voiceId} vol=${vol}`);
+        if (result.data?.base_resp?.status_code === 2054 && voice !== MINIMAX_VOICE_FALLBACK) {
+            console.warn(`[TTS] voice 不存在，fallback: ${voice} -> ${MINIMAX_VOICE_FALLBACK}`);
+            result = await synth(MINIMAX_VOICE_FALLBACK);
+            console.log(`[TTS] fallback 合成请求: ${Date.now() - t0}ms | voice=${result.voiceId} vol=${vol}`);
+        }
+
+        const { response, data } = result;
 
         if (!response.ok || data.base_resp?.status_code !== 0) {
             console.error('[TTS] 错误:', JSON.stringify(data));
