@@ -29,36 +29,50 @@ String SpeechToText::recognize(const int16_t* pcmData, size_t sampleCount,
     if (!pcmData || sampleCount == 0) return "";
     if (!_ensureWiFi()) return "";
 
-    String url = BackendResolver::url("/api/stt");
-
-    HTTPClient http;
-    http.begin(url);
-    http.addHeader("Content-Type", "application/octet-stream");
-    http.addHeader("X-Sample-Rate", String(sampleRate));
-    http.setTimeout(35000);
-
     size_t byteLen = sampleCount * sizeof(int16_t);
-    int code = http.POST((uint8_t*)pcmData, byteLen);
 
-    if (code != 200) {
-        Serial.printf("[STT] 后端返回错误: %d — %s\n", code,
-                      http.getString().c_str());
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        String url = BackendResolver::url("/api/stt");
+        Serial.printf("[STT] 请求后端: %s (%u bytes)\n",
+                      url.c_str(), (unsigned)byteLen);
+
+        HTTPClient http;
+        http.begin(url);
+        http.addHeader("Content-Type", "application/octet-stream");
+        http.addHeader("X-Sample-Rate", String(sampleRate));
+        http.setTimeout(35000);
+
+        int code = http.POST((uint8_t*)pcmData, byteLen);
+
+        if (code == 200) {
+            String resp = http.getString();
+            http.end();
+
+            JsonDocument doc;
+            if (deserializeJson(doc, resp)) {
+                Serial.println("[STT] 响应解析失败");
+                return "";
+            }
+
+            String transcript = doc["transcript"].as<String>();
+            Serial.printf("[STT] 识别结果: %s\n", transcript.c_str());
+            return transcript;
+        }
+
+        String err = http.getString();
+        Serial.printf("[STT] 后端返回错误: %d — %s\n", code, err.c_str());
         http.end();
+
+        if (attempt == 0 && code < 0) {
+            Serial.println("[STT] 连接失败，重置后端发现并重试一次");
+            BackendResolver::reset();
+            BackendResolver::resolve(5000);
+            continue;
+        }
         return "";
     }
 
-    String resp = http.getString();
-    http.end();
-
-    JsonDocument doc;
-    if (deserializeJson(doc, resp)) {
-        Serial.println("[STT] 响应解析失败");
-        return "";
-    }
-
-    String transcript = doc["transcript"].as<String>();
-    Serial.printf("[STT] 识别结果: %s\n", transcript.c_str());
-    return transcript;
+    return "";
 }
 
 // base64 方法保留供后续直接调用 STT API 备用

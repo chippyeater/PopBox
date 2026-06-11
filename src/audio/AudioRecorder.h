@@ -52,10 +52,11 @@ private:
     size_t   _preRollLen;
 
     static constexpr size_t CHUNK_SAMPLES    = 256;
-    static constexpr int    VAD_THRESHOLD    = 1500;   // RMS 能量阈值
+    static constexpr int    VAD_THRESHOLD    = VAD_RMS_THRESHOLD;   // RMS 能量阈值
     static constexpr int    VAD_ON_FRAMES    = 2;      // 连续几帧有声判定说话开始
     static constexpr int    VAD_OFF_FRAMES   = 60;     // 连续几帧无声判定结束（~960ms）
     static constexpr int    MIN_SPEECH_FRAMES = 30;    // 最少有声帧数才视为有效语音（~480ms）
+    static constexpr int    MAX_SPEECH_FRAMES = VAD_MAX_SPEECH_FRAMES;
 
     int16_t _chunk[CHUNK_SAMPLES];
     int32_t _lastRms;        // 最新一帧 RMS，供 UI 动画使用

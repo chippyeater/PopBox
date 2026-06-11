@@ -17,5 +17,43 @@
     "characterName": "林黛玉",
     "content": "外头风大，吹得人心里发慌。倒是这日光看着暖，可惜照不到我这病骨身上，徒增几分凉意罢了。",
     "ts": 1781156552123
+  },
+  {
+    "role": "user",
+    "content": "那先介绍一下自己。",
+    "ts": 1781162631705
+  },
+  {
+    "role": "assistant",
+    "characterId": "sunwukong",
+    "characterName": "孙悟空",
+    "content": "嘿嘿，俺老孙乃花果山水帘洞美猴王，齐天大圣是也！那一根如意金箍棒，专打天下不平事。你这凡人，怎的突然问起这个？(chuckle)",
+    "ts": 1781162631705
+  },
+  {
+    "role": "assistant",
+    "characterId": "lindaiyu",
+    "characterName": "林黛玉",
+    "content": "这般粗豪气魄，倒真让人惊着了。我不过是一介孤女，寄人篱下，唯以诗书自遣罢了。哪敢像他那般，闹得天宫地府不得安宁。(sighs)",
+    "ts": 1781162631705
+  },
+  {
+    "role": "user",
+    "content": "悟空，你要让着黛玉。",
+    "ts": 1781162687558
+  },
+  {
+    "role": "assistant",
+    "characterId": "sunwukong",
+    "characterName": "孙悟空",
+    "content": "嘿，你这人倒会说话。俺老孙虽爱闹腾，却最敬重读书人。林姑娘身子娇弱，俺老孙自当让着几分，不与你一般见识。(chuckle)",
+    "ts": 1781162687558
+  },
+  {
+    "role": "assistant",
+    "characterId": "lindaiyu",
+    "characterName": "林黛玉",
+    "content": "他这般粗人，哪懂得什么叫‘让’？不过是嘴甜罢了。我若真病了，只怕连口水都无人问津，又怎轮得到他来施舍这份虚情假意。",
+    "ts": 1781162687558
   }
 ]

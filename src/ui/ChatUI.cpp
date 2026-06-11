@@ -60,8 +60,8 @@ static constexpr int DEBATE_EXIT_H = 37;
 
 static constexpr int DEBATE_START_X = 104;
 static constexpr int DEBATE_START_Y = 207;
-static constexpr int DEBATE_START_W = 112;
-static constexpr int DEBATE_START_H = 30;
+static constexpr int DEBATE_START_W = 135;
+static constexpr int DEBATE_START_H = 37;
 
 static constexpr int DEBATE_SPEAKER_ICON_X = 136;
 static constexpr int DEBATE_SPEAKER_ICON_Y = 90;
@@ -93,7 +93,14 @@ void ChatUI::update() {
     if (_state == AppState::DAILY_STAGE) {
         _display.drawDailyUserWave(_recorder.getAudioLevel());
     } else if (_state == AppState::DEBATE_TOPIC) {
-        _display.updateDebateEntryTopicWave(_recorder.getAudioLevel());
+        int level = _recorder.getAudioLevel();
+        uint32_t now = millis();
+        if (now - _lastDebateTopicWaveMs > 120
+            || abs(level - _lastDebateTopicWaveLevel) >= 8) {
+            _lastDebateTopicWaveMs = now;
+            _lastDebateTopicWaveLevel = level;
+            _display.updateDebateEntryTopicWave(level);
+        }
     } else if (_state == AppState::DEBATE_TURN || _state == AppState::DEBATE_BOOM) {
         int elapsed = (int)((millis() - _debateStartedMs) / 1000);
         int left = max(0, DEBATE_TURN_SECONDS - elapsed);
@@ -201,6 +208,8 @@ void ChatUI::_enterModeSelect() {
     _lastDebateSecond = -1;
     _debateViewReady = false;
     _debateNextTurnPending = false;
+    _lastDebateTopicWaveMs = 0;
+    _lastDebateTopicWaveLevel = -1;
     _display.drawModeSelect();
     _state = AppState::MODE_SELECT;
     _idleStartMs = millis();
@@ -217,6 +226,8 @@ void ChatUI::_enterInvite(FlowMode mode) {
     _debateStartedMs = 0;
     _debateViewReady = false;
     _debateNextTurnPending = false;
+    _lastDebateTopicWaveMs = 0;
+    _lastDebateTopicWaveLevel = -1;
     _dailyRedExpression = "silent";
     _dailyBlueExpression = "silent";
     _debateRedExpression = "silent";
@@ -225,6 +236,9 @@ void ChatUI::_enterInvite(FlowMode mode) {
     bool ready = _prefillTestCharacters();
     _display.drawPartyEntry(!daily, ready, ready);
     if (!daily && ready) {
+        _charMgr.setDualMode(_redIndex, _blueIndex);
+        _lastDebateTopicWaveMs = 0;
+        _lastDebateTopicWaveLevel = -1;
         _display.drawDebateEntryTopic(false, 0);
         _state = AppState::DEBATE_TOPIC;
         _recorder.startListening();
@@ -336,6 +350,8 @@ void ChatUI::_afterStageRecognition() {
     _display.drawPartyEntry(!daily, _redIndex >= 0, _blueIndex >= 0);
     if (!daily && _redIndex >= 0 && _blueIndex >= 0 && _redIndex != _blueIndex) {
         _charMgr.setDualMode(_redIndex, _blueIndex);
+        _lastDebateTopicWaveMs = 0;
+        _lastDebateTopicWaveLevel = -1;
         _display.drawDebateEntryTopic(false, 0);
         _state = AppState::DEBATE_TOPIC;
         _recorder.startListening();

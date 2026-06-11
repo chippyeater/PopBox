@@ -105,4 +105,6 @@ private:
     int      _lastDebateSecond = -1;
     bool     _debateViewReady = false;
     bool     _debateNextTurnPending = false;
+    uint32_t _lastDebateTopicWaveMs = 0;
+    int      _lastDebateTopicWaveLevel = -1;
 };

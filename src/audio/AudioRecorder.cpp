@@ -145,6 +145,15 @@ void AudioRecorder::update() {
             _silenceCount = 0;
             _voiceCount++;
             if (_speaking) _totalSpeechFrames++;
+
+            if (_speaking && _totalSpeechFrames >= MAX_SPEECH_FRAMES) {
+                _speaking = false;
+                _recording = false;
+                _speechEnded = true;
+                Serial.printf("[Audio] 语音达到最大时长，强制结束，%zu 帧/%zu 采样 rms=%ld\n",
+                              _totalSpeechFrames, _sampleCount, (long)rms);
+                return;
+            }
         } else {
             _voiceCount = 0;
 

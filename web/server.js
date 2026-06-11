@@ -478,6 +478,14 @@ function buildDebateSystemPrompt(session) {
     ].join('\n');
 }
 
+function buildDebateTurnHistory(session, limit = 6) {
+    return (session.turns || [])
+        .filter(t => t.sessionId === session.id && t.topic === session.topic)
+        .slice(-limit)
+        .map(t => `${t.speaker === 'red' ? '红方' : '蓝方'}：${t.text}`)
+        .join('\n');
+}
+
 function normalizeDebateReaction(value, fallback) {
     const allowed = new Set(['silent', 'speechless', 'angry', 'thinking', 'doubt', 'disagree', 'approve', 'disdain', 'shocked', 'speaking']);
     const v = String(value || '').trim().toLowerCase();
@@ -1350,14 +1358,12 @@ app.post('/api/debate/turn', async (req, res) => {
     if (apiKey && apiKey !== 'your_dashscope_api_key_here') {
         const model = process.env.QWEN_CHAT_MODEL || 'qwen-turbo';
         const url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
-        const history = session.turns
-            .slice(-6)
-            .map(t => `${t.speaker === 'red' ? '红方' : '蓝方'}：${t.text}`)
-            .join('\n');
+        const history = buildDebateTurnHistory(session, 6);
         const messages = [
             { role: 'system', content: buildDebateSystemPrompt(session) },
             { role: 'user', content: history ? `最近发言：\n${history}\n请继续下一轮。` : '请开始第一轮发言。' }
         ];
+        console.log(`[Debate] prompt history: session=${session.id} topic="${session.topic}" turns=${history ? history.split('\n').length : 0}`);
 
         try {
             const response = await fetchWithTimeout(url, {
@@ -1401,7 +1407,13 @@ app.post('/api/debate/turn', async (req, res) => {
         ? 'speaking'
         : normalizeDebateReaction(payload.blueReaction, 'speechless');
 
-    session.turns.push({ speaker, text: payload.text, ts: Date.now() });
+    session.turns.push({
+        sessionId: session.id,
+        topic: session.topic,
+        speaker,
+        text: payload.text,
+        ts: Date.now()
+    });
     session.nextSpeaker = otherSide;
 
     const winner = session.score >= 100 ? 'red' : session.score <= 0 ? 'blue' : null;

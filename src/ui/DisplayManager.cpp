@@ -35,7 +35,15 @@ static int gActiveFontSlot = -1;
 static void useRuntimeFont(int slot, const char* path, const lgfx::IFont* fallback) {
     if (gActiveFontSlot == slot) return;
 
-    if (SPIFFS.exists(path) && M5.Display.loadFont(path)) {
+    if (!SPIFFS.exists(path)) {
+        M5.Display.unloadFont();
+        M5.Display.setFont(fallback);
+        gActiveFontSlot = slot;
+        Serial.printf("[UI] Font missing, fallback: %s\n", path);
+        return;
+    }
+
+    if (M5.Display.loadFont(path)) {
         gActiveFontSlot = slot;
         return;
     }
@@ -43,10 +51,14 @@ static void useRuntimeFont(int slot, const char* path, const lgfx::IFont* fallba
     M5.Display.unloadFont();
     M5.Display.setFont(fallback);
     gActiveFontSlot = slot;
-    Serial.printf("[UI] Font fallback: %s\n", path);
+    Serial.printf("[UI] Font load failed, fallback: %s\n", path);
 }
 
-static void useFontS() { useRuntimeFont(12, FONT_PATH_S, FONT_S); }
+static void useFontS() {
+    if (gActiveFontSlot != -1) M5.Display.unloadFont();
+    M5.Display.setFont(FONT_S);
+    gActiveFontSlot = -1;
+}
 static void useFontL() { useRuntimeFont(18, FONT_PATH_L, FONT_L); }
 
 static void useDefaultFontS() {
@@ -174,7 +186,7 @@ void DisplayManager::drawDebateEntryTopic(bool topicReady, int audioLevel) {
 }
 
 void DisplayManager::updateDebateEntryTopicWave(int audioLevel) {
-    _drawPngAssetRegion("/u/debate-1.png", 226, 205, 54, 32, 226, 205);
+    M5.Display.fillRect(226, 205, 54, 32, C_ACTION);
     if (audioLevel > 0) {
         _drawWaveBars(250, 226, 16, audioLevel, C_NEON, false);
     }
@@ -201,7 +213,7 @@ void DisplayManager::drawDebateTurn(const String& redName, const String& blueNam
     _drawPromptBox(0, 166, 78, 37, "退出", true);
     _drawDebateTurnOverlay(redName, blueName, speaker, redExpression, blueExpression);
     updateDebateTimer(secondsLeft);
-    _drawDebateProgress(score, 196);
+    _drawDebateProgress(score, 216);
 }
 
 void DisplayManager::updateDebateTurnView(const String& redName, const String& blueName,
@@ -251,9 +263,9 @@ void DisplayManager::updateDebateTimer(int secondsLeft) {
 }
 
 void DisplayManager::updateDebateProgress(int score) {
-    _drawPngAssetRegion("/u/debate-2.png", 0, 160, SCREEN_W, 64, 0, 160);
+    _drawPngAssetRegion("/u/debate-2.png", 0, 166, SCREEN_W, 74, 0, 166);
     _drawPromptBox(0, 166, 78, 37, "退出", true);
-    _drawDebateProgress(score, 196);
+    _drawDebateProgress(score, 204);
 }
 
 void DisplayManager::drawDebateBoom(StageSide target, int score, int secondsLeft) {
@@ -268,17 +280,25 @@ void DisplayManager::drawDebateBoom(StageSide target, int score, int secondsLeft
     M5.Display.setCursor(258, 13);
     M5.Display.print(tbuf);
 
+    if (target == StageSide::Red) {
+        _drawPngAsset("/u/rg.png", 24, 54, 120, 124, 1.0f);
+        _drawDebateExpression(StageSide::Blue, "speaking");
+    } else {
+        _drawDebateExpression(StageSide::Red, "speaking");
+        _drawPngAsset("/u/bg.png", 182, 54, 114, 124, 1.0f);
+    }
+
     _drawPromptBox((SCREEN_W - 131) / 2, 170, 131, 28,
                    target == StageSide::Red ? "红方收获一次爆灯!" : "蓝方收获一次爆灯!",
                    false);
-    _drawDebateProgress(score, 196);
+    _drawDebateProgress(score, 204);
 }
 
 void DisplayManager::drawDebateResult(StageSide winner, int winCount) {
     M5.Display.fillScreen(C_BG);
     _drawPngAsset("/u/debate-3.png", 0, 0, SCREEN_W, SCREEN_H);
-    _drawPngAsset(winner == StageSide::Red ? "/u/red-win.png" : "/u/blue-win.png",
-                  70, 66, 180, 132, 1.0f);
+    _drawPngAsset(winner == StageSide::Red ? "/u/rwin.png" : "/u/bwin.png",
+                  70, 50, 180, 132, 1.0f);
     _drawPngAsset(winner == StageSide::Red ? "/u/red-flower.png" : "/u/blue-flower.png",
                   76, 163, 163, 60, 1.0f);
 
@@ -899,7 +919,16 @@ void DisplayManager::_drawPngAssetRegion(const String& path, int32_t x, int32_t 
 
     file.read(buf, len);
     file.close();
-    M5.Display.drawPng(buf, len, x, y, w, h, offX, offY, scale);
+
+    int32_t oldX, oldY, oldW, oldH;
+    M5.Display.getClipRect(&oldX, &oldY, &oldW, &oldH);
+    M5.Display.setClipRect(x, y, w, h);
+    M5.Display.drawPng(buf, len, x - offX, y - offY, 0, 0, 0, 0, scale);
+    if (oldW > 0 && oldH > 0) {
+        M5.Display.setClipRect(oldX, oldY, oldW, oldH);
+    } else {
+        M5.Display.clearClipRect();
+    }
     free(buf);
 }
 
@@ -921,7 +950,7 @@ void DisplayManager::_drawStageExpression(StageSide side, const String& expressi
     else if (expr == "thinking") suffix = "th";
     String path = "/u/" + prefix + suffix + ".png";
     if (!SPIFFS.exists(path)) path = "/u/" + prefix + "si.png";
-    _drawPngAsset(path, x, y, w, h, 0.35f);
+    _drawPngAsset(path, x, y, w, h, 1.0f);
 }
 
 void DisplayManager::_drawDebateExpression(StageSide side, const String& expression) {
@@ -947,26 +976,34 @@ void DisplayManager::_drawDebateExpression(StageSide side, const String& express
 
     String path = "/u/" + prefix + suffix + ".png";
     if (!SPIFFS.exists(path)) path = "/u/" + prefix + "si.png";
-    _drawPngAsset(path, blue ? 201 : 48, 83, 0, 0, 0.5f);
+    _drawPngAsset(path, blue ? 201 : 48, 83, 0, 0, 1.0f);
 }
 
 void DisplayManager::_drawDebateProgress(int score, int y) {
     score = constrain(score, 0, 100);
-    int x = 24, w = SCREEN_W - 48, h = 18;
-    M5.Display.fillRoundRect(x, y, w, h, 9, 0xFFFFFF);
-    M5.Display.drawRoundRect(x, y, w, h, 9, 0x000000);
 
-    int innerX = x + 3;
-    int innerY = y + 3;
-    int innerW = w - 6;
-    int innerH = h - 6;
-    int redW = map(score, 0, 100, 0, innerW);
-    M5.Display.fillRect(innerX, innerY, redW, innerH, 0xF0524D);
-    M5.Display.fillRect(innerX + redW, innerY, innerW - redW, innerH, 0x61A9FF);
-    M5.Display.drawLine(innerX + innerW / 2, y - 2, innerX + innerW / 2, y + h + 5, 0x000000);
-    int starX = innerX + redW - 10;
-    starX = constrain(starX, innerX - 2, innerX + innerW - 18);
-    _drawPngAsset("/u/est.png", starX, y - 8, 20, 20, 1.0f);
+    static constexpr int FRAME_W = 282;
+    static constexpr int FRAME_H = 23;
+    static constexpr int FILL_W = 275;
+    static constexpr int FILL_H = 15;
+
+    const int frameX = (SCREEN_W - FRAME_W) / 2;
+    const int fillX = frameX + 4;
+    const int fillY = y + 4;
+    const int redW = map(score, 0, 100, 0, FILL_W);
+    const int blueW = FILL_W - redW;
+
+    if (redW > 0) {
+        _drawPngAssetRegion("/u/ebr.png", fillX, fillY, redW, FILL_H, 0, 0);
+    }
+    if (blueW > 0) {
+        _drawPngAssetRegion("/u/ebb.png", fillX + redW, fillY, blueW, FILL_H, redW, 0);
+    }
+    _drawPngAsset("/u/ebk.png", frameX, y, FRAME_W, FRAME_H, 1.0f);
+
+    int starX = fillX + redW - 13;
+    starX = constrain(starX, fillX - 4, fillX + FILL_W - 23);
+    _drawPngAsset("/u/est.png", starX, y - 6, 27, 30, 1.0f);
 }
 
 void DisplayManager::_drawPromptBox(int32_t x, int32_t y, int32_t w, int32_t h,
