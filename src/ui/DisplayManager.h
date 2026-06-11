@@ -53,6 +53,8 @@ public:
     void drawDebateTopic(const String& redName, const String& blueName,
                          const String& topic, const String& bottomText,
                          int audioLevel);
+    void drawDebateEntryTopic(bool topicReady, int audioLevel);
+    void updateDebateEntryTopicWave(int audioLevel);
     void drawDebateTopicEntry(bool topicReady, int audioLevel);
     void drawDebateTurn(const String& redName, const String& blueName,
                         StageSide speaker, int secondsLeft, int score,

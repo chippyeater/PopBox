@@ -63,6 +63,11 @@ static constexpr int DEBATE_START_Y = 207;
 static constexpr int DEBATE_START_W = 112;
 static constexpr int DEBATE_START_H = 30;
 
+static constexpr int DEBATE_SPEAKER_ICON_X = 136;
+static constexpr int DEBATE_SPEAKER_ICON_Y = 90;
+static constexpr int DEBATE_SPEAKER_ICON_W = 59;
+static constexpr int DEBATE_SPEAKER_ICON_H = 57;
+
 ChatUI::ChatUI(CharacterManager& charMgr, AudioRecorder& recorder,
                SpeechToText& stt, TextToSpeech& tts, LLMClient& llm,
                DisplayManager& display, CameraManager& camera)
@@ -88,7 +93,7 @@ void ChatUI::update() {
     if (_state == AppState::DAILY_STAGE) {
         _display.drawDailyUserWave(_recorder.getAudioLevel());
     } else if (_state == AppState::DEBATE_TOPIC) {
-        _display.drawWaveIcon(_recorder.getAudioLevel());
+        _display.updateDebateEntryTopicWave(_recorder.getAudioLevel());
     } else if (_state == AppState::DEBATE_TURN || _state == AppState::DEBATE_BOOM) {
         int elapsed = (int)((millis() - _debateStartedMs) / 1000);
         int left = max(0, DEBATE_TURN_SECONDS - elapsed);
@@ -219,7 +224,13 @@ void ChatUI::_enterInvite(FlowMode mode) {
     const bool daily = mode == FlowMode::Daily;
     bool ready = _prefillTestCharacters();
     _display.drawPartyEntry(!daily, ready, ready);
-    _state = daily ? AppState::DAILY_INVITE : AppState::DEBATE_ENTRY;
+    if (!daily && ready) {
+        _display.drawDebateEntryTopic(false, 0);
+        _state = AppState::DEBATE_TOPIC;
+        _recorder.startListening();
+    } else {
+        _state = daily ? AppState::DAILY_INVITE : AppState::DEBATE_ENTRY;
+    }
     _idleStartMs = millis();
 }
 
@@ -323,7 +334,14 @@ bool ChatUI::_recognizeStageSide(DisplayManager::StageSide side) {
 void ChatUI::_afterStageRecognition() {
     const bool daily = _flowMode == FlowMode::Daily;
     _display.drawPartyEntry(!daily, _redIndex >= 0, _blueIndex >= 0);
-    _state = daily ? AppState::DAILY_INVITE : AppState::DEBATE_ENTRY;
+    if (!daily && _redIndex >= 0 && _blueIndex >= 0 && _redIndex != _blueIndex) {
+        _charMgr.setDualMode(_redIndex, _blueIndex);
+        _display.drawDebateEntryTopic(false, 0);
+        _state = AppState::DEBATE_TOPIC;
+        _recorder.startListening();
+    } else {
+        _state = daily ? AppState::DAILY_INVITE : AppState::DEBATE_ENTRY;
+    }
 }
 
 void ChatUI::_startDailyStage() {
@@ -405,7 +423,7 @@ void ChatUI::_processDebateTopic() {
         return;
     }
     _debateTopic = topic;
-    _display.drawDebateTopicEntry(true, 0);
+    _display.drawDebateEntryTopic(true, 0);
     _state = AppState::DEBATE_READY;
 }
 
@@ -414,7 +432,7 @@ void ChatUI::_startDebate() {
     const auto& blue = _charMgr.secondary();
     auto started = _llm.startDebate(red, blue, _debateTopic);
     if (!started.ok) {
-        _display.drawDebateTopicEntry(true, 0);
+        _display.drawDebateEntryTopic(true, 0);
         _state = AppState::DEBATE_READY;
         return;
     }
@@ -590,10 +608,14 @@ void ChatUI::_handleTouch() {
             if (_state == AppState::DAILY_INVITE) {
                 _startDailyStage();
             } else {
-                _display.drawDebateTopicEntry(false, 0);
+                _display.drawDebateEntryTopic(false, 0);
                 _state = AppState::DEBATE_TOPIC;
                 _recorder.startListening();
             }
+            return;
+        }
+        if (_state == AppState::DEBATE_ENTRY
+            && _redIndex >= 0 && _blueIndex >= 0 && _redIndex != _blueIndex) {
             return;
         }
         if (t.x < SCREEN_W / 2) {
@@ -613,13 +635,20 @@ void ChatUI::_handleTouch() {
         return;
     }
 
-    if (_state == AppState::DEBATE_TOPIC || _state == AppState::DEBATE_READY
-        || _state == AppState::DEBATE_TURN || _state == AppState::DEBATE_BOOM) {
+    if (_state == AppState::DEBATE_TURN || _state == AppState::DEBATE_BOOM) {
         if (hitRect(t.x, t.y, DEBATE_EXIT_X, DEBATE_EXIT_Y,
                     DEBATE_EXIT_W, DEBATE_EXIT_H)) {
             _recorder.stopListening();
             _debateNextTurnPending = false;
             _enterModeSelect();
+            return;
+        }
+    }
+
+    if (_state == AppState::DEBATE_TURN) {
+        if (hitRect(t.x, t.y, DEBATE_SPEAKER_ICON_X, DEBATE_SPEAKER_ICON_Y,
+                    DEBATE_SPEAKER_ICON_W, DEBATE_SPEAKER_ICON_H)) {
+            triggerDebateBoom(_debateSpeaker);
             return;
         }
     }

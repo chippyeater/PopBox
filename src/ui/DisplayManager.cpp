@@ -111,8 +111,12 @@ void DisplayManager::drawPartyEntry(bool debate, bool redReady, bool blueReady) 
     _drawPngAsset(statePath, 0, 55, 320, 146, 1.0f);
 
     if (redReady && blueReady) {
-        _drawPromptBox((SCREEN_W - 104) / 2, 187, 122, 37,
-                       debate ? "进入辩论" : "进入群聊", true);
+        if (debate) {
+            drawDebateEntryTopic(false, 0);
+        } else {
+            _drawPromptBox((SCREEN_W - 104) / 2, 187, 122, 37,
+                           "进入群聊", true);
+        }
     } else {
         _drawPromptBox((SCREEN_W - 217) / 2, 211, 268, 28,
                        debate ? "点击红蓝区域识别今日辩手"
@@ -158,13 +162,30 @@ void DisplayManager::drawDebateTopic(const String& redName, const String& blueNa
     drawDebateTopicEntry(topic.length() > 0 || bottomText.indexOf("开始") >= 0, audioLevel);
 }
 
+void DisplayManager::drawDebateEntryTopic(bool topicReady, int audioLevel) {
+    _drawPngAssetRegion("/u/debate-1.png", 0, 180, SCREEN_W, 60, 0, 180);
+    if (topicReady) {
+        _drawPromptBox(104, 207, 135, 37, "开始辩论", true);
+    } else {
+        _drawPromptBox((SCREEN_W - 121) / 2, 211, 121, 28,
+                       "说出今日辩题", false);
+        updateDebateEntryTopicWave(audioLevel);
+    }
+}
+
+void DisplayManager::updateDebateEntryTopicWave(int audioLevel) {
+    _drawPngAssetRegion("/u/debate-1.png", 226, 205, 54, 32, 226, 205);
+    if (audioLevel > 0) {
+        _drawWaveBars(250, 226, 16, audioLevel, C_NEON, false);
+    }
+}
+
 void DisplayManager::drawDebateTopicEntry(bool topicReady, int audioLevel) {
     M5.Display.fillScreen(C_BG);
     _drawPngAsset("/u/debate-2.png", 0, 0, SCREEN_W, SCREEN_H);
     _drawPromptBox(0, 166, 78, 37, "退出", true);
     if (topicReady) {
         _drawPromptBox((SCREEN_W - 112) / 2, 207, 112, 30, "开始辩论", true);
-        _drawDebateProgress(DEBATE_INITIAL_SCORE, 196);
     } else {
         _drawPromptBox((SCREEN_W - 121) / 2, 211, 121, 28, "说出今日辩题", false);
     }
@@ -433,7 +454,7 @@ void DisplayManager::drawRecognizing(int step) {
     // 提示文字
     useDefaultFontM();
     M5.Display.setTextColor(C_TEXT);
-    const char* hint = "请先将角色置入盒中";
+    const char* hint = "请先将角色放在舞台上";
     int hw = M5.Display.textWidth(hint);
     M5.Display.setCursor((SCREEN_W - hw) / 2, START_Y + 30);
     M5.Display.print(hint);

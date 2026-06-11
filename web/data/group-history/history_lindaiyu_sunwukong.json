@@ -1,0 +1,21 @@
+[
+  {
+    "role": "user",
+    "content": "今天天气怎么样？",
+    "ts": 1781156552123
+  },
+  {
+    "role": "assistant",
+    "characterId": "sunwukong",
+    "characterName": "孙悟空",
+    "content": "俺老孙往天上一瞅，日头正盛，亮堂堂的！这般好天气，正好练练筋斗云，比在五行山下憋着强多啦！",
+    "ts": 1781156552123
+  },
+  {
+    "role": "assistant",
+    "characterId": "lindaiyu",
+    "characterName": "林黛玉",
+    "content": "外头风大，吹得人心里发慌。倒是这日光看着暖，可惜照不到我这病骨身上，徒增几分凉意罢了。",
+    "ts": 1781156552123
+  }
+]

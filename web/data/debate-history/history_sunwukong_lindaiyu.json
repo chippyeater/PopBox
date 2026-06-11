@@ -141,5 +141,51 @@
     "blueReaction": "disagree",
     "score": 50,
     "winner": null
+  },
+  {
+    "sessionId": "debate_563e8f8d-d546-48c0-988f-83b95d99d1e8",
+    "topic": "先有鸡还是先有蛋？",
+    "redId": "sunwukong",
+    "redName": "孙悟空",
+    "blueId": "lindaiyu",
+    "blueName": "林黛玉",
+    "ts": 1781156776528,
+    "type": "start",
+    "speaker": "red",
+    "score": 50
+  },
+  {
+    "sessionId": "debate_563e8f8d-d546-48c0-988f-83b95d99d1e8",
+    "topic": "先有鸡还是先有蛋？",
+    "redId": "sunwukong",
+    "redName": "孙悟空",
+    "blueId": "lindaiyu",
+    "blueName": "林黛玉",
+    "ts": 1781156778605,
+    "type": "turn",
+    "speaker": "red",
+    "speakerName": "孙悟空",
+    "text": "俺老孙只认因果！蛋乃鸡所生，无鸡焉有蛋？若说混沌初开，那便是石中迸出个齐天大圣，何须借那卵壳！先有鸡，方有万物生灵，此乃铁律！",
+    "redReaction": "speaking",
+    "blueReaction": "disdain",
+    "score": 50,
+    "winner": null
+  },
+  {
+    "sessionId": "debate_563e8f8d-d546-48c0-988f-83b95d99d1e8",
+    "topic": "先有鸡还是先有蛋？",
+    "redId": "sunwukong",
+    "redName": "孙悟空",
+    "blueId": "lindaiyu",
+    "blueName": "林黛玉",
+    "ts": 1781156804064,
+    "type": "turn",
+    "speaker": "blue",
+    "speakerName": "林黛玉",
+    "text": "你道石中迸出大圣，可曾见那卵壳破碎前，先有无形之胚？万物皆由微至著，蛋为生命之初态。无此混沌之始，何来振翅之鸡？这道理，如花落成泥，再开新枝，岂是蛮力可断？",
+    "redReaction": "disdain",
+    "blueReaction": "speaking",
+    "score": 50,
+    "winner": null
   }
 ]
