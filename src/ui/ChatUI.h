@@ -55,6 +55,7 @@ private:
     void _startDebate();
     void _requestDebateTurn();
     void _finishDebateIfNeeded();
+    void _finishDebateByScore();
     void _onMicButtonTap();
     void _onRecognizeTap();
     void _enterCharacterSelect();
@@ -96,7 +97,10 @@ private:
     int      _debateScore = DEBATE_INITIAL_SCORE; // 0=蓝方胜, 100=红方胜
     int      _redWinCount = 0;
     int      _blueWinCount = 0;
+    uint32_t _debateStartedMs = 0;
     uint32_t _debateTurnStartedMs = 0;
     uint32_t _debateBoomShownAtMs = 0;
     int      _lastDebateSecond = -1;
+    bool     _debateViewReady = false;
+    bool     _debateNextTurnPending = false;
 };

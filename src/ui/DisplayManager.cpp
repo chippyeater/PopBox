@@ -28,6 +28,45 @@ static const lgfx::IFont* FONT_S = &lgfx::v1::fonts::efontCN_12;
 static const lgfx::IFont* FONT_M = &lgfx::v1::fonts::efontCN_14;
 const lgfx::IFont* FONT_L = &lgfx::v1::fonts::efontCN_16;
 
+static const char* FONT_PATH_S = "/siyuan_12.vlw";
+static const char* FONT_PATH_L = "/siyuan_18.vlw";
+static int gActiveFontSlot = -1;
+
+static void useRuntimeFont(int slot, const char* path, const lgfx::IFont* fallback) {
+    if (gActiveFontSlot == slot) return;
+
+    if (SPIFFS.exists(path) && M5.Display.loadFont(path)) {
+        gActiveFontSlot = slot;
+        return;
+    }
+
+    M5.Display.unloadFont();
+    M5.Display.setFont(fallback);
+    gActiveFontSlot = slot;
+    Serial.printf("[UI] Font fallback: %s\n", path);
+}
+
+static void useFontS() { useRuntimeFont(12, FONT_PATH_S, FONT_S); }
+static void useFontL() { useRuntimeFont(18, FONT_PATH_L, FONT_L); }
+
+static void useDefaultFontS() {
+    if (gActiveFontSlot != -1) M5.Display.unloadFont();
+    M5.Display.setFont(FONT_S);
+    gActiveFontSlot = -1;
+}
+
+static void useDefaultFontM() {
+    if (gActiveFontSlot != -1) M5.Display.unloadFont();
+    M5.Display.setFont(FONT_M);
+    gActiveFontSlot = -1;
+}
+
+static void useDefaultFontL() {
+    if (gActiveFontSlot != -1) M5.Display.unloadFont();
+    M5.Display.setFont(FONT_L);
+    gActiveFontSlot = -1;
+}
+
 // ══════════════════════════════════════════════════════════════════
 // 公开方法
 // ══════════════════════════════════════════════════════════════════
@@ -88,15 +127,21 @@ void DisplayManager::drawDailyStage(const String& redExpression,
     M5.Display.fillScreen(C_BG);
     _drawPngAsset("/u/chat-2.png", 0, 0, SCREEN_W, SCREEN_H);
     _drawPromptBox(19, 184, 78, 37, "退出", true);
+    updateDailyStageView(redExpression, blueExpression, speaker, audioLevel);
+}
 
+void DisplayManager::updateDailyStageView(const String& redExpression,
+                                          const String& blueExpression,
+                                          StageSide speaker, int audioLevel) {
+    _drawPngAssetRegion("/u/chat-2.png", 0, 64, SCREEN_W, 112, 0, 64);
     if (speaker == StageSide::Red) {
         _drawPngAsset("/u/rsp.png", 122, 88, 76, 58, 1.0f);
     } else if (speaker == StageSide::Blue) {
         _drawPngAsset("/u/bsp.png", 122, 88, 76, 58, 1.0f);
     } else {
-        _drawPngAsset("/u/bp.png", 13, 88, 130, 54, 1.0f);
+        _drawPngAsset("/u/bp.png", 122, 88, 76, 58, 1.0f);
         if (audioLevel > 0) {
-            _drawWaveBars(78, 120, 16, audioLevel, C_NEON, false);
+            _drawWaveBars(160, 122, 16, audioLevel, C_NEON, false);
         }
     }
 
@@ -116,6 +161,7 @@ void DisplayManager::drawDebateTopic(const String& redName, const String& blueNa
 void DisplayManager::drawDebateTopicEntry(bool topicReady, int audioLevel) {
     M5.Display.fillScreen(C_BG);
     _drawPngAsset("/u/debate-2.png", 0, 0, SCREEN_W, SCREEN_H);
+    _drawPromptBox(0, 166, 61, 23, "退出", true);
     if (topicReady) {
         _drawPromptBox((SCREEN_W - 112) / 2, 207, 112, 30, "开始辩论", true);
         _drawDebateProgress(DEBATE_INITIAL_SCORE, 196);
@@ -131,11 +177,29 @@ void DisplayManager::drawDebateTurn(const String& redName, const String& blueNam
                                     const String& blueExpression) {
     M5.Display.fillScreen(C_BG);
     _drawPngAsset("/u/debate-2.png", 0, 0, SCREEN_W, SCREEN_H);
+    _drawPromptBox(0, 166, 61, 23, "退出", true);
+    _drawDebateTurnOverlay(redName, blueName, speaker, redExpression, blueExpression);
+    updateDebateTimer(secondsLeft);
+    _drawDebateProgress(score, 196);
+}
 
+void DisplayManager::updateDebateTurnView(const String& redName, const String& blueName,
+                                          StageSide speaker,
+                                          const String& redExpression,
+                                          const String& blueExpression) {
+    _drawPngAssetRegion("/u/debate-2.png", 0, 0, 200, 160, 0, 0);
+    _drawPngAssetRegion("/u/debate-2.png", 198, 64, 110, 104, 198, 64);
+    _drawDebateTurnOverlay(redName, blueName, speaker, redExpression, blueExpression);
+}
+
+void DisplayManager::_drawDebateTurnOverlay(const String& redName, const String& blueName,
+                                            StageSide speaker,
+                                            const String& redExpression,
+                                            const String& blueExpression) {
     const bool redSpeaking = speaker == StageSide::Red;
     _drawPngAsset(redSpeaking ? "/u/tr.png" : "/u/tb.png",
                   0, 0, 160, 49, 1.0f);
-    M5.Display.setFont(FONT_L);
+    useFontL();
     M5.Display.setTextColor(0xFFFFFF);
     String speakerName = redSpeaking ? redName : blueName;
     String nameLines[2];
@@ -145,40 +209,42 @@ void DisplayManager::drawDebateTurn(const String& redName, const String& blueNam
     M5.Display.setCursor(10, 10);
     M5.Display.print(displayName);
     int nameW = M5.Display.textWidth(displayName.c_str());
-    M5.Display.setFont(FONT_S);
+    useFontS();
     M5.Display.setCursor(12 + nameW, 16);
     M5.Display.print("发言中...");
 
-    updateDebateTimer(secondsLeft);
-
-    _drawStageExpression(StageSide::Red, redSpeaking ? "speaking" : redExpression,
-                         40, 74, 86, 86);
-    _drawStageExpression(StageSide::Blue, redSpeaking ? blueExpression : "speaking",
-                         208, 74, 68, 68);
+    _drawDebateExpression(StageSide::Red, redSpeaking ? "speaking" : redExpression);
+    _drawDebateExpression(StageSide::Blue, redSpeaking ? blueExpression : "speaking");
     _drawPngAsset(redSpeaking ? "/u/rsp.png" : "/u/bsp.png",
-                  136, 90, 56, 42, 1.0f);
-    _drawDebateProgress(score, 196);
+                  136, 90, 59, 57, 1.0f);
 }
 
 void DisplayManager::updateDebateTimer(int secondsLeft) {
     _drawPngAsset("/u/tt.png", 201, 0, 119.01, 41.33, 1.0f);
     char tbuf[8];
     snprintf(tbuf, sizeof(tbuf), "00:%02d", constrain(secondsLeft, 0, 99));
-    M5.Display.setFont(FONT_M);
-    M5.Display.setTextColor(0xFFE15A);
-    M5.Display.setCursor(260, 14);
+    useFontL();
+    M5.Display.setTextColor(0xFFFFFF);
+    M5.Display.setCursor(258, 13);
     M5.Display.print(tbuf);
+}
+
+void DisplayManager::updateDebateProgress(int score) {
+    _drawPngAssetRegion("/u/debate-2.png", 0, 160, SCREEN_W, 64, 0, 160);
+    _drawPromptBox(0, 166, 61, 23, "退出", true);
+    _drawDebateProgress(score, 196);
 }
 
 void DisplayManager::drawDebateBoom(StageSide target, int score, int secondsLeft) {
     M5.Display.fillScreen(C_BG);
     _drawPngAsset("/u/debate-2.png", 0, 0, SCREEN_W, SCREEN_H);
+    _drawPromptBox(0, 166, 61, 23, "退出", true);
     _drawPngAsset("/u/tt.png", 232, 6, 78, 28, 1.0f);
     char tbuf[8];
     snprintf(tbuf, sizeof(tbuf), "00:%02d", constrain(secondsLeft, 0, 99));
-    M5.Display.setFont(FONT_M);
-    M5.Display.setTextColor(0xFFE15A);
-    M5.Display.setCursor(260, 14);
+    useFontL();
+    M5.Display.setTextColor(0xFFFFFF);
+    M5.Display.setCursor(258, 13);
     M5.Display.print(tbuf);
 
     _drawPromptBox((SCREEN_W - 131) / 2, 170, 131, 28,
@@ -195,7 +261,7 @@ void DisplayManager::drawDebateResult(StageSide winner, int winCount) {
     _drawPngAsset(winner == StageSide::Red ? "/u/red-flower.png" : "/u/blue-flower.png",
                   76, 163, 163, 60, 1.0f);
 
-    M5.Display.setFont(FONT_S);
+    useFontS();
     M5.Display.setTextColor(0x000000);
     String msg1 = String("这是") + (winner == StageSide::Red ? "红方" : "蓝方")
                + "第" + String(winCount) + "次胜利✌";
@@ -208,7 +274,7 @@ void DisplayManager::drawDebateResult(StageSide winner, int winCount) {
 // ── 无人入住 ────────────────────────────────────────────────────
 void DisplayManager::drawNoCharacter() {
     M5.Display.fillScreen(C_BG);
-    M5.Display.setFont(FONT_L);
+    useDefaultFontL();
     M5.Display.setTextSize(2);
     M5.Display.setTextColor(C_MUTED);
     const char* msg = "正在等待人物入住";
@@ -230,7 +296,7 @@ void DisplayManager::drawCountSelection(int existingCount) {
     static constexpr int START_Y   = (SCREEN_H - CONTENT_H) / 2;  // ≈ 49
 
     // 标题
-    M5.Display.setFont(FONT_M);
+    useDefaultFontM();
     M5.Display.setTextSize(1);
     M5.Display.setTextColor(C_TEXT);
     const char* title = "等待角色入住";
@@ -239,7 +305,7 @@ void DisplayManager::drawCountSelection(int existingCount) {
     M5.Display.print(title);
 
     // 副标题
-    M5.Display.setFont(FONT_S);
+    useDefaultFontS();
     M5.Display.setTextColor(C_MUTED);
     const char* subtitle = "请选择入住的角色人数";
     int sw = M5.Display.textWidth(subtitle);
@@ -277,7 +343,7 @@ void DisplayManager::drawIdle(const String& name, const String& avatarPath,
                 175, name);
 
     // 待机提示：双击唤醒
-    M5.Display.setFont(FONT_S);
+    useDefaultFontS();
     M5.Display.setTextColor(C_MUTED);
     const char* hint = "敲一敲唤醒我哦";
     int hintW = M5.Display.textWidth(hint);
@@ -288,7 +354,7 @@ void DisplayManager::drawIdle(const String& name, const String& avatarPath,
     M5.Display.fillRoundRect(SWITCH_BTN_X, SWITCH_BTN_Y, SWITCH_BTN_W, SWITCH_BTN_H,
                               10, C_BORDER);
     M5.Display.setTextColor(C_TEXT);
-    M5.Display.setFont(FONT_S);
+    useDefaultFontS();
     int btnLabelW = M5.Display.textWidth("← 换角色");
     M5.Display.setCursor(SWITCH_BTN_X + (SWITCH_BTN_W - btnLabelW) / 2,
                          SWITCH_BTN_Y + (SWITCH_BTN_H - 12) / 2);
@@ -304,7 +370,7 @@ void DisplayManager::drawCharacterSelect(const String names[],
     M5.Display.fillScreen(C_BG);
 
     // 标题
-    M5.Display.setFont(FONT_L);
+    useDefaultFontL();
     M5.Display.setTextColor(C_TEXT);
     const char* title = "选择一位角色入住";
     int tw = M5.Display.textWidth(title);
@@ -328,7 +394,7 @@ void DisplayManager::drawCharacterSelect(const String names[],
 
         // 名字
         String name = names[i];
-        M5.Display.setFont(FONT_M);
+        useDefaultFontM();
         M5.Display.setTextColor(C_NEON);
         int nw = M5.Display.textWidth(name.c_str());
         M5.Display.setCursor(cx + (CARD_W - nw) / 2, CARD_Y + 8 + AVATAR_S + 6);
@@ -355,7 +421,7 @@ void DisplayManager::drawRecognizing(int step) {
     static constexpr int START_Y   = (SCREEN_H - CONTENT_H) / 2;  // ≈ 87
 
     // 标题
-    M5.Display.setFont(FONT_M);
+    useDefaultFontM();
     M5.Display.setTextColor(C_MUTED);
     int dotCount = (step / 10) % 4;
     char buf[20];
@@ -365,7 +431,7 @@ void DisplayManager::drawRecognizing(int step) {
     M5.Display.print(buf);
 
     // 提示文字
-    M5.Display.setFont(FONT_M);
+    useDefaultFontM();
     M5.Display.setTextColor(C_TEXT);
     const char* hint = "请先将角色置入盒中";
     int hw = M5.Display.textWidth(hint);
@@ -388,7 +454,7 @@ void DisplayManager::drawFirstRecognitionResult(const String& name) {
     M5.Display.fillScreen(C_BG);
 
     // 简单提示：第一位角色已入住
-    M5.Display.setFont(FONT_M);
+    useDefaultFontM();
     M5.Display.setTextSize(1);
     M5.Display.setTextColor(C_TEXT);
     String msg = "第一位角色：" + name + "，已入住";
@@ -421,7 +487,7 @@ void DisplayManager::drawSplitLayout(const String& name,
                 _resolveAvatarPath(avatarPath, expression));
 
     // 名字紧贴头像下方居中
-    M5.Display.setFont(FONT_M);
+    useDefaultFontM();
     int nameW = M5.Display.textWidth(name.c_str());
     int nameX = (160 - nameW) / 2;
     int nameY = SPRITE_Y + AVATAR_L_H + 4;
@@ -453,7 +519,7 @@ void DisplayManager::drawGroupIdle(const String& nameA, const String& avatarPath
     _drawAvatar(startX + aw + gap, ay, aw, ah, avatarPathB);
 
     // 名字
-    M5.Display.setFont(FONT_M);
+    useDefaultFontM();
     M5.Display.setTextColor(C_NEON);
     int nwA = M5.Display.textWidth(nameA.c_str());
     M5.Display.setCursor(startX + (aw - nwA) / 2, ay + ah + 6);
@@ -464,7 +530,7 @@ void DisplayManager::drawGroupIdle(const String& nameA, const String& avatarPath
     M5.Display.print(nameB);
 
     // 待机提示
-    M5.Display.setFont(FONT_S);
+    useDefaultFontS();
     M5.Display.setTextColor(C_MUTED);
     const char* hint = "敲一敲唤醒我哦";
     int hintW = M5.Display.textWidth(hint);
@@ -475,7 +541,7 @@ void DisplayManager::drawGroupIdle(const String& nameA, const String& avatarPath
     M5.Display.fillRoundRect(SWITCH_BTN_X, SWITCH_BTN_Y, SWITCH_BTN_W, SWITCH_BTN_H,
                               10, C_BORDER);
     M5.Display.setTextColor(C_TEXT);
-    M5.Display.setFont(FONT_S);
+    useDefaultFontS();
     int btnLabelW = M5.Display.textWidth("← 换角色");
     M5.Display.setCursor(SWITCH_BTN_X + (SWITCH_BTN_W - btnLabelW) / 2,
                          SWITCH_BTN_Y + (SWITCH_BTN_H - 12) / 2);
@@ -497,7 +563,7 @@ void DisplayManager::drawGroupLayout(const String& nameA, const String& avatarA,
     _groupAvatarB = avatarB;
 
     // 顶部标题栏
-    M5.Display.setFont(FONT_M);
+    useDefaultFontM();
     M5.Display.setTextColor(C_NEON);
     String title = nameA + " + " + nameB;
     int tw = M5.Display.textWidth(title.c_str());
@@ -505,7 +571,7 @@ void DisplayManager::drawGroupLayout(const String& nameA, const String& avatarA,
     M5.Display.print(title);
 
     // 群聊角标
-    M5.Display.setFont(FONT_S);
+    useDefaultFontS();
     M5.Display.setTextColor(C_MUTED);
     M5.Display.setCursor(SCREEN_W - 48, 8);
     M5.Display.print("[群聊]");
@@ -516,7 +582,7 @@ void DisplayManager::drawGroupLayout(const String& nameA, const String& avatarA,
     // 退出按钮
     M5.Display.fillRoundRect(4, 4, 40, 22, 6, C_BORDER);
     M5.Display.setTextColor(C_TEXT);
-    M5.Display.setFont(FONT_S);
+    useDefaultFontS();
     M5.Display.setCursor(7, 7);
     M5.Display.print("< 退出");
 
@@ -538,7 +604,7 @@ void DisplayManager::appendGroupText(const String& speakerName, const String& te
     bool isSystem    = (speakerName == "系统");
     bool isMe        = (speakerName == "我");
 
-    M5.Display.setFont(FONT_M);
+    useDefaultFontM();
     M5.Display.setTextWrap(false);
 
     // ── 确定名字的 X 起始位置 ──
@@ -654,9 +720,9 @@ void DisplayManager::drawWaveIcon(int level) {
 }
 
 void DisplayManager::drawDailyUserWave(int level) {
-    _drawPngAsset("/u/bp.png", 13, 88, 130, 54, 1.0f);
+    _drawPngAsset("/u/bp.png", 122, 88, 76, 58, 1.0f);
     if (level > 0) {
-        _drawWaveBars(78, 120, 16, level, C_NEON, false);
+        _drawWaveBars(160, 122, 16, level, C_NEON, false);
     }
 }
 
@@ -787,6 +853,35 @@ void DisplayManager::_drawPngAsset(const String& path, int32_t x, int32_t y,
     free(buf);
 }
 
+void DisplayManager::_drawPngAssetRegion(const String& path, int32_t x, int32_t y,
+                                         int32_t w, int32_t h, int32_t offX,
+                                         int32_t offY, float scale) {
+    if (!SPIFFS.exists(path)) {
+        Serial.printf("[UI] PNG missing: %s\n", path.c_str());
+        return;
+    }
+    fs::File file = SPIFFS.open(path, "r");
+    if (!file) {
+        Serial.printf("[UI] PNG open failed: %s\n", path.c_str());
+        return;
+    }
+
+    size_t len = file.size();
+    uint8_t* buf = (uint8_t*)heap_caps_malloc(len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!buf) buf = (uint8_t*)malloc(len);
+    if (!buf) {
+        Serial.printf("[UI] PNG alloc failed: %s (%u bytes)\n",
+                      path.c_str(), (unsigned)len);
+        file.close();
+        return;
+    }
+
+    file.read(buf, len);
+    file.close();
+    M5.Display.drawPng(buf, len, x, y, w, h, offX, offY, scale);
+    free(buf);
+}
+
 void DisplayManager::_drawStageExpression(StageSide side, const String& expression,
                                           int32_t x, int32_t y, int32_t w,
                                           int32_t h) {
@@ -806,6 +901,32 @@ void DisplayManager::_drawStageExpression(StageSide side, const String& expressi
     String path = "/u/" + prefix + suffix + ".png";
     if (!SPIFFS.exists(path)) path = "/u/" + prefix + "si.png";
     _drawPngAsset(path, x, y, w, h, 0.35f);
+}
+
+void DisplayManager::_drawDebateExpression(StageSide side, const String& expression) {
+    const bool blue = side == StageSide::Blue;
+    String expr = expression.length() ? expression : "silent";
+
+    if (expr == "speaking") {
+        _drawPngAsset(blue ? "/u/ba.png" : "/u/ra.png",
+                      blue ? 174 : 37, 73, 100, 93, 1.0f);
+        return;
+    }
+
+    String prefix = blue ? "b" : "r";
+    String suffix = "si";
+    if (expr == "angry") suffix = "a2";
+    else if (expr == "approve") suffix = "ap";
+    else if (expr == "disagree") suffix = "di";
+    else if (expr == "disdain") suffix = "dn";
+    else if (expr == "doubt") suffix = "do";
+    else if (expr == "shocked") suffix = "sh";
+    else if (expr == "speechless") suffix = "sl";
+    else if (expr == "thinking") suffix = "th";
+
+    String path = "/u/" + prefix + suffix + ".png";
+    if (!SPIFFS.exists(path)) path = "/u/" + prefix + "si.png";
+    _drawPngAsset(path, blue ? 201 : 48, 83, 0, 0, 0.5f);
 }
 
 void DisplayManager::_drawDebateProgress(int score, int y) {
@@ -836,7 +957,7 @@ void DisplayManager::_drawPromptBox(int32_t x, int32_t y, int32_t w, int32_t h,
         M5.Display.drawRoundRect(x, y, w, h, 20, 0x000000);
         M5.Display.drawRoundRect(x + 1, y + 1, w - 2, h - 2, 19, 0x000000);
     }
-    M5.Display.setFont(FONT_L);
+    useFontL();
     M5.Display.setTextSize(1);
     M5.Display.setTextColor(0x000000);
     String lines[2];
@@ -866,7 +987,7 @@ void DisplayManager::_drawRightText(const String& text) {
     int lineCount = 0;
     _wrapText(text, RIGHT_W, lines, lineCount, maxLines);
 
-    M5.Display.setFont(FONT_M);
+    useDefaultFontM();
     M5.Display.setTextColor(C_TEXT);
     M5.Display.setTextWrap(false);
     for (int i = 0; i < lineCount; i++) {
@@ -876,7 +997,7 @@ void DisplayManager::_drawRightText(const String& text) {
 }
 
 void DisplayManager::_drawNameAt(int32_t x, int32_t y, const String& name) {
-    M5.Display.setFont(FONT_L);
+    useDefaultFontL();
     M5.Display.setTextColor(C_NEON);
     M5.Display.setCursor(x, y);
     M5.Display.print(name);
@@ -889,7 +1010,7 @@ void DisplayManager::_drawButton(int32_t x, int32_t y, int32_t w, int32_t h,
     M5.Display.fillRoundRect(x, y, w, h, BTN_R, col);
 
     if (label) {
-        M5.Display.setFont(FONT_S);
+        useDefaultFontS();
         uint32_t textCol = disabled ? C_TXT_DIS : 0xFFFFFF;
         M5.Display.setTextColor(textCol);
         int32_t tw = M5.Display.textWidth(label);
@@ -948,3 +1069,5 @@ void DisplayManager::_wrapText(const String& text, int32_t maxWidth,
         start = lastFit;
     }
 }
+
+

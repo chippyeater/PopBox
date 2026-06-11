@@ -55,23 +55,29 @@ void ChatUI::update() {
         _display.drawDailyUserWave(_recorder.getAudioLevel());
     } else if (_state == AppState::DEBATE_TOPIC) {
         _display.drawWaveIcon(_recorder.getAudioLevel());
-    } else if (_state == AppState::DEBATE_TURN) {
-        int elapsed = (int)((millis() - _debateTurnStartedMs) / 1000);
+    } else if (_state == AppState::DEBATE_TURN || _state == AppState::DEBATE_BOOM) {
+        int elapsed = (int)((millis() - _debateStartedMs) / 1000);
         int left = max(0, DEBATE_TURN_SECONDS - elapsed);
         if (left != _lastDebateSecond) {
             _lastDebateSecond = left;
             _display.updateDebateTimer(left);
         }
         if (left <= 0) {
+            _finishDebateByScore();
+            return;
+        }
+        if (_state == AppState::DEBATE_BOOM
+            && millis() - _debateBoomShownAtMs > 1500) {
+            _display.updateDebateTurnView(_redName, _blueName, _debateSpeaker,
+                                          _debateRedExpression, _debateBlueExpression);
+            _display.updateDebateProgress(_debateScore);
+            _state = AppState::DEBATE_TURN;
+        }
+        if (_state == AppState::DEBATE_TURN && _debateNextTurnPending) {
+            _debateNextTurnPending = false;
             _requestDebateTurn();
             return;
         }
-    } else if (_state == AppState::DEBATE_BOOM
-               && millis() - _debateBoomShownAtMs > 1500) {
-        _state = AppState::DEBATE_TURN;
-        _debateTurnStartedMs = millis();
-        _lastDebateSecond = -1;
-        return;
     }
 
     // ── 声波动画（CHATTING 状态始终显示呼吸指示器）──
@@ -151,8 +157,11 @@ void ChatUI::_enterModeSelect() {
     _blueName = "";
     _debateTopic = "";
     _debateSessionId = "";
+    _debateStartedMs = 0;
     _dailySpeaker = DisplayManager::StageSide::None;
     _lastDebateSecond = -1;
+    _debateViewReady = false;
+    _debateNextTurnPending = false;
     _display.drawModeSelect();
     _state = AppState::MODE_SELECT;
     _idleStartMs = millis();
@@ -166,6 +175,9 @@ void ChatUI::_enterInvite(FlowMode mode) {
     _blueName = "";
     _debateTopic = "";
     _debateScore = DEBATE_INITIAL_SCORE;
+    _debateStartedMs = 0;
+    _debateViewReady = false;
+    _debateNextTurnPending = false;
     _dailyRedExpression = "silent";
     _dailyBlueExpression = "silent";
     _debateRedExpression = "silent";
@@ -326,7 +338,8 @@ void ChatUI::_processDailyStageSpeech() {
             _dailyBlueExpression = "speaking";
             _dailyRedExpression = reply.expression.length() ? reply.expression : "silent";
         }
-        _display.drawDailyStage(_dailyRedExpression, _dailyBlueExpression, _dailySpeaker, 80);
+        _display.updateDailyStageView(_dailyRedExpression, _dailyBlueExpression,
+                                      _dailySpeaker, 80);
 
         String clean = stripTtsMarkers(reply.reply);
         String voiceId = isRed ? red.voice : blue.voice;
@@ -341,7 +354,8 @@ void ChatUI::_processDailyStageSpeech() {
     _dailySpeaker = DisplayManager::StageSide::None;
     _dailyRedExpression = "silent";
     _dailyBlueExpression = "silent";
-    _display.drawDailyStage(_dailyRedExpression, _dailyBlueExpression, _dailySpeaker, 0);
+    _display.updateDailyStageView(_dailyRedExpression, _dailyBlueExpression,
+                                  _dailySpeaker, 0);
     _state = AppState::DAILY_STAGE;
     _recorder.startListening();
 }
@@ -376,17 +390,30 @@ void ChatUI::_startDebate() {
     _debateSpeaker = started.speaker == "blue"
         ? DisplayManager::StageSide::Blue
         : DisplayManager::StageSide::Red;
+    _debateStartedMs = millis();
+    _debateTurnStartedMs = _debateStartedMs;
+    _lastDebateSecond = DEBATE_TURN_SECONDS;
+    _debateViewReady = false;
     _requestDebateTurn();
 }
 
 void ChatUI::_requestDebateTurn() {
     if (_debateSessionId.isEmpty()) return;
-    auto turn = _llm.nextDebateTurn(_debateSessionId);
-    if (!turn.ok) {
-        _debateTurnStartedMs = millis();
+
+    int elapsed = (int)((millis() - _debateStartedMs) / 1000);
+    int left = max(0, DEBATE_TURN_SECONDS - elapsed);
+    if (left <= 0) {
+        _finishDebateByScore();
         return;
     }
 
+    auto turn = _llm.nextDebateTurn(_debateSessionId);
+    if (!turn.ok) {
+        _state = AppState::DEBATE_TURN;
+        return;
+    }
+
+    int previousScore = _debateScore;
     _debateScore = constrain(turn.score, 0, 100);
     if (turn.winner == "red" || turn.winner == "blue") {
         _debateSpeaker = turn.winner == "blue"
@@ -401,10 +428,23 @@ void ChatUI::_requestDebateTurn() {
         : DisplayManager::StageSide::Red;
     _debateRedExpression = turn.redReaction.length() ? turn.redReaction : "silent";
     _debateBlueExpression = turn.blueReaction.length() ? turn.blueReaction : "speechless";
-    _display.drawDebateTurn(_redName, _blueName, _debateSpeaker,
-                            DEBATE_TURN_SECONDS, _debateScore,
-                            _debateRedExpression, _debateBlueExpression);
-    _lastDebateSecond = DEBATE_TURN_SECONDS;
+    elapsed = (int)((millis() - _debateStartedMs) / 1000);
+    left = max(0, DEBATE_TURN_SECONDS - elapsed);
+    if (!_debateViewReady) {
+        _display.drawDebateTurn(_redName, _blueName, _debateSpeaker,
+                                left, _debateScore,
+                                _debateRedExpression, _debateBlueExpression);
+        _debateViewReady = true;
+    } else {
+        _display.updateDebateTurnView(_redName, _blueName, _debateSpeaker,
+                                      _debateRedExpression, _debateBlueExpression);
+        if (_debateScore != previousScore) {
+            _display.updateDebateProgress(_debateScore);
+        }
+        _display.updateDebateTimer(left);
+    }
+    _lastDebateSecond = left;
+    _state = AppState::DEBATE_TURN;
 
     const auto& red = _charMgr.current();
     const auto& blue = _charMgr.secondary();
@@ -420,8 +460,15 @@ void ChatUI::_requestDebateTurn() {
     _recorder.resumeMic();
 
     _debateTurnStartedMs = millis();
-    _lastDebateSecond = -1;
-    _state = AppState::DEBATE_TURN;
+    elapsed = (int)((millis() - _debateStartedMs) / 1000);
+    left = max(0, DEBATE_TURN_SECONDS - elapsed);
+    if (left <= 0) {
+        _finishDebateByScore();
+        return;
+    }
+    _display.updateDebateTimer(left);
+    _lastDebateSecond = left;
+    _debateNextTurnPending = true;
 }
 
 void ChatUI::triggerDebateBoom(DisplayManager::StageSide side) {
@@ -432,10 +479,10 @@ void ChatUI::triggerDebateBoom(DisplayManager::StageSide side) {
         _debateScore = max(0, _debateScore - DEBATE_BOOM_DELTA);
     }
 
-    int elapsed = (int)((millis() - _debateTurnStartedMs) / 1000);
+    int elapsed = (int)((millis() - _debateStartedMs) / 1000);
     int left = max(0, DEBATE_TURN_SECONDS - elapsed);
     _display.drawDebateBoom(side, _debateScore, left);
-    _lastDebateSecond = -1;
+    _lastDebateSecond = left;
     _debateBoomShownAtMs = millis();
     _state = AppState::DEBATE_BOOM;
     _finishDebateIfNeeded();
@@ -451,6 +498,19 @@ void ChatUI::_finishDebateIfNeeded() {
         _display.drawDebateResult(DisplayManager::StageSide::Blue, _blueWinCount);
         _state = AppState::DEBATE_RESULT;
     }
+}
+
+void ChatUI::_finishDebateByScore() {
+    if (_state == AppState::DEBATE_RESULT) return;
+
+    if (_debateScore >= 50) {
+        _redWinCount++;
+        _display.drawDebateResult(DisplayManager::StageSide::Red, _redWinCount);
+    } else {
+        _blueWinCount++;
+        _display.drawDebateResult(DisplayManager::StageSide::Blue, _blueWinCount);
+    }
+    _state = AppState::DEBATE_RESULT;
 }
 
 // ── 触摸处理 ──────────────────────────────────────────────────────
@@ -493,6 +553,16 @@ void ChatUI::_handleTouch() {
             _enterModeSelect();
         }
         return;
+    }
+
+    if (_state == AppState::DEBATE_TOPIC || _state == AppState::DEBATE_READY
+        || _state == AppState::DEBATE_TURN || _state == AppState::DEBATE_BOOM) {
+        if (t.x >= 0 && t.x <= 90 && t.y >= 150 && t.y <= 205) {
+            _recorder.stopListening();
+            _debateNextTurnPending = false;
+            _enterModeSelect();
+            return;
+        }
     }
 
     if (_state == AppState::DEBATE_READY) {

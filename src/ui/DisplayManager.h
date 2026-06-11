@@ -47,6 +47,9 @@ public:
     void drawPartyEntry(bool debate, bool redReady, bool blueReady);
     void drawDailyStage(const String& redExpression, const String& blueExpression,
                         StageSide speaker, int audioLevel);
+    void updateDailyStageView(const String& redExpression,
+                              const String& blueExpression,
+                              StageSide speaker, int audioLevel);
     void drawDebateTopic(const String& redName, const String& blueName,
                          const String& topic, const String& bottomText,
                          int audioLevel);
@@ -54,7 +57,11 @@ public:
     void drawDebateTurn(const String& redName, const String& blueName,
                         StageSide speaker, int secondsLeft, int score,
                         const String& redExpression, const String& blueExpression);
+    void updateDebateTurnView(const String& redName, const String& blueName,
+                              StageSide speaker, const String& redExpression,
+                              const String& blueExpression);
     void updateDebateTimer(int secondsLeft);
+    void updateDebateProgress(int score);
     void drawDebateBoom(StageSide target, int score, int secondsLeft);
     void drawDebateResult(StageSide winner, int winCount);
     void drawNoCharacter();
@@ -109,8 +116,15 @@ private:
                                 const String& avatarPath, float scale = 1.0f);
     void _drawPngAsset(const String& path, int32_t x, int32_t y, int32_t w,
                        int32_t h, float scale = 1.0f);
+    void _drawPngAssetRegion(const String& path, int32_t x, int32_t y,
+                             int32_t w, int32_t h, int32_t offX,
+                             int32_t offY, float scale = 1.0f);
+    void _drawDebateTurnOverlay(const String& redName, const String& blueName,
+                                StageSide speaker, const String& redExpression,
+                                const String& blueExpression);
     void _drawStageExpression(StageSide side, const String& expression,
                               int32_t x, int32_t y, int32_t w, int32_t h);
+    void _drawDebateExpression(StageSide side, const String& expression);
     void _drawDebateProgress(int score, int y);
     void _drawWaveBars(int centerX, int baseY, int maxH, int level,
                        uint32_t color, bool clearBackground);
