@@ -165,7 +165,7 @@ void DisplayManager::updateDailyStageView(const String& redExpression,
                          29, 73, 70, 71.42);
     _drawStageExpression(StageSide::Blue, speaker == StageSide::Blue ? "speaking" : "silent",
                          220, 71.88, 70, 71.42);
-    _drawPngAsset("/u/ua.png", 130, 154, 60, 60, 1.0f);
+    _drawPngAsset("/u/ua.png", 130, 154, 64, 66, 1.0f);
 }
 
 void DisplayManager::drawDebateTopic(const String& redName, const String& blueName,
@@ -249,7 +249,7 @@ void DisplayManager::_drawDebateTurnOverlay(const String& redName, const String&
     _drawDebateExpression(StageSide::Red, redSpeaking ? "speaking" : redExpression);
     _drawDebateExpression(StageSide::Blue, redSpeaking ? blueExpression : "speaking");
     _drawPngAsset(redSpeaking ? "/u/rsp.png" : "/u/bsp.png",
-                  136, 90, 59, 57, 1.0f);
+                  136, 90, 76, 58, 1.0f);
 }
 
 void DisplayManager::updateDebateTimer(int secondsLeft) {

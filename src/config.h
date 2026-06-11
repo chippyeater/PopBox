@@ -45,6 +45,13 @@
 // ── SPIFFS 路径 ═══════════════════════════════════════════════
 #define CHARACTER_JSON_PATH  "/character.json"
 
+// ── 调试开关 ══════════════════════════════════════════════════
+// 0 = 正常拍照识别角色
+// 1 = 跳过舞台识别，直接预填孙悟空 / 林黛玉（仅调试群聊流程用）
+#ifndef POPBOX_PREFILL_TEST_CHARACTERS
+#define POPBOX_PREFILL_TEST_CHARACTERS 0
+#endif
+
 // ── 辩论模式配置 ══════════════════════════════════════════════
 #define DEBATE_INITIAL_SCORE      50
 #define DEBATE_BOOM_DELTA         15

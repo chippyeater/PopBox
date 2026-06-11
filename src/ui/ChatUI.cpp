@@ -233,7 +233,10 @@ void ChatUI::_enterInvite(FlowMode mode) {
     _debateRedExpression = "silent";
     _debateBlueExpression = "speechless";
     const bool daily = mode == FlowMode::Daily;
-    bool ready = _prefillTestCharacters();
+    bool ready = false;
+#if POPBOX_PREFILL_TEST_CHARACTERS
+    ready = _prefillTestCharacters();
+#endif
     _display.drawPartyEntry(!daily, ready, ready);
     if (!daily && ready) {
         _charMgr.setDualMode(_redIndex, _blueIndex);
