@@ -1,6 +1,6 @@
 .pio/
 .vscode/
-src/config.h
+# src/config.h
 web/.env
 web/node_modules/
 web/data/chat-history/history_*.json
