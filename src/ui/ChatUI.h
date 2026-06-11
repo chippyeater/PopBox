@@ -56,6 +56,8 @@ private:
     void _requestDebateTurn();
     void _finishDebateIfNeeded();
     void _finishDebateByScore();
+    void _tickDebateTimerDuringBlocking();
+    static void _debateTickThunk(void* ctx);
     void _onMicButtonTap();
     void _onRecognizeTap();
     void _enterCharacterSelect();

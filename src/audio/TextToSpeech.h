@@ -3,5 +3,7 @@
 
 class TextToSpeech {
 public:
-    bool speak(const String& text, const String& voice = "", float vol = 1.0f);
+    using TickCallback = void (*)(void*);
+    bool speak(const String& text, const String& voice = "", float vol = 1.0f,
+               TickCallback tick = nullptr, void* tickCtx = nullptr);
 };

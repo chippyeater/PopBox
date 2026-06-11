@@ -22,19 +22,28 @@ app.use('/stories', express.static(path.join(__dirname, 'data/stories'), { index
 // ── 目录 ─────────────────────────────────────────────────────
 const DATA_DIR          = path.join(__dirname, 'data');
 const CHAT_HISTORY_DIR  = path.join(DATA_DIR, 'chat-history');
+const GROUP_HISTORY_DIR = path.join(DATA_DIR, 'group-history');
+const DEBATE_HISTORY_DIR = path.join(DATA_DIR, 'debate-history');
 const JOURNAL_IMAGES_DIR = path.join(DATA_DIR, 'journal-images');
 const JOURNALS_DIR      = path.join(DATA_DIR, 'journals');       // 按角色分目录的 journal
 const VLM_IMAGES_DIR        = path.join(DATA_DIR, 'vlm-images');
 const MEDIA_DIR             = path.join(DATA_DIR, 'media');
 const REFERENCE_DIR         = path.join(DATA_DIR, 'reference-images');
 
-for (const dir of [DATA_DIR, CHAT_HISTORY_DIR, JOURNAL_IMAGES_DIR, JOURNALS_DIR, VLM_IMAGES_DIR, MEDIA_DIR, REFERENCE_DIR]) {
+for (const dir of [DATA_DIR, CHAT_HISTORY_DIR, GROUP_HISTORY_DIR, DEBATE_HISTORY_DIR, JOURNAL_IMAGES_DIR, JOURNALS_DIR, VLM_IMAGES_DIR, MEDIA_DIR, REFERENCE_DIR]) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
 app.use('/journal-images', express.static(JOURNAL_IMAGES_DIR, { index: false }));
 app.use('/media',          express.static(MEDIA_DIR,          { index: false }));
 app.use('/avatars',        express.static(path.join(__dirname, 'data/avatars'), { index: false }));
+
+app.get('/api/hello', (req, res) => {
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    const device = req.headers['x-popbox-device'] || 'unknown';
+    console.log(`[Discover] ${device} 已发现并连接 PopBox 后端: ${ip}`);
+    res.json({ ok: true, service: 'popbox', time: Date.now() });
+});
 
 // ── 对话历史配置 ──────────────────────────────────────────────
 const MAX_TURNS = parseInt(process.env.MAX_HISTORY_TURNS || '10');
@@ -661,6 +670,11 @@ const groupHistoryCache = {};
 
 function groupHistoryFile(idA, idB) {
     const ids = [idA, idB].sort();
+    return path.join(GROUP_HISTORY_DIR, `history_${ids[0]}_${ids[1]}.json`);
+}
+
+function legacyGroupHistoryFile(idA, idB) {
+    const ids = [idA, idB].sort();
     return path.join(DATA_DIR, `history_group_${ids[0]}_${ids[1]}.json`);
 }
 
@@ -669,7 +683,10 @@ function getGroupHistory(idA, idB) {
     const key = `${ids[0]}_${ids[1]}`;
     if (!groupHistoryCache[key]) {
         try {
-            const raw = fs.readFileSync(groupHistoryFile(idA, idB), 'utf-8').trim();
+            const file = fs.existsSync(groupHistoryFile(idA, idB))
+                ? groupHistoryFile(idA, idB)
+                : legacyGroupHistoryFile(idA, idB);
+            const raw = fs.readFileSync(file, 'utf-8').trim();
             groupHistoryCache[key] = raw ? JSON.parse(raw) : [];
         } catch { groupHistoryCache[key] = []; }
     }
@@ -700,11 +717,23 @@ function appendGroupTurn(idA, idB, userMsg, replies) {
 // 群聊历史加载（启动时扫描）
 function loadAllGroupHistory() {
     try {
-        const files = fs.readdirSync(DATA_DIR)
+        const legacyFiles = fs.readdirSync(DATA_DIR)
             .filter(f => f.startsWith('history_group_') && f.endsWith('.json'));
-        for (const f of files) {
+        for (const f of legacyFiles) {
             const key = f.replace('history_group_', '').replace('.json', '');
-            const raw = fs.readFileSync(path.join(DATA_DIR, f), 'utf-8').trim();
+            const src = path.join(DATA_DIR, f);
+            const dst = path.join(GROUP_HISTORY_DIR, `history_${key}.json`);
+            if (!fs.existsSync(dst)) {
+                fs.renameSync(src, dst);
+                console.log(`[History] 已迁移群聊历史到 group-history/${path.basename(dst)}`);
+            }
+        }
+
+        const files = fs.readdirSync(GROUP_HISTORY_DIR)
+            .filter(f => f.startsWith('history_') && f.endsWith('.json'));
+        for (const f of files) {
+            const key = f.replace('history_', '').replace('.json', '');
+            const raw = fs.readFileSync(path.join(GROUP_HISTORY_DIR, f), 'utf-8').trim();
             if (raw) groupHistoryCache[key] = JSON.parse(raw);
             console.log(`[History] 已加载群聊 ${key}：${groupHistoryCache[key]?.length || 0} 条消息`);
         }
@@ -715,6 +744,10 @@ function loadAllGroupHistory() {
 const debateHistoryCache = {};
 
 function debateHistoryFile(redId, blueId) {
+    return path.join(DEBATE_HISTORY_DIR, `history_${redId}_${blueId}.json`);
+}
+
+function legacyDebateHistoryFile(redId, blueId) {
     return path.join(DATA_DIR, `history_debate_${redId}_${blueId}.json`);
 }
 
@@ -726,7 +759,10 @@ function getDebateHistory(redId, blueId) {
     const key = debateHistoryKey(redId, blueId);
     if (!debateHistoryCache[key]) {
         try {
-            const raw = fs.readFileSync(debateHistoryFile(redId, blueId), 'utf-8').trim();
+            const file = fs.existsSync(debateHistoryFile(redId, blueId))
+                ? debateHistoryFile(redId, blueId)
+                : legacyDebateHistoryFile(redId, blueId);
+            const raw = fs.readFileSync(file, 'utf-8').trim();
             debateHistoryCache[key] = raw ? JSON.parse(raw) : [];
         } catch {
             debateHistoryCache[key] = [];
@@ -767,11 +803,23 @@ function appendDebateEvent(session, event) {
 
 function loadAllDebateHistory() {
     try {
-        const files = fs.readdirSync(DATA_DIR)
+        const legacyFiles = fs.readdirSync(DATA_DIR)
             .filter(f => f.startsWith('history_debate_') && f.endsWith('.json'));
-        for (const f of files) {
+        for (const f of legacyFiles) {
             const key = f.replace('history_debate_', '').replace('.json', '');
-            const raw = fs.readFileSync(path.join(DATA_DIR, f), 'utf-8').trim();
+            const src = path.join(DATA_DIR, f);
+            const dst = path.join(DEBATE_HISTORY_DIR, `history_${key}.json`);
+            if (!fs.existsSync(dst)) {
+                fs.renameSync(src, dst);
+                console.log(`[History] 已迁移辩论历史到 debate-history/${path.basename(dst)}`);
+            }
+        }
+
+        const files = fs.readdirSync(DEBATE_HISTORY_DIR)
+            .filter(f => f.startsWith('history_') && f.endsWith('.json'));
+        for (const f of files) {
+            const key = f.replace('history_', '').replace('.json', '');
+            const raw = fs.readFileSync(path.join(DEBATE_HISTORY_DIR, f), 'utf-8').trim();
             debateHistoryCache[key] = raw ? JSON.parse(raw) : [];
             console.log(`[History] 已加载辩论 ${key}：${debateHistoryCache[key]?.length || 0} 条事件`);
         }

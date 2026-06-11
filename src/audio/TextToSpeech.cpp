@@ -65,7 +65,8 @@ static uint8_t* allocAudioBuffer(size_t len) {
     return p;
 }
 
-bool TextToSpeech::speak(const String& text, const String& voice, float vol) {
+bool TextToSpeech::speak(const String& text, const String& voice, float vol,
+                         TickCallback tick, void* tickCtx) {
     if (text.isEmpty()) return false;
     if (!_ensureWiFi()) return false;
     if (vol <= 0.0f) vol = 1.0f;
@@ -109,6 +110,7 @@ bool TextToSpeech::speak(const String& text, const String& voice, float vol) {
     size_t received = 0;
     uint32_t lastDataAt = millis();
     while (http.connected() && received < MAX_AUDIO_BYTES) {
+        if (tick) tick(tickCtx);
         int avail = stream->available();
         if (avail > 0) {
             size_t toRead = min((size_t)avail, MAX_AUDIO_BYTES - received);
@@ -155,6 +157,7 @@ bool TextToSpeech::speak(const String& text, const String& voice, float vol) {
     unsigned long tStart = millis();
     while (M5.Speaker.isPlaying(0) && millis() - tStart < audioMs + 1000) {
         M5.update();
+        if (tick) tick(tickCtx);
         delay(10);
     }
     Serial.printf("[TTS] 播放完成, 实际等待 %lu ms\n", millis() - tStart);

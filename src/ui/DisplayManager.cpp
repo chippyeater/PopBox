@@ -161,7 +161,7 @@ void DisplayManager::drawDebateTopic(const String& redName, const String& blueNa
 void DisplayManager::drawDebateTopicEntry(bool topicReady, int audioLevel) {
     M5.Display.fillScreen(C_BG);
     _drawPngAsset("/u/debate-2.png", 0, 0, SCREEN_W, SCREEN_H);
-    _drawPromptBox(0, 166, 61, 23, "退出", true);
+    _drawPromptBox(0, 166, 78, 37, "退出", true);
     if (topicReady) {
         _drawPromptBox((SCREEN_W - 112) / 2, 207, 112, 30, "开始辩论", true);
         _drawDebateProgress(DEBATE_INITIAL_SCORE, 196);
@@ -177,7 +177,7 @@ void DisplayManager::drawDebateTurn(const String& redName, const String& blueNam
                                     const String& blueExpression) {
     M5.Display.fillScreen(C_BG);
     _drawPngAsset("/u/debate-2.png", 0, 0, SCREEN_W, SCREEN_H);
-    _drawPromptBox(0, 166, 61, 23, "退出", true);
+    _drawPromptBox(0, 166, 78, 37, "退出", true);
     _drawDebateTurnOverlay(redName, blueName, speaker, redExpression, blueExpression);
     updateDebateTimer(secondsLeft);
     _drawDebateProgress(score, 196);
@@ -231,14 +231,14 @@ void DisplayManager::updateDebateTimer(int secondsLeft) {
 
 void DisplayManager::updateDebateProgress(int score) {
     _drawPngAssetRegion("/u/debate-2.png", 0, 160, SCREEN_W, 64, 0, 160);
-    _drawPromptBox(0, 166, 61, 23, "退出", true);
+    _drawPromptBox(0, 166, 78, 37, "退出", true);
     _drawDebateProgress(score, 196);
 }
 
 void DisplayManager::drawDebateBoom(StageSide target, int score, int secondsLeft) {
     M5.Display.fillScreen(C_BG);
     _drawPngAsset("/u/debate-2.png", 0, 0, SCREEN_W, SCREEN_H);
-    _drawPromptBox(0, 166, 61, 23, "退出", true);
+    _drawPromptBox(0, 166, 78, 37, "退出", true);
     _drawPngAsset("/u/tt.png", 232, 6, 78, 28, 1.0f);
     char tbuf[8];
     snprintf(tbuf, sizeof(tbuf), "00:%02d", constrain(secondsLeft, 0, 99));
