@@ -476,9 +476,9 @@ function buildDebateSystemPrompt(session) {
         '- 不要旁白，不要写动作。',
         '- 发言控制在 60-100 字，适合 TTS 播放。',
         '- 禁止使用“正方/反方/综上所述/这是自然铁律/我作为AI”。',
-        '- reaction 只能从 silent、speechless、angry、thinking、doubt、disagree、approve、disdain、shocked 中选。',
+        '- opponentReaction 表示对手听完后的反应，只能从 silent、speechless、angry、thinking、doubt、disagree、approve、disdain、shocked 中选。',
         '- 只返回 JSON，不要代码块。',
-        `{"speaker":"${speakerSide}","text":"当前发言方要说的话","redReaction":"${speakerSide === 'red' ? 'speaking' : 'speechless'}","blueReaction":"${speakerSide === 'blue' ? 'speaking' : 'speechless'}"}`
+        '{"text":"当前发言角色要说的话","opponentReaction":"doubt"}'
     ].join('\n');
 }
 
@@ -1356,8 +1356,7 @@ app.post('/api/debate/turn', async (req, res) => {
     let payload = {
         speaker,
         text: `${speakerChar.name}认为，${session.topic}这件事不能只看表面，关键要看谁的理由更站得住。`,
-        redReaction: speaker === 'red' ? 'speaking' : 'speechless',
-        blueReaction: speaker === 'blue' ? 'speaking' : 'speechless'
+        opponentReaction: 'speechless'
     };
 
     if (apiKey && apiKey !== 'your_dashscope_api_key_here') {
@@ -1403,10 +1402,9 @@ app.post('/api/debate/turn', async (req, res) => {
                     const jsonStr = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
                     const parsed = JSON.parse(jsonStr);
                     payload = {
-                        speaker: parsed.speaker === 'blue' ? 'blue' : 'red',
+                        speaker,
                         text: String(parsed.text || '').trim() || payload.text,
-                        redReaction: normalizeDebateReaction(parsed.redReaction, payload.redReaction),
-                        blueReaction: normalizeDebateReaction(parsed.blueReaction, payload.blueReaction)
+                        opponentReaction: normalizeDebateReaction(parsed.opponentReaction, payload.opponentReaction)
                     };
                 } catch (e) {
                     console.error('[Debate] JSON 解析失败:', e.message, '| raw:', raw.slice(0, 120));
@@ -1418,12 +1416,9 @@ app.post('/api/debate/turn', async (req, res) => {
     }
 
     payload.speaker = speaker;
-    payload.redReaction = speaker === 'red'
-        ? 'speaking'
-        : normalizeDebateReaction(payload.redReaction, 'speechless');
-    payload.blueReaction = speaker === 'blue'
-        ? 'speaking'
-        : normalizeDebateReaction(payload.blueReaction, 'speechless');
+    const opponentReaction = normalizeDebateReaction(payload.opponentReaction, 'speechless');
+    payload.redReaction = speaker === 'red' ? 'speaking' : opponentReaction;
+    payload.blueReaction = speaker === 'blue' ? 'speaking' : opponentReaction;
 
     session.turns.push({
         sessionId: session.id,
