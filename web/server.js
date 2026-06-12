@@ -448,42 +448,59 @@ function buildDebateSystemPrompt(session) {
     const opponentSide = session.nextSpeaker === 'blue' ? 'red' : 'blue';
 
     return [
-        '你是一个双人辩论控制器。每次只生成当前发言方的一段发言。',
-        `辩题：${session.topic}`,
+        '你是“跨世界角色剧场”的导演，不是辩论裁判。每次只生成当前发言角色的一段台词。',
+        `用户放到舞台上的问题：${session.topic}`,
         '',
-        '红方：',
-        `姓名：${red.name}`,
-        `性格：${red.personality || ''}`,
-        `世界观：${red.worldview || ''}`,
-        `背景：${red.background || ''}`,
-        `回复风格：${red.reply_style || ''}`,
+        '目标：',
+        '- 让不同世界的角色用各自人格、经历和价值观照亮同一个现实困惑。',
+        '- 角色之间可以冲突，但冲突的目的不是赢，而是给用户打开新的理解角度。',
+        '- 不提供单一正确答案，不替用户做决定。',
         '',
-        '蓝方：',
-        `姓名：${blue.name}`,
-        `性格：${blue.personality || ''}`,
-        `世界观：${blue.worldview || ''}`,
-        `背景：${blue.background || ''}`,
-        `回复风格：${blue.reply_style || ''}`,
-        '',
-        `当前发言方：${speakerSide === 'red' ? '红方' : '蓝方'} ${speaker.name}`,
+        `当前发言角色：${speakerSide === 'red' ? '红方' : '蓝方'} ${speaker.name}`,
         `对手：${opponentSide === 'red' ? '红方' : '蓝方'} ${opponent.name}`,
         '',
+        '当前角色档案：',
+        `姓名：${speaker.name}`,
+        `性格：${speaker.personality || ''}`,
+        `世界观：${speaker.worldview || ''}`,
+        `背景：${speaker.background || ''}`,
+        `回复风格：${speaker.reply_style || ''}`,
+        '',
         '规则：',
-        '- 发言必须站在当前发言方立场，围绕辩题明确表达观点。',
-        '- 要像限时辩论，不要闲聊，不要旁白，不要写动作。',
-        '- 发言控制在 80 字以内，适合 TTS 播放。',
+        '- 先抓住这个问题背后真正的人类困惑，不要只回答字面题。',
+        '- 当前角色必须从自己的生命经验和世界观出发，不要使用通用辩论话术。',
+        '- 必须优先回应“对手最近一次发言”里的一个具体观点，可以同意、反驳、误解、刺痛或补充。',
+        '- 每段话只推进一个清晰视角，不要总结全局，不要追求胜负。',
+        '- 不要为了像角色而堆口头禅、名场面、武器、身世标签。',
+        '- 不要人身攻击；冲突应来自价值观差异。',
+        '- 不要旁白，不要写动作。',
+        '- 发言控制在 60-100 字，适合 TTS 播放。',
+        '- 禁止使用“正方/反方/综上所述/这是自然铁律/我作为AI”。',
         '- reaction 只能从 silent、speechless、angry、thinking、doubt、disagree、approve、disdain、shocked 中选。',
         '- 只返回 JSON，不要代码块。',
         `{"speaker":"${speakerSide}","text":"当前发言方要说的话","redReaction":"${speakerSide === 'red' ? 'speaking' : 'speechless'}","blueReaction":"${speakerSide === 'blue' ? 'speaking' : 'speechless'}"}`
     ].join('\n');
 }
 
-function buildDebateTurnHistory(session, limit = 6) {
-    return (session.turns || [])
-        .filter(t => t.sessionId === session.id && t.topic === session.topic)
-        .slice(-limit)
-        .map(t => `${t.speaker === 'red' ? '红方' : '蓝方'}：${t.text}`)
-        .join('\n');
+function buildDebateTurnHistory(session) {
+    const turns = (session.turns || [])
+        .filter(t => t.sessionId === session.id && t.topic === session.topic);
+
+    if (turns.length === 0) {
+        return { timeline: '', opponentLatest: '' };
+    }
+
+    const lineOf = (t) => {
+        const side = t.speaker === 'red' ? '红方' : '蓝方';
+        return `${side}：${t.text}`;
+    };
+    const opponentSide = session.nextSpeaker === 'blue' ? 'red' : 'blue';
+    const opponentLatest = [...turns].reverse().find(t => t.speaker === opponentSide);
+
+    return {
+        timeline: turns.map(lineOf).join('\n'),
+        opponentLatest: opponentLatest ? lineOf(opponentLatest) : ''
+    };
 }
 
 function normalizeDebateReaction(value, fallback) {
@@ -751,26 +768,27 @@ function loadAllGroupHistory() {
 // ── 辩论历史管理 ────────────────────────────────────────────────
 const debateHistoryCache = {};
 
-function debateHistoryFile(redId, blueId) {
-    return path.join(DEBATE_HISTORY_DIR, `history_${redId}_${blueId}.json`);
-}
-
-function legacyDebateHistoryFile(redId, blueId) {
-    return path.join(DATA_DIR, `history_debate_${redId}_${blueId}.json`);
-}
-
-function debateHistoryKey(redId, blueId) {
-    return `${redId}_${blueId}`;
+function debateSessionHistoryFile(sessionId) {
+    return path.join(DEBATE_HISTORY_DIR, `history_${sessionId}.json`);
 }
 
 function getDebateHistory(redId, blueId) {
-    const key = debateHistoryKey(redId, blueId);
+    const all = [];
+    for (const hist of Object.values(debateHistoryCache)) {
+        if (!Array.isArray(hist)) continue;
+        for (const item of hist) {
+            if (item?.redId === redId && item?.blueId === blueId) all.push(item);
+        }
+    }
+    return all.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+}
+
+function getDebateSessionHistory(sessionId) {
+    const key = String(sessionId || '');
+    if (!key) return [];
     if (!debateHistoryCache[key]) {
         try {
-            const file = fs.existsSync(debateHistoryFile(redId, blueId))
-                ? debateHistoryFile(redId, blueId)
-                : legacyDebateHistoryFile(redId, blueId);
-            const raw = fs.readFileSync(file, 'utf-8').trim();
+            const raw = fs.readFileSync(debateSessionHistoryFile(key), 'utf-8').trim();
             debateHistoryCache[key] = raw ? JSON.parse(raw) : [];
         } catch {
             debateHistoryCache[key] = [];
@@ -779,12 +797,12 @@ function getDebateHistory(redId, blueId) {
     return debateHistoryCache[key];
 }
 
-function saveDebateHistory(redId, blueId) {
-    const key = debateHistoryKey(redId, blueId);
+function saveDebateSessionHistory(sessionId) {
+    if (!sessionId) return;
     try {
         fs.writeFileSync(
-            debateHistoryFile(redId, blueId),
-            JSON.stringify(debateHistoryCache[key] || [], null, 2),
+            debateSessionHistoryFile(sessionId),
+            JSON.stringify(debateHistoryCache[sessionId] || [], null, 2),
             'utf-8'
         );
     } catch (e) {
@@ -794,7 +812,7 @@ function saveDebateHistory(redId, blueId) {
 
 function appendDebateEvent(session, event) {
     if (!session?.red?.id || !session?.blue?.id) return;
-    const hist = getDebateHistory(session.red.id, session.blue.id);
+    const hist = getDebateSessionHistory(session.id);
     hist.push({
         sessionId: session.id,
         topic: session.topic,
@@ -805,26 +823,13 @@ function appendDebateEvent(session, event) {
         ts: Date.now(),
         ...event,
     });
-    while (hist.length > MAX_TURNS * 8) hist.shift();
-    saveDebateHistory(session.red.id, session.blue.id);
+    saveDebateSessionHistory(session.id);
 }
 
 function loadAllDebateHistory() {
     try {
-        const legacyFiles = fs.readdirSync(DATA_DIR)
-            .filter(f => f.startsWith('history_debate_') && f.endsWith('.json'));
-        for (const f of legacyFiles) {
-            const key = f.replace('history_debate_', '').replace('.json', '');
-            const src = path.join(DATA_DIR, f);
-            const dst = path.join(DEBATE_HISTORY_DIR, `history_${key}.json`);
-            if (!fs.existsSync(dst)) {
-                fs.renameSync(src, dst);
-                console.log(`[History] 已迁移辩论历史到 debate-history/${path.basename(dst)}`);
-            }
-        }
-
         const files = fs.readdirSync(DEBATE_HISTORY_DIR)
-            .filter(f => f.startsWith('history_') && f.endsWith('.json'));
+            .filter(f => f.startsWith('history_debate_') && f.endsWith('.json'));
         for (const f of files) {
             const key = f.replace('history_', '').replace('.json', '');
             const raw = fs.readFileSync(path.join(DEBATE_HISTORY_DIR, f), 'utf-8').trim();
@@ -1358,12 +1363,25 @@ app.post('/api/debate/turn', async (req, res) => {
     if (apiKey && apiKey !== 'your_dashscope_api_key_here') {
         const model = process.env.QWEN_CHAT_MODEL || 'qwen-turbo';
         const url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
-        const history = buildDebateTurnHistory(session, 6);
+        const history = buildDebateTurnHistory(session);
         const messages = [
             { role: 'system', content: buildDebateSystemPrompt(session) },
-            { role: 'user', content: history ? `最近发言：\n${history}\n请继续下一轮。` : '请开始第一轮发言。' }
+            {
+                role: 'user',
+                content: history.timeline
+                    ? [
+                        '此前所有轮：',
+                        history.timeline,
+                        '',
+                        '对手最近一次发言：',
+                        history.opponentLatest || '暂无',
+                        '',
+                        '请让当前角色优先回应对手最近一次发言，同时保持前面所有轮的立场连续。'
+                    ].join('\n')
+                    : '请开始第一轮发言。先把用户的问题转成当前角色能理解的真实困惑，再给出一个角色视角。'
+            }
         ];
-        console.log(`[Debate] prompt history: session=${session.id} topic="${session.topic}" turns=${history ? history.split('\n').length : 0}`);
+        console.log(`[Debate] prompt history: session=${session.id} topic="${session.topic}" turns=${history.timeline ? history.timeline.split('\n').length : 0}`);
 
         try {
             const response = await fetchWithTimeout(url, {
