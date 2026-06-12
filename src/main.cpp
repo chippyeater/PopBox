@@ -79,6 +79,14 @@ void setup() {
     // 连接 WiFi（同时解析 mDNS）
     connectWiFi();
 
+    // 初始化爆灯按钮 & LED（GPIO 模式）
+    pinMode(PIN_BTN_RED,  INPUT_PULLUP);
+    pinMode(PIN_BTN_BLUE, INPUT_PULLUP);
+    pinMode(PIN_LED_RED,  OUTPUT);
+    pinMode(PIN_LED_BLUE, OUTPUT);
+    digitalWrite(PIN_LED_RED,  LOW);
+    digitalWrite(PIN_LED_BLUE, LOW);
+
     // 从后端拉取角色列表（自动降级到 SPIFFS 离线缓存）
     if (!charMgr.fetchAll()) {
         showBootError("角色数据加载失败\n请确认后端已启动");

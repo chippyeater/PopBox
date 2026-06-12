@@ -250,7 +250,9 @@ const MINIMAX_VOICE_MAP = {
     '小野人': 'Chinese (Mandarin)_Unrestrained_Young_Man',
     '齐妃': 'qifei_v2',
     '甄嬛': 'qifei_v2',
-    '斯蒂芬·库里': 'curry_popbox'
+    '斯蒂芬·库里': 'curry_popbox',
+    '林黛玉': 'lindaiyu_v1',
+    '孙悟空': 'sunwukong_v1',
 };
 
 // 无匹配时的 fallback 音色
@@ -1337,7 +1339,7 @@ app.post('/api/debate/start', (req, res) => {
         score: session.score,
         redScore: session.score,
         blueScore: 100 - session.score,
-        durationSec: 60
+        durationSec: 120
     });
 });
 

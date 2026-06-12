@@ -107,4 +107,10 @@ private:
     bool     _debateNextTurnPending = false;
     uint32_t _lastDebateTopicWaveMs = 0;
     int      _lastDebateTopicWaveLevel = -1;
+
+    // ── 实体按钮爆灯 & LED ═══════════════════════════════════
+    static constexpr uint32_t BTN_DEBOUNCE_MS = 50;
+    static constexpr uint32_t LED_ON_MS       = 2000;
+    uint32_t _lastBtnCheckMs = 0;
+    uint32_t _ledOffAtMs     = 0;
 };

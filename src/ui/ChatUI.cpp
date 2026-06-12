@@ -124,6 +124,27 @@ void ChatUI::update() {
             _requestDebateTurn();
             return;
         }
+
+        // ── 实体按钮爆灯轮询（带 50ms 去抖）──────────────
+        uint32_t now = millis();
+        if (_state == AppState::DEBATE_TURN && now - _lastBtnCheckMs >= BTN_DEBOUNCE_MS) {
+            _lastBtnCheckMs = now;
+            if (digitalRead(PIN_BTN_RED) == LOW) {
+                digitalWrite(PIN_LED_RED, HIGH);
+                _ledOffAtMs = now + LED_ON_MS;
+                triggerDebateBoom(DisplayManager::StageSide::Red);
+            } else if (digitalRead(PIN_BTN_BLUE) == LOW) {
+                digitalWrite(PIN_LED_BLUE, HIGH);
+                _ledOffAtMs = now + LED_ON_MS;
+                triggerDebateBoom(DisplayManager::StageSide::Blue);
+            }
+        }
+        // LED 自动熄灭
+        if (_ledOffAtMs != 0 && now >= _ledOffAtMs) {
+            digitalWrite(PIN_LED_RED, LOW);
+            digitalWrite(PIN_LED_BLUE, LOW);
+            _ledOffAtMs = 0;
+        }
     }
 
     // ── 声波动画（CHATTING 状态始终显示呼吸指示器）──
