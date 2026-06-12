@@ -57,29 +57,12 @@ static void showBootError(const char* msg) {
     M5.Display.println(msg);
 }
 
-// ── 硬件自检（按钮 + LED）────────────────────────────────────
+// ── 硬件自检（按钮检测）────────────────────────────────────
 static void runHwSelfTest() {
-    M5.Display.fillScreen(0x000000);
-    M5.Display.setTextColor(0xFFFFFF);
-    M5.Display.setTextSize(2);
-    M5.Display.setCursor(10, 10);
-    M5.Display.println("硬件自检");
-    M5.Display.setTextSize(1);
-    M5.Display.setCursor(10, 40);
-    M5.Display.println("LED 测试中...");
-    delay(500);
+    Serial.println("[自检] 按钮检测中...");
+    pinMode(18, INPUT_PULLUP);  // Grove C - 红方
+    pinMode(8,  INPUT_PULLUP);  // Grove B - 蓝方
 
-    // ── LED 测试：逐个亮灭 3 次 ──
-    for (int i = 0; i < 3; i++) {
-        digitalWrite(PIN_LED_RED, HIGH);
-        digitalWrite(PIN_LED_BLUE, HIGH);
-        delay(300);
-        digitalWrite(PIN_LED_RED, LOW);
-        digitalWrite(PIN_LED_BLUE, LOW);
-        if (i < 2) delay(200);
-    }
-
-    // ── 按钮测试 ──
     M5.Display.fillScreen(0x000000);
     M5.Display.setTextColor(0xFFFFFF);
     M5.Display.setTextSize(2);
@@ -87,59 +70,46 @@ static void runHwSelfTest() {
     M5.Display.println("按钮测试");
     M5.Display.setTextSize(1);
     M5.Display.setCursor(10, 40);
-    M5.Display.println("请依次按红色、蓝色按钮");
+    M5.Display.println("红方 (Grove C): 按一下");
     M5.Display.setCursor(10, 55);
-    M5.Display.println("（可直接触摸屏幕跳过）");
+    M5.Display.println("蓝方 (Grove B): 按一下");
+    M5.Display.setCursor(10, 75);
+    M5.Display.println("触摸屏幕跳过");
 
-    // 状态标记
-    bool redDone = false, blueDone = false;
-    uint32_t testStart = millis();
+    bool redOk = false, blueOk = false;
+    uint32_t t0 = millis();
 
-    while (!redDone || !blueDone) {
-        if (millis() - testStart > 15000) break;  // 15 秒超时自动跳过
-
+    while (!redOk || !blueOk) {
+        if (millis() - t0 > 20000) break;
         M5.update();
-        auto t = M5.Touch.getDetail();
+        if (M5.Touch.getDetail().isPressed()) break;
 
-        // 红色按钮
-        if (!redDone && digitalRead(PIN_BTN_RED) == LOW) {
-            redDone = true;
-            digitalWrite(PIN_LED_RED, HIGH);
-            M5.Display.setCursor(10, 75);
+        if (!redOk && digitalRead(18) == LOW) {
+            redOk = true;
+            Serial.println("[自检] 红方按钮 OK (GPIO18)");
+            M5.Display.setCursor(10, 95);
             M5.Display.setTextColor(0xFF0000);
-            M5.Display.println("红色按钮 OK");
+            M5.Display.println("红方 OK!");
         }
-
-        // 蓝色按钮
-        if (!blueDone && digitalRead(PIN_BTN_BLUE) == LOW) {
-            blueDone = true;
-            digitalWrite(PIN_LED_BLUE, HIGH);
-            M5.Display.setCursor(10, 90);
+        if (!blueOk && digitalRead(8) == LOW) {
+            blueOk = true;
+            Serial.println("[自检] 蓝方按钮 OK (GPIO8)");
+            M5.Display.setCursor(10, 110);
             M5.Display.setTextColor(0x0000FF);
-            M5.Display.println("蓝色按钮 OK");
+            M5.Display.println("蓝方 OK!");
         }
-
-        // 触摸屏幕直接跳过
-        if (t.isPressed()) break;
-
         delay(20);
     }
-
-    // 关闭所有 LED
-    digitalWrite(PIN_LED_RED, LOW);
-    digitalWrite(PIN_LED_BLUE, LOW);
 
     M5.Display.fillScreen(0x000000);
     M5.Display.setTextColor(0xFFFFFF);
     M5.Display.setTextSize(2);
     M5.Display.setCursor(10, 10);
-    M5.Display.println("自检完成");
+    M5.Display.println("按钮结果");
     M5.Display.setTextSize(1);
     M5.Display.setCursor(10, 40);
-    M5.Display.printf("红按钮: %s\n", redDone ? "OK" : "未检测到");
-    M5.Display.printf("蓝按钮: %s\n", blueDone ? "OK" : "未检测到");
-    M5.Display.setCursor(10, 75);
-    M5.Display.println("即将进入主界面...");
+    M5.Display.printf("红方: %s\n", redOk ? "OK" : "未检测到");
+    M5.Display.printf("蓝方: %s\n", blueOk ? "OK" : "未检测到");
     delay(1500);
 }
 
@@ -165,13 +135,11 @@ void setup() {
     // 连接 WiFi（同时解析 mDNS）
     connectWiFi();
 
-    // 初始化爆灯按钮 & LED（GPIO 模式）
-    pinMode(PIN_BTN_RED,  INPUT_PULLUP);
-    pinMode(PIN_BTN_BLUE, INPUT_PULLUP);
-    pinMode(PIN_LED_RED,  OUTPUT);
-    pinMode(PIN_LED_BLUE, OUTPUT);
-    digitalWrite(PIN_LED_RED,  LOW);
-    digitalWrite(PIN_LED_BLUE, LOW);
+    // 初始化爆灯按钮 & LED（GPIO 模式，-1 表示未接则跳过）
+    if (PIN_BTN_RED >= 0)   pinMode(PIN_BTN_RED,  INPUT_PULLUP);
+    if (PIN_BTN_BLUE >= 0)  pinMode(PIN_BTN_BLUE, INPUT_PULLUP);
+    if (PIN_LED_RED >= 0)  { pinMode(PIN_LED_RED,  OUTPUT); digitalWrite(PIN_LED_RED,  LOW); }
+    if (PIN_LED_BLUE >= 0) { pinMode(PIN_LED_BLUE, OUTPUT); digitalWrite(PIN_LED_BLUE, LOW); }
 
     // 硬件自检：LED 亮灭 + 按钮按下检测（触摸屏幕可跳过）
     runHwSelfTest();

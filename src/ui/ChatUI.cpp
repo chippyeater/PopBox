@@ -119,30 +119,46 @@ void ChatUI::update() {
             _display.updateDebateProgress(_debateScore);
             _state = AppState::DEBATE_TURN;
         }
-        if (_state == AppState::DEBATE_TURN && _debateNextTurnPending) {
+        // ── 按钮投票：按按钮才记录爆灯，然后进入下一轮 ──────────
+        uint32_t now = millis();
+        if (_state == AppState::DEBATE_TURN && now - _lastBtnCheckMs >= BTN_DEBOUNCE_MS) {
+            _lastBtnCheckMs = now;
+            bool pressed = false;
+            if (PIN_BTN_RED >= 0 && digitalRead(PIN_BTN_RED) == LOW) {
+                if (PIN_LED_RED >= 0) { digitalWrite(PIN_LED_RED, HIGH); }
+                _ledOffAtMs = now + LED_ON_MS;
+                triggerDebateBoom(DisplayManager::StageSide::Red);
+                pressed = true;
+            } else if (PIN_BTN_BLUE >= 0 && digitalRead(PIN_BTN_BLUE) == LOW) {
+                if (PIN_LED_BLUE >= 0) { digitalWrite(PIN_LED_BLUE, HIGH); }
+                _ledOffAtMs = now + LED_ON_MS;
+                triggerDebateBoom(DisplayManager::StageSide::Blue);
+                pressed = true;
+            }
+            // 按按钮后进入 boom 动画，动画结束后自动下一轮
+            if (pressed && _state != AppState::DEBATE_RESULT) {
+                _debateNextTurnPending = true; // 动画结束后请求下一轮
+            }
+        }
+        // BOOM 动画结束后 → 回到 TURN 状态并触发下一轮
+        if (_state != AppState::DEBATE_RESULT
+            && _state != AppState::DEBATE_BOOM
+            && _debateNextTurnPending) {
             _debateNextTurnPending = false;
             _requestDebateTurn();
             return;
         }
-
-        // ── 实体按钮爆灯轮询（带 50ms 去抖）──────────────
-        uint32_t now = millis();
-        if (_state == AppState::DEBATE_TURN && now - _lastBtnCheckMs >= BTN_DEBOUNCE_MS) {
-            _lastBtnCheckMs = now;
-            if (digitalRead(PIN_BTN_RED) == LOW) {
-                digitalWrite(PIN_LED_RED, HIGH);
-                _ledOffAtMs = now + LED_ON_MS;
-                triggerDebateBoom(DisplayManager::StageSide::Red);
-            } else if (digitalRead(PIN_BTN_BLUE) == LOW) {
-                digitalWrite(PIN_LED_BLUE, HIGH);
-                _ledOffAtMs = now + LED_ON_MS;
-                triggerDebateBoom(DisplayManager::StageSide::Blue);
-            }
+        // 按按钮超时（8秒内无操作自动进入下一轮）
+        if (_state == AppState::DEBATE_TURN
+            && millis() - _debateTurnStartedMs > 8000) {
+            _debateNextTurnPending = false;
+            _requestDebateTurn();
+            return;
         }
         // LED 自动熄灭
         if (_ledOffAtMs != 0 && now >= _ledOffAtMs) {
-            digitalWrite(PIN_LED_RED, LOW);
-            digitalWrite(PIN_LED_BLUE, LOW);
+            if (PIN_LED_RED >= 0)  digitalWrite(PIN_LED_RED, LOW);
+            if (PIN_LED_BLUE >= 0) digitalWrite(PIN_LED_BLUE, LOW);
             _ledOffAtMs = 0;
         }
     }
@@ -561,7 +577,7 @@ void ChatUI::_requestDebateTurn() {
     }
     _display.updateDebateTimer(left);
     _lastDebateSecond = left;
-    _debateNextTurnPending = true;
+    _debateTurnStartedMs = millis();  // 记录本轮开始，用于按钮等待超时
 }
 
 void ChatUI::triggerDebateBoom(DisplayManager::StageSide side) {

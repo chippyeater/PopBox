@@ -53,13 +53,13 @@
 #endif
 
 // ── 实体按钮爆灯 & LED ═══════════════════════════════════════
-#define PIN_BTN_RED   18   // Grove C
-#define PIN_LED_RED    2   // Grove A
-#define PIN_BTN_BLUE   9   // Grove B (via Hub, GPIO9)
-#define PIN_LED_BLUE   8   // Grove B (via Hub, GPIO8)
+#define PIN_BTN_RED   18   // Grove C 按钮（红方）
+#define PIN_BTN_BLUE   8   // Grove B 按钮（蓝方）
+#define PIN_LED_RED    -1   // 未接
+#define PIN_LED_BLUE   -1   // 未接
 
 // ── 辩论模式配置 ══════════════════════════════════════════════
 #define DEBATE_INITIAL_SCORE      50
 #define DEBATE_BOOM_DELTA         15
 #define DEBATE_WIN_SCORE          100
-#define DEBATE_TURN_SECONDS       60
+#define DEBATE_TURN_SECONDS       180
