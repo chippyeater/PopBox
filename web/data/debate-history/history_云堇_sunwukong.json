@@ -1,0 +1,31 @@
+[
+  {
+    "sessionId": "debate_3e515edf-7d68-4616-a7f4-5ab287649873",
+    "topic": "看看这个能不能拆吧，你们今天。觉得如果我不做作业的话，是一件好事情吗？",
+    "redId": "云堇",
+    "redName": "云堇",
+    "blueId": "sunwukong",
+    "blueName": "孙悟空",
+    "ts": 1781181174215,
+    "type": "start",
+    "speaker": "red",
+    "score": 50
+  },
+  {
+    "sessionId": "debate_3e515edf-7d68-4616-a7f4-5ab287649873",
+    "topic": "看看这个能不能拆吧，你们今天。觉得如果我不做作业的话，是一件好事情吗？",
+    "redId": "云堇",
+    "redName": "云堇",
+    "blueId": "sunwukong",
+    "blueName": "孙悟空",
+    "ts": 1781181176058,
+    "type": "turn",
+    "speaker": "red",
+    "speakerName": "云堇",
+    "text": "客官请了。不做作业？这便如戏台缺了唱念做打，根基不稳，何以登台？云某以为，勤勉修习方能积淀功底，今日偷懒，明日如何演好人生这出大戏呢？",
+    "redReaction": "speaking",
+    "blueReaction": "disdain",
+    "score": 50,
+    "winner": null
+  }
+]

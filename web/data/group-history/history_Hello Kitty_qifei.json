@@ -1,0 +1,21 @@
+[
+  {
+    "role": "user",
+    "content": "你们好呀，你们下午都在干什么？",
+    "ts": 1780297658074
+  },
+  {
+    "role": "assistant",
+    "characterId": "Hello Kitty",
+    "characterName": "Hello Kitty",
+    "content": "我在窗边晒太阳呢，看着云卷云舒，想象它们变成棉花糖的样子。你呢？有没有吃点甜甜的东西呀？(happy)",
+    "ts": 1780297658074
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "本宫刚给三阿哥缝完新衣裳，针脚细着呢。他如今长高了，衣服总得备着。你们家孩子也这么大了吗？",
+    "ts": 1780297658074
+  }
+]

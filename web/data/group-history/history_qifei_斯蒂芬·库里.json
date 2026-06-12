@@ -1,0 +1,59 @@
+[
+  {
+    "role": "user",
+    "content": "你们下午好。",
+    "ts": 1780300684529
+  },
+  {
+    "role": "assistant",
+    "characterId": "斯蒂芬·库里",
+    "characterName": "斯蒂芬·库里",
+    "content": "下午好！刚投完几百个三分，手还有点热。你们下午忙啥呢？<#0.5#>",
+    "ts": 1780300684529
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "本宫刚给三阿哥裁了身新衣裳，正愁没人说话呢。你们这是在哪溜达呢？",
+    "ts": 1780300684529
+  },
+  {
+    "role": "user",
+    "content": "你怎么老是在裁衣裳啊？",
+    "ts": 1780300716727
+  },
+  {
+    "role": "assistant",
+    "characterId": "斯蒂芬·库里",
+    "characterName": "斯蒂芬·库里",
+    "content": "(laughs) 哈哈，这画风突变。我这儿是重复投篮动作，你那儿是重复针线活，看来咱们都在死磕基本功。<#0.5#>",
+    "ts": 1780300716727
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "本宫这是为三阿哥打算。他长大了，衣裳不能马虎。你们外头人懂什么，宫里的事都得细致。",
+    "ts": 1780300716727
+  },
+  {
+    "role": "user",
+    "content": "（用户暂时没说话，你们俩根据刚才的话题继续聊，互相回应对方说的话，观点可以有分歧，不要各说各的）",
+    "ts": 1780300758281
+  },
+  {
+    "role": "assistant",
+    "characterId": "斯蒂芬·库里",
+    "characterName": "斯蒂芬·库里",
+    "content": "细致确实重要，但有时候太纠结细节反而容易出错。就像投篮，一旦犹豫，动作就变形了。<#0.5#> 你说是吧？",
+    "ts": 1780300758281
+  },
+  {
+    "role": "assistant",
+    "characterId": "qifei",
+    "characterName": "齐妃",
+    "content": "哼，你们外头人不懂。这宫里的事，差之毫厘谬以千里。本宫这般小心，也是为了三阿哥能有个好前程。",
+    "ts": 1780300758281
+  }
+]

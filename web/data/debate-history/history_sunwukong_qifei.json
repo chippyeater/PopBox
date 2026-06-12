@@ -1,0 +1,48 @@
+[
+  {
+    "sessionId": "debate_31243964-37d4-4f73-b98c-be7cf922a39c",
+    "topic": "你们觉得。我做作业没做完，能直接睡觉吗？明天就直接跟老师讲，我作业没做完。",
+    "redId": "sunwukong",
+    "redName": "孙悟空",
+    "blueId": "qifei",
+    "blueName": "齐妃",
+    "ts": 1781177931266,
+    "type": "start",
+    "speaker": "red",
+    "score": 50
+  },
+  {
+    "sessionId": "debate_31243964-37d4-4f73-b98c-be7cf922a39c",
+    "topic": "你们觉得。我做作业没做完，能直接睡觉吗？明天就直接跟老师讲，我作业没做完。",
+    "redId": "sunwukong",
+    "redName": "孙悟空",
+    "blueId": "qifei",
+    "blueName": "齐妃",
+    "ts": 1781177933116,
+    "type": "turn",
+    "speaker": "red",
+    "speakerName": "孙悟空",
+    "text": "俺老孙看你这小娃娃，莫不是想偷懒耍滑？作业未竟便睡，明日去跟先生交代？哼！这等欺瞒之举，岂是光明磊落汉子所为？既做了就要担着，休想逃避！",
+    "redReaction": "speaking",
+    "blueReaction": "speechless",
+    "score": 50,
+    "winner": null
+  },
+  {
+    "sessionId": "debate_31243964-37d4-4f73-b98c-be7cf922a39c",
+    "topic": "你们觉得。我做作业没做完，能直接睡觉吗？明天就直接跟老师讲，我作业没做完。",
+    "redId": "sunwukong",
+    "redName": "孙悟空",
+    "blueId": "qifei",
+    "blueName": "齐妃",
+    "ts": 1781177961707,
+    "type": "turn",
+    "speaker": "blue",
+    "speakerName": "齐妃",
+    "text": "哼，你懂什么规矩！本宫只知，三阿哥若因疲惫误了明日晨读，岂不耽误前程？养足精神，明日再从容请罪，方显体统。你这泼猴，休要胡搅蛮缠！",
+    "redReaction": "disdain",
+    "blueReaction": "speaking",
+    "score": 50,
+    "winner": null
+  }
+]

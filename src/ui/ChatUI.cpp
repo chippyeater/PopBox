@@ -101,7 +101,7 @@ void ChatUI::update() {
             _lastDebateTopicWaveLevel = level;
             _display.updateDebateEntryTopicWave(level);
         }
-    } else if (_state == AppState::DEBATE_TURN || _state == AppState::DEBATE_BOOM) {
+    } else if (_state == AppState::DEBATE_TURN) {
         int elapsed = (int)((millis() - _debateStartedMs) / 1000);
         int left = max(0, DEBATE_TURN_SECONDS - elapsed);
         if (left != _lastDebateSecond) {
@@ -112,46 +112,24 @@ void ChatUI::update() {
             _finishDebateByScore();
             return;
         }
-        if (_state == AppState::DEBATE_BOOM
-            && millis() - _debateBoomShownAtMs > 1500) {
-            _display.updateDebateTurnView(_redName, _blueName, _debateSpeaker,
-                                          _debateRedExpression, _debateBlueExpression);
-            _display.updateDebateProgress(_debateScore);
-            _state = AppState::DEBATE_TURN;
-        }
-        // ── 按钮投票：按按钮才记录爆灯，然后进入下一轮 ──────────
+        // ── 按钮爆灯：两个按钮都投给当前发言方，只刷新对抗条 ────
         uint32_t now = millis();
         if (_state == AppState::DEBATE_TURN && now - _lastBtnCheckMs >= BTN_DEBOUNCE_MS) {
             _lastBtnCheckMs = now;
             bool pressed = false;
-            if (PIN_BTN_RED >= 0 && digitalRead(PIN_BTN_RED) == LOW) {
-                if (PIN_LED_RED >= 0) { digitalWrite(PIN_LED_RED, HIGH); }
-                _ledOffAtMs = now + LED_ON_MS;
-                triggerDebateBoom(DisplayManager::StageSide::Red);
-                pressed = true;
-            } else if (PIN_BTN_BLUE >= 0 && digitalRead(PIN_BTN_BLUE) == LOW) {
-                if (PIN_LED_BLUE >= 0) { digitalWrite(PIN_LED_BLUE, HIGH); }
-                _ledOffAtMs = now + LED_ON_MS;
-                triggerDebateBoom(DisplayManager::StageSide::Blue);
+            if ((PIN_BTN_RED >= 0 && digitalRead(PIN_BTN_RED) == LOW)
+             || (PIN_BTN_BLUE >= 0 && digitalRead(PIN_BTN_BLUE) == LOW)) {
+                triggerDebateBoom(_debateSpeaker);
                 pressed = true;
             }
-            // 按按钮后进入 boom 动画，动画结束后自动下一轮
             if (pressed && _state != AppState::DEBATE_RESULT) {
-                _debateNextTurnPending = true; // 动画结束后请求下一轮
+                _requestDebateTurn();  // 爆灯后立即进入下一轮
+                return;
             }
         }
-        // BOOM 动画结束后 → 回到 TURN 状态并触发下一轮
-        if (_state != AppState::DEBATE_RESULT
-            && _state != AppState::DEBATE_BOOM
-            && _debateNextTurnPending) {
-            _debateNextTurnPending = false;
-            _requestDebateTurn();
-            return;
-        }
-        // 按按钮超时（8秒内无操作自动进入下一轮）
+        // 无操作超时（8 秒自动进入下一轮）
         if (_state == AppState::DEBATE_TURN
             && millis() - _debateTurnStartedMs > 8000) {
-            _debateNextTurnPending = false;
             _requestDebateTurn();
             return;
         }
@@ -582,18 +560,17 @@ void ChatUI::_requestDebateTurn() {
 
 void ChatUI::triggerDebateBoom(DisplayManager::StageSide side) {
     if (_state != AppState::DEBATE_TURN || side == DisplayManager::StageSide::None) return;
+    // 当前发言方得分
     if (side == DisplayManager::StageSide::Red) {
         _debateScore = min(100, _debateScore + DEBATE_BOOM_DELTA);
     } else {
         _debateScore = max(0, _debateScore - DEBATE_BOOM_DELTA);
     }
 
-    int elapsed = (int)((millis() - _debateStartedMs) / 1000);
-    int left = max(0, DEBATE_TURN_SECONDS - elapsed);
-    _display.drawDebateBoom(side, _debateScore, left);
-    _lastDebateSecond = left;
-    _debateBoomShownAtMs = millis();
-    _state = AppState::DEBATE_BOOM;
+    Serial.printf("[Debate] 爆灯! %s +%d 分 | 总分: %d\n",
+                  side == DisplayManager::StageSide::Red ? "红方" : "蓝方",
+                  DEBATE_BOOM_DELTA, _debateScore);
+    _display.updateDebateProgress(_debateScore);  // 只刷新对抗条
     _finishDebateIfNeeded();
 }
 
@@ -626,7 +603,7 @@ void ChatUI::_finishDebateByScore() {
 }
 
 void ChatUI::_tickDebateTimerDuringBlocking() {
-    if (_state != AppState::DEBATE_TURN && _state != AppState::DEBATE_BOOM) return;
+    if (_state != AppState::DEBATE_TURN) return;
     int elapsed = (int)((millis() - _debateStartedMs) / 1000);
     int left = max(0, DEBATE_TURN_SECONDS - elapsed);
     if (left != _lastDebateSecond) {
@@ -691,7 +668,7 @@ void ChatUI::_handleTouch() {
         return;
     }
 
-    if (_state == AppState::DEBATE_TURN || _state == AppState::DEBATE_BOOM) {
+    if (_state == AppState::DEBATE_TURN) {
         if (hitRect(t.x, t.y, DEBATE_EXIT_X, DEBATE_EXIT_Y,
                     DEBATE_EXIT_W, DEBATE_EXIT_H)) {
             _recorder.stopListening();

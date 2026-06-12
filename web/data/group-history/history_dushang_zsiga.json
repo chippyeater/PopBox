@@ -1,0 +1,21 @@
+[
+  {
+    "role": "user",
+    "content": "你好呀。",
+    "ts": 1780392981009
+  },
+  {
+    "role": "assistant",
+    "characterId": "dushang",
+    "characterName": "杜尚",
+    "content": "你好。这声问候像把钥匙，不知道能打开哪扇无聊的门。<#0.5#>今天想聊点什么？还是什么都不聊？",
+    "ts": 1780392981009
+  },
+  {
+    "role": "assistant",
+    "characterId": "zsiga",
+    "characterName": "Zsiga",
+    "content": "嗯... 只是打个招呼吗？感觉空气突然安静了。我有点不习惯这么平静的开始...",
+    "ts": 1780392981009
+  }
+]
