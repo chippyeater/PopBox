@@ -74,5 +74,43 @@
     "characterName": "林黛玉",
     "content": "我不过是个多病之人，闲时便对着落花流泪，或是填几首词消遣。哪像他那般精力旺盛，整日里闹个不停，看着都累。",
     "ts": 1781169152648
+  },
+  {
+    "role": "user",
+    "content": "你们好像你们这间都干了点啥？",
+    "ts": 1781257427339
+  },
+  {
+    "role": "assistant",
+    "characterId": "lindaiyu",
+    "characterName": "林黛玉",
+    "content": "我不过是对着那阶前的落花，又叹了几声命薄。这身子骨，连走两步都喘，哪有什么能干的大事？倒是你，怎的问起这些琐事来。<sighs>",
+    "ts": 1781257427339
+  },
+  {
+    "role": "assistant",
+    "characterId": "sunwukong",
+    "characterName": "孙悟空",
+    "content": "嘿嘿，俺老孙刚在院里翻了几个跟头，把那块青石板都震裂了！正愁没处显摆本事呢。你这凡人，眼光倒毒，一眼瞧见俺老孙的威风了？(chuckle)",
+    "ts": 1781257427339
+  },
+  {
+    "role": "user",
+    "content": "你们今天都干了点啥呀？",
+    "ts": 1781257940045
+  },
+  {
+    "role": "assistant",
+    "characterId": "lindaiyu",
+    "characterName": "林黛玉",
+    "content": "我哪有什么正经事做？不过是看着窗外那几竿竹子，风一吹，沙沙作响，惹得我心里烦闷，又填了一阕《唐多令》罢了。<sighs>",
+    "ts": 1781257940045
+  },
+  {
+    "role": "assistant",
+    "characterId": "sunwukong",
+    "characterName": "孙悟空",
+    "content": "俺老孙刚在云端打了个盹儿，醒来见这凡间景色不错，便摘了个仙桃啃着。嘿嘿，比那蟠桃园里的还甜！你这小娃娃，倒是好奇得很！",
+    "ts": 1781257940045
   }
 ]

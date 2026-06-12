@@ -79,7 +79,17 @@ ChatUI::ChatUI(CharacterManager& charMgr, AudioRecorder& recorder,
 
 void ChatUI::begin() {
     _display.begin();
-    _enterModeSelect();
+#if POPBOX_PREFILL_TEST_CHARACTERS
+    if (_prefillTestCharacters()) {
+        _charMgr.setDualMode(_redIndex, _blueIndex);
+        _isGroupChat = true;
+        _enterModeSelectAfterRecognition();
+        _idleStartMs = millis();
+        return;
+    }
+#endif
+    _display.drawRecognitionEntry(false, false);
+    _state = AppState::CHARACTER_COUNT;
     _idleStartMs = millis();
 }
 
@@ -112,15 +122,21 @@ void ChatUI::update() {
             _finishDebateByScore();
             return;
         }
-        // ── 按钮爆灯：两个按钮都投给当前发言方，只刷新对抗条 ────
+        // ── 按钮爆灯：只认当前发言方对应的按钮 ────────────
         uint32_t now = millis();
         if (_state == AppState::DEBATE_TURN && now - _lastBtnCheckMs >= BTN_DEBOUNCE_MS) {
             _lastBtnCheckMs = now;
             bool pressed = false;
-            if ((PIN_BTN_RED >= 0 && digitalRead(PIN_BTN_RED) == LOW)
-             || (PIN_BTN_BLUE >= 0 && digitalRead(PIN_BTN_BLUE) == LOW)) {
-                triggerDebateBoom(_debateSpeaker);
-                pressed = true;
+            if (_debateSpeaker == DisplayManager::StageSide::Red) {
+                if (PIN_BTN_RED >= 0 && digitalRead(PIN_BTN_RED) == HIGH) {
+                    triggerDebateBoom(DisplayManager::StageSide::Red);
+                    pressed = true;
+                }
+            } else {
+                if (PIN_BTN_BLUE >= 0 && digitalRead(PIN_BTN_BLUE) == HIGH) {
+                    triggerDebateBoom(DisplayManager::StageSide::Blue);
+                    pressed = true;
+                }
             }
             if (pressed && _state != AppState::DEBATE_RESULT) {
                 _requestDebateTurn();  // 爆灯后立即进入下一轮
@@ -132,12 +148,6 @@ void ChatUI::update() {
             && millis() - _debateTurnStartedMs > 8000) {
             _requestDebateTurn();
             return;
-        }
-        // LED 自动熄灭
-        if (_ledOffAtMs != 0 && now >= _ledOffAtMs) {
-            if (PIN_LED_RED >= 0)  digitalWrite(PIN_LED_RED, LOW);
-            if (PIN_LED_BLUE >= 0) digitalWrite(PIN_LED_BLUE, LOW);
-            _ledOffAtMs = 0;
         }
     }
 
@@ -225,6 +235,23 @@ void ChatUI::_enterModeSelect() {
     _debateNextTurnPending = false;
     _lastDebateTopicWaveMs = 0;
     _lastDebateTopicWaveLevel = -1;
+    _display.drawModeSelect();
+    _state = AppState::MODE_SELECT;
+    _idleStartMs = millis();
+}
+
+void ChatUI::_enterModeSelectAfterRecognition() {
+    _flowMode = FlowMode::None;
+    _debateTopic = "";
+    _debateSessionId = "";
+    _debateStartedMs = 0;
+    _dailySpeaker = DisplayManager::StageSide::None;
+    _lastDebateSecond = -1;
+    _debateViewReady = false;
+    _debateNextTurnPending = false;
+    _lastDebateTopicWaveMs = 0;
+    _lastDebateTopicWaveLevel = -1;
+    _debateScore = DEBATE_INITIAL_SCORE;
     _display.drawModeSelect();
     _state = AppState::MODE_SELECT;
     _idleStartMs = millis();
@@ -364,6 +391,18 @@ bool ChatUI::_recognizeStageSide(DisplayManager::StageSide side) {
 }
 
 void ChatUI::_afterStageRecognition() {
+    // 初始识别入口流程 — 用 bg0 + ct-* 背景，留在 CHARACTER_COUNT 状态
+    if (_flowMode == FlowMode::None) {
+        _display.drawRecognitionEntry(_redIndex >= 0, _blueIndex >= 0);
+        if (_redIndex >= 0 && _blueIndex >= 0 && _redIndex != _blueIndex) {
+            _charMgr.setDualMode(_redIndex, _blueIndex);
+            _isGroupChat = true;
+        }
+        _state = AppState::CHARACTER_COUNT;
+        _idleStartMs = millis();
+        return;
+    }
+
     const bool daily = _flowMode == FlowMode::Daily;
     _display.drawPartyEntry(!daily, _redIndex >= 0, _blueIndex >= 0);
     if (!daily && _redIndex >= 0 && _blueIndex >= 0 && _redIndex != _blueIndex) {
@@ -393,7 +432,7 @@ void ChatUI::_processDailyStageSpeech() {
     const auto& red = _charMgr.current();
     const auto& blue = _charMgr.secondary();
     if (!blue.isValid()) {
-        _enterModeSelect();
+        _enterModeSelectAfterRecognition();
         return;
     }
 
@@ -500,8 +539,6 @@ void ChatUI::_requestDebateTurn() {
         return;
     }
 
-    int previousScore = _debateScore;
-    _debateScore = constrain(turn.score, 0, 100);
     if (turn.winner == "red" || turn.winner == "blue") {
         _debateSpeaker = turn.winner == "blue"
             ? DisplayManager::StageSide::Blue
@@ -525,9 +562,6 @@ void ChatUI::_requestDebateTurn() {
     } else {
         _display.updateDebateTurnView(_redName, _blueName, _debateSpeaker,
                                       _debateRedExpression, _debateBlueExpression);
-        if (_debateScore != previousScore) {
-            _display.updateDebateProgress(_debateScore);
-        }
         _display.updateDebateTimer(left);
     }
     _lastDebateSecond = left;
@@ -572,6 +606,7 @@ void ChatUI::triggerDebateBoom(DisplayManager::StageSide side) {
                   DEBATE_BOOM_DELTA, _debateScore);
     _display.updateDebateProgress(_debateScore);  // 只刷新对抗条
     _finishDebateIfNeeded();
+
 }
 
 void ChatUI::_finishDebateIfNeeded() {
@@ -604,7 +639,24 @@ void ChatUI::_finishDebateByScore() {
 
 void ChatUI::_tickDebateTimerDuringBlocking() {
     if (_state != AppState::DEBATE_TURN) return;
-    int elapsed = (int)((millis() - _debateStartedMs) / 1000);
+
+    uint32_t now = millis();
+
+    // TTS 播放期间也轮询按钮（只认当前发言方）
+    if (now - _lastBtnCheckMs >= BTN_DEBOUNCE_MS) {
+        _lastBtnCheckMs = now;
+        if (_debateSpeaker == DisplayManager::StageSide::Red) {
+            if (PIN_BTN_RED >= 0 && digitalRead(PIN_BTN_RED) == HIGH) {
+                triggerDebateBoom(DisplayManager::StageSide::Red);
+            }
+        } else {
+            if (PIN_BTN_BLUE >= 0 && digitalRead(PIN_BTN_BLUE) == HIGH) {
+                triggerDebateBoom(DisplayManager::StageSide::Blue);
+            }
+        }
+    }
+
+    int elapsed = (int)((now - _debateStartedMs) / 1000);
     int left = max(0, DEBATE_TURN_SECONDS - elapsed);
     if (left != _lastDebateSecond) {
         _lastDebateSecond = left;
@@ -626,9 +678,20 @@ void ChatUI::_handleTouch() {
 
     if (_state == AppState::MODE_SELECT) {
         if (hitRect(t.x, t.y, MODE_DAILY_X, MODE_DAILY_Y, MODE_CARD_W, MODE_CARD_H, 0)) {
-            _enterInvite(FlowMode::Daily);
+            if (_isGroupChat) {
+                _charMgr.setDualMode(_redIndex, _blueIndex);
+                _startDailyStage();
+            } else if (_redIndex >= 0) {
+                _charMgr.selectCharacter(_redIndex);
+                _showGreeting();
+            }
         } else if (hitRect(t.x, t.y, MODE_DEBATE_X, MODE_DEBATE_Y, MODE_CARD_W, MODE_CARD_H, 0)) {
-            _enterInvite(FlowMode::Debate);
+            if (_isGroupChat) {
+                _charMgr.setDualMode(_redIndex, _blueIndex);
+                _display.drawDebateEntryTopic(false, 0);
+                _state = AppState::DEBATE_TOPIC;
+                _recorder.startListening();
+            }
         }
         return;
     }
@@ -663,7 +726,7 @@ void ChatUI::_handleTouch() {
         if (hitRect(t.x, t.y, DAILY_EXIT_X, DAILY_EXIT_Y,
                     DAILY_EXIT_W, DAILY_EXIT_H)) {
             _recorder.stopListening();
-            _enterModeSelect();
+            _enterModeSelectAfterRecognition();
         }
         return;
     }
@@ -673,7 +736,7 @@ void ChatUI::_handleTouch() {
                     DEBATE_EXIT_W, DEBATE_EXIT_H)) {
             _recorder.stopListening();
             _debateNextTurnPending = false;
-            _enterModeSelect();
+            _enterModeSelectAfterRecognition();
             return;
         }
     }
@@ -695,13 +758,28 @@ void ChatUI::_handleTouch() {
     }
 
     if (_state == AppState::DEBATE_RESULT) {
-        _enterModeSelect();
+        _enterModeSelectAfterRecognition();
         return;
     }
 
-    // ── 角色数量选择（点左半＝1人，右半＝2人）──
+    // ── 识别入口（点左拍红方，点右拍蓝方）──
     if (_state == AppState::CHARACTER_COUNT) {
-        _onCountSelect(t.x < SCREEN_W / 2 ? 1 : 2);
+        // 两个角色都识别好了 → 显示"进入"按钮
+        if (_redIndex >= 0 && _blueIndex >= 0 && _redIndex != _blueIndex) {
+            if (hitRect(t.x, t.y, INVITE_ENTER_X, INVITE_ENTER_Y,
+                        INVITE_ENTER_W, INVITE_ENTER_H)) {
+                _charMgr.setDualMode(_redIndex, _blueIndex);
+                _isGroupChat = true;
+                _enterModeSelectAfterRecognition();
+            }
+            return;
+        }
+        // 未满两个角色 → 点左/右半分别识别
+        if (t.x < SCREEN_W / 2) {
+            if (_redIndex < 0) _recognizeStageSide(DisplayManager::StageSide::Red);
+        } else {
+            if (_blueIndex < 0) _recognizeStageSide(DisplayManager::StageSide::Blue);
+        }
         return;
     }
 
@@ -713,7 +791,7 @@ void ChatUI::_handleTouch() {
 
     // ── NO_CHARACTER（仅作为错误恢复页面）：点击回到角色数量选择 ──
     if (_state == AppState::NO_CHARACTER) {
-        _display.drawCountSelection(_charMgr.count());
+        _display.drawRecognitionEntry(false, false);
         _state = AppState::CHARACTER_COUNT;
         _idleStartMs = millis();
         return;
@@ -734,7 +812,7 @@ void ChatUI::_handleTouch() {
         if (t.x >= SWITCH_BTN_X && t.x <= SWITCH_BTN_X + SWITCH_BTN_W
             && t.y >= SWITCH_BTN_Y && t.y <= SWITCH_BTN_Y + SWITCH_BTN_H) {
             _isGroupChat = false;
-            _display.drawCountSelection(_charMgr.count());
+            _display.drawRecognitionEntry(false, false);
             _state = AppState::CHARACTER_COUNT;
             _idleStartMs = millis();
             return;
@@ -795,7 +873,7 @@ void ChatUI::_onMicButtonTap() {
 void ChatUI::_onRecognizeTap() {
     if (_state != AppState::NO_CHARACTER
         && _state != AppState::CHARACTER_SELECT) return;
-    _display.drawCountSelection(_charMgr.count());
+    _display.drawRecognitionEntry(false, false);
     _state = AppState::CHARACTER_COUNT;
     _idleStartMs = millis();
 }
@@ -1093,8 +1171,8 @@ void ChatUI::_onDoubleTapWake() {
 
 static void _showRetryCountSelection(DisplayManager& display, CharacterManager& charMgr,
                                       AppState& state, uint32_t& idleStartMs) {
-    display.drawCountSelection(charMgr.count());
-    display.showBottomBar(true);
+    display.drawRecognitionEntry(false, false);
+    display.showBottomBar(false);
     state = AppState::CHARACTER_COUNT;
     idleStartMs = millis();
 }
@@ -1212,8 +1290,12 @@ void ChatUI::_runRecognition() {
 
         _pendingCharCount = 0;
         _charMgr.setDualMode(idxA, idxB);
+        _redIndex = idxA;
+        _blueIndex = idxB;
+        _redName = _charMgr.current().name;
+        _blueName = _charMgr.secondary().name;
         _isGroupChat = true;
-        _showGroupIdle();
+        _enterModeSelectAfterRecognition();
         return;
     }
 
@@ -1236,7 +1318,10 @@ void ChatUI::_runRecognition() {
         return;
     }
 
-    _showGreeting();
+    _redIndex = _charMgr.currentIndex();
+    _redName = _charMgr.current().name;
+    _isGroupChat = false;
+    _enterModeSelectAfterRecognition();
 }
 
 void ChatUI::_showGreeting() {

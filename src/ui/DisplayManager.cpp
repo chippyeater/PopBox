@@ -99,6 +99,32 @@ void DisplayManager::drawModeSelect() {
     _lastState = AppState::MODE_SELECT;
 }
 
+void DisplayManager::drawRecognitionEntry(bool redReady, bool blueReady) {
+    M5.Display.fillScreen(C_BG);
+    _drawPngAsset("/u/bg0.png", 0, 0, SCREEN_W, SCREEN_H);
+
+    const char* statePath;
+    if (redReady && blueReady) {
+        statePath = "/u/ct-ready.png";
+    } else if (redReady) {
+        statePath = "/u/ct-red.png";
+    } else if (blueReady) {
+        statePath = "/u/ct-blue.png";
+    } else {
+        statePath = "/u/ct-plain.png";
+    }
+    _drawPngAsset(statePath, 0, 55, 320, 146, 1.0f);
+
+    if (redReady && blueReady) {
+        _drawPromptBox((SCREEN_W - 104) / 2, 187, 122, 37,
+                       "进入", true);
+    } else {
+        _drawPromptBox(26, 211, 268, 28,
+                       "点击红色或蓝色区域识别角色", false);
+    }
+    _lastState = AppState::CHARACTER_COUNT;
+}
+
 void DisplayManager::drawPartyEntry(const String& title, const String& redName,
                                     const String& blueName,
                                     const String& bottomText) {

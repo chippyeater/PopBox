@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <M5Unified.h>
 #include <WiFi.h>
-#include <ESPmDNS.h>
 #include <SPIFFS.h>
+#include <driver/gpio.h>
 
 #include "config.h"
 #include "character/CharacterManager.h"
@@ -38,11 +38,7 @@ static void connectWiFi() {
     }
     if (WiFi.status() == WL_CONNECTED) {
         Serial.printf("\n[WiFi] 已连接，IP: %s\n", WiFi.localIP().toString().c_str());
-        // 启用 mDNS，并通过 _http._tcp 服务发现 PopBox 后端
-        if (MDNS.begin("popboxclient")) {
-            Serial.println("[mDNS] 已启动，开始发现 PopBox 后端服务");
-            BackendResolver::resolve();
-        }
+        BackendResolver::resolve();
     } else {
         Serial.println("\n[WiFi] 连接失败！请检查 config.h 中的 WiFi 配置");
     }
@@ -55,62 +51,6 @@ static void showBootError(const char* msg) {
     M5.Display.setCursor(10, 10);
     M5.Display.println("启动失败:");
     M5.Display.println(msg);
-}
-
-// ── 硬件自检（按钮检测）────────────────────────────────────
-static void runHwSelfTest() {
-    Serial.println("[自检] 按钮检测中...");
-    pinMode(18, INPUT_PULLUP);  // Grove C - 红方
-    pinMode(8,  INPUT_PULLUP);  // Grove B - 蓝方
-
-    M5.Display.fillScreen(0x000000);
-    M5.Display.setTextColor(0xFFFFFF);
-    M5.Display.setTextSize(2);
-    M5.Display.setCursor(10, 10);
-    M5.Display.println("按钮测试");
-    M5.Display.setTextSize(1);
-    M5.Display.setCursor(10, 40);
-    M5.Display.println("红方 (Grove C): 按一下");
-    M5.Display.setCursor(10, 55);
-    M5.Display.println("蓝方 (Grove B): 按一下");
-    M5.Display.setCursor(10, 75);
-    M5.Display.println("触摸屏幕跳过");
-
-    bool redOk = false, blueOk = false;
-    uint32_t t0 = millis();
-
-    while (!redOk || !blueOk) {
-        if (millis() - t0 > 20000) break;
-        M5.update();
-        if (M5.Touch.getDetail().isPressed()) break;
-
-        if (!redOk && digitalRead(18) == LOW) {
-            redOk = true;
-            Serial.println("[自检] 红方按钮 OK (GPIO18)");
-            M5.Display.setCursor(10, 95);
-            M5.Display.setTextColor(0xFF0000);
-            M5.Display.println("红方 OK!");
-        }
-        if (!blueOk && digitalRead(8) == LOW) {
-            blueOk = true;
-            Serial.println("[自检] 蓝方按钮 OK (GPIO8)");
-            M5.Display.setCursor(10, 110);
-            M5.Display.setTextColor(0x0000FF);
-            M5.Display.println("蓝方 OK!");
-        }
-        delay(20);
-    }
-
-    M5.Display.fillScreen(0x000000);
-    M5.Display.setTextColor(0xFFFFFF);
-    M5.Display.setTextSize(2);
-    M5.Display.setCursor(10, 10);
-    M5.Display.println("按钮结果");
-    M5.Display.setTextSize(1);
-    M5.Display.setCursor(10, 40);
-    M5.Display.printf("红方: %s\n", redOk ? "OK" : "未检测到");
-    M5.Display.printf("蓝方: %s\n", blueOk ? "OK" : "未检测到");
-    delay(1500);
 }
 
 // ── setup ─────────────────────────────────────────────────────
@@ -132,17 +72,17 @@ void setup() {
     M5.Display.setCursor(10, 10);
     M5.Display.println("PopBox 启动中...");
 
-    // 连接 WiFi（同时解析 mDNS）
+    // 连接 WiFi（同时解析后端地址）
     connectWiFi();
 
     // 初始化爆灯按钮 & LED（GPIO 模式，-1 表示未接则跳过）
-    if (PIN_BTN_RED >= 0)   pinMode(PIN_BTN_RED,  INPUT_PULLUP);
-    if (PIN_BTN_BLUE >= 0)  pinMode(PIN_BTN_BLUE, INPUT_PULLUP);
+    // ⚠️ PIN_BTN_BLUE=9 = CoreS3 内部 I2C SCL（触控/背光/功放共用）
+    //    跳过 gpio_reset_pin 以免断开 I2C 总线。ESP32-S3 在 I2C 模式下
+    //    仍可通过 digitalRead 读取引脚电平，不影响按钮识别。
+    if (PIN_BTN_RED >= 0)  { gpio_reset_pin((gpio_num_t)PIN_BTN_RED);  gpio_set_direction((gpio_num_t)PIN_BTN_RED,  GPIO_MODE_INPUT); gpio_set_pull_mode((gpio_num_t)PIN_BTN_RED,  GPIO_PULLUP_ONLY); }
+    if (PIN_BTN_BLUE >= 0 && PIN_BTN_BLUE != 9) { gpio_reset_pin((gpio_num_t)PIN_BTN_BLUE); gpio_set_direction((gpio_num_t)PIN_BTN_BLUE, GPIO_MODE_INPUT); gpio_set_pull_mode((gpio_num_t)PIN_BTN_BLUE, GPIO_PULLUP_ONLY); }
     if (PIN_LED_RED >= 0)  { pinMode(PIN_LED_RED,  OUTPUT); digitalWrite(PIN_LED_RED,  LOW); }
     if (PIN_LED_BLUE >= 0) { pinMode(PIN_LED_BLUE, OUTPUT); digitalWrite(PIN_LED_BLUE, LOW); }
-
-    // 硬件自检：LED 亮灭 + 按钮按下检测（触摸屏幕可跳过）
-    runHwSelfTest();
 
     // 从后端拉取角色列表（自动降级到 SPIFFS 离线缓存）
     if (!charMgr.fetchAll()) {

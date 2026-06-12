@@ -42,6 +42,7 @@ public:
 
     // 全屏状态：无人入住 / 角色数量选择 / 待机
     void drawModeSelect();
+    void drawRecognitionEntry(bool redReady, bool blueReady);
     void drawPartyEntry(const String& title, const String& redName,
                         const String& blueName, const String& bottomText);
     void drawPartyEntry(bool debate, bool redReady, bool blueReady);

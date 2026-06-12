@@ -3,15 +3,14 @@
 // ─────────────────────────────────────────
 // WiFi
 // ─────────────────────────────────────────
-#define WIFI_SSID     "禁止摸鱼的Mate 70"
-#define WIFI_PASSWORD "12345678cst"
+#define WIFI_SSID     "懒羊羊的破手机"
+#define WIFI_PASSWORD "12345678"
 
 // ─────────────────────────────────────────
 // 后端服务器地址
-// 后端通过 mDNS 广播为 popbox.local，无需填写 IP
-// 若 mDNS 不可用，改为 http://192.168.x.x:3000
+// 改为电脑 Wi-Fi 实际 IP: http://172.20.10.7:3000
 // ─────────────────────────────────────────
-#define BACKEND_URL "http://100.78.239.167:3000"  // 填入你的实际 IP，mDNS 调试中
+#define BACKEND_URL "http://172.20.10.7:3000"
 
 // ── 屏幕尺寸 ══════════════════════════════════════════════════
 #define SCREEN_W        320
@@ -52,14 +51,15 @@
 #define POPBOX_PREFILL_TEST_CHARACTERS 0
 #endif
 
-// ── 实体按钮爆灯 & LED ═══════════════════════════════════════
-#define PIN_BTN_RED   18   // Grove C 按钮（红方）
-#define PIN_BTN_BLUE   8   // Grove B 按钮（蓝方）
-#define PIN_LED_RED    -1   // 未接
-#define PIN_LED_BLUE   -1   // 未接
+// ── 实体按钮爆灯 + WS2812 LED ════════════════════════════════════
+// CoreS3: GPIO 9 = 内部 I2C SCL（触控/背光/功放），不可 gpio_reset_pin 否则 I2C 断线
+#define PIN_BTN_RED   17   // Grove C 黄线(GPIO17) → 红方按钮
+#define PIN_BTN_BLUE   9   // Grove B 黄线(GPIO9)  → 蓝方按钮（保留 I2C 功能，只 digitalRead）
+#define PIN_LED_RED    -1   // 未接（改用 WS2812）
+#define PIN_LED_BLUE   -1   // 未接（改用 WS2812）
 
 // ── 辩论模式配置 ══════════════════════════════════════════════
 #define DEBATE_INITIAL_SCORE      50
-#define DEBATE_BOOM_DELTA         15
+#define DEBATE_BOOM_DELTA         8
 #define DEBATE_WIN_SCORE          100
 #define DEBATE_TURN_SECONDS       180
