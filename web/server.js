@@ -479,9 +479,43 @@ function buildDebateSystemPrompt(session) {
         '- 发言控制在 60-100 字，适合 TTS 播放。',
         '- 禁止使用“正方/反方/综上所述/这是自然铁律/我作为AI”。',
         '- opponentReaction 表示对手听完后的反应，只能从 silent、speechless、angry、thinking、doubt、disagree、approve、disdain、shocked 中选。',
-        '- 只返回 JSON，不要代码块。',
+        '- 必须返回可被 JSON.parse 直接解析的 JSON 对象。',
+        '- 不要在 JSON 外输出任何文字，不要代码块，不要 Markdown。',
+        '- text 字段里只能放角色台词；不要把整段回复直接裸输出在 JSON 外。',
         '{"text":"当前发言角色要说的话","opponentReaction":"doubt"}'
     ].join('\n');
+}
+
+function parseDebateLLMOutput(raw, fallbackReaction = 'speechless') {
+    const text = String(raw || '').trim();
+    if (!text) return null;
+
+    const cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+    try {
+        const parsed = JSON.parse(cleaned);
+        return {
+            text: String(parsed.text || '').trim(),
+            opponentReaction: normalizeDebateReaction(parsed.opponentReaction, fallbackReaction)
+        };
+    } catch {
+        const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+        if (objectMatch) {
+            try {
+                const parsed = JSON.parse(objectMatch[0]);
+                return {
+                    text: String(parsed.text || '').trim(),
+                    opponentReaction: normalizeDebateReaction(parsed.opponentReaction, fallbackReaction)
+                };
+            } catch {
+                // fall through to plain-text recovery
+            }
+        }
+    }
+
+    return {
+        text: cleaned,
+        opponentReaction: fallbackReaction
+    };
 }
 
 function buildDebateTurnHistory(session) {
@@ -1400,16 +1434,18 @@ app.post('/api/debate/turn', async (req, res) => {
             } else {
                 const data = await response.json();
                 const raw = data?.choices?.[0]?.message?.content?.trim() || '';
-                try {
-                    const jsonStr = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-                    const parsed = JSON.parse(jsonStr);
+                const parsed = parseDebateLLMOutput(raw, payload.opponentReaction);
+                if (parsed?.text) {
                     payload = {
                         speaker,
-                        text: String(parsed.text || '').trim() || payload.text,
+                        text: parsed.text,
                         opponentReaction: normalizeDebateReaction(parsed.opponentReaction, payload.opponentReaction)
                     };
-                } catch (e) {
-                    console.error('[Debate] JSON 解析失败:', e.message, '| raw:', raw.slice(0, 120));
+                    if (!raw.trim().startsWith('{')) {
+                        console.warn('[Debate] LLM 未返回 JSON，已按纯文本恢复:', raw.slice(0, 120));
+                    }
+                } else {
+                    console.error('[Debate] LLM 输出为空或不可用 | raw:', raw.slice(0, 120));
                 }
             }
         } catch (err) {
