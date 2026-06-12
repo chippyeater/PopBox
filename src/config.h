@@ -52,6 +52,12 @@
 #define POPBOX_PREFILL_TEST_CHARACTERS 0
 #endif
 
+// ── 实体按钮爆灯 & LED ═══════════════════════════════════════
+#define PIN_BTN_RED   18   // Grove C
+#define PIN_LED_RED    2   // Grove A
+#define PIN_BTN_BLUE   9   // Grove B (via Hub, GPIO9)
+#define PIN_LED_BLUE   8   // Grove B (via Hub, GPIO8)
+
 // ── 辩论模式配置 ══════════════════════════════════════════════
 #define DEBATE_INITIAL_SCORE      50
 #define DEBATE_BOOM_DELTA         15
