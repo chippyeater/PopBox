@@ -57,6 +57,92 @@ static void showBootError(const char* msg) {
     M5.Display.println(msg);
 }
 
+// ── 硬件自检（按钮 + LED）────────────────────────────────────
+static void runHwSelfTest() {
+    M5.Display.fillScreen(0x000000);
+    M5.Display.setTextColor(0xFFFFFF);
+    M5.Display.setTextSize(2);
+    M5.Display.setCursor(10, 10);
+    M5.Display.println("硬件自检");
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 40);
+    M5.Display.println("LED 测试中...");
+    delay(500);
+
+    // ── LED 测试：逐个亮灭 3 次 ──
+    for (int i = 0; i < 3; i++) {
+        digitalWrite(PIN_LED_RED, HIGH);
+        digitalWrite(PIN_LED_BLUE, HIGH);
+        delay(300);
+        digitalWrite(PIN_LED_RED, LOW);
+        digitalWrite(PIN_LED_BLUE, LOW);
+        if (i < 2) delay(200);
+    }
+
+    // ── 按钮测试 ──
+    M5.Display.fillScreen(0x000000);
+    M5.Display.setTextColor(0xFFFFFF);
+    M5.Display.setTextSize(2);
+    M5.Display.setCursor(10, 10);
+    M5.Display.println("按钮测试");
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 40);
+    M5.Display.println("请依次按红色、蓝色按钮");
+    M5.Display.setCursor(10, 55);
+    M5.Display.println("（可直接触摸屏幕跳过）");
+
+    // 状态标记
+    bool redDone = false, blueDone = false;
+    uint32_t testStart = millis();
+
+    while (!redDone || !blueDone) {
+        if (millis() - testStart > 15000) break;  // 15 秒超时自动跳过
+
+        M5.update();
+        auto t = M5.Touch.getDetail();
+
+        // 红色按钮
+        if (!redDone && digitalRead(PIN_BTN_RED) == LOW) {
+            redDone = true;
+            digitalWrite(PIN_LED_RED, HIGH);
+            M5.Display.setCursor(10, 75);
+            M5.Display.setTextColor(0xFF0000);
+            M5.Display.println("红色按钮 OK");
+        }
+
+        // 蓝色按钮
+        if (!blueDone && digitalRead(PIN_BTN_BLUE) == LOW) {
+            blueDone = true;
+            digitalWrite(PIN_LED_BLUE, HIGH);
+            M5.Display.setCursor(10, 90);
+            M5.Display.setTextColor(0x0000FF);
+            M5.Display.println("蓝色按钮 OK");
+        }
+
+        // 触摸屏幕直接跳过
+        if (t.isPressed()) break;
+
+        delay(20);
+    }
+
+    // 关闭所有 LED
+    digitalWrite(PIN_LED_RED, LOW);
+    digitalWrite(PIN_LED_BLUE, LOW);
+
+    M5.Display.fillScreen(0x000000);
+    M5.Display.setTextColor(0xFFFFFF);
+    M5.Display.setTextSize(2);
+    M5.Display.setCursor(10, 10);
+    M5.Display.println("自检完成");
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 40);
+    M5.Display.printf("红按钮: %s\n", redDone ? "OK" : "未检测到");
+    M5.Display.printf("蓝按钮: %s\n", blueDone ? "OK" : "未检测到");
+    M5.Display.setCursor(10, 75);
+    M5.Display.println("即将进入主界面...");
+    delay(1500);
+}
+
 // ── setup ─────────────────────────────────────────────────────
 
 void setup() {
@@ -86,6 +172,9 @@ void setup() {
     pinMode(PIN_LED_BLUE, OUTPUT);
     digitalWrite(PIN_LED_RED,  LOW);
     digitalWrite(PIN_LED_BLUE, LOW);
+
+    // 硬件自检：LED 亮灭 + 按钮按下检测（触摸屏幕可跳过）
+    runHwSelfTest();
 
     // 从后端拉取角色列表（自动降级到 SPIFFS 离线缓存）
     if (!charMgr.fetchAll()) {
